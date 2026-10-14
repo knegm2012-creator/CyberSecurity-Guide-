@@ -1,0 +1,8 @@
+{
+  "name": "CS Odyssey: Zero to Hero 6-Month Mastery",
+  "description": "An interactive, self-paced Computer Science & Systems learning platform for Grade 9 students and self-taught learners to achieve CS mastery in 6 months. Features the complete 12-stage student handbook, an interactive Linux & Bandit terminal simulator, live concept labs, 14 GitHub projects, a personal cloud notebook, and a Gemini-powered AI study mentor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
