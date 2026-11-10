@@ -1,16 +1,36 @@
-'use client';
-
 import React, { useState } from 'react';
-import { Cpu, Binary, Network, ArrowRight, Play, RotateCcw, Check, Sparkles, Calculator, GitBranch } from 'lucide-react';
+import { Cpu, Binary, Network, ArrowRight, Play, RotateCcw, Check, Sparkles, Calculator, GitBranch, Code2 } from 'lucide-react';
 import { FoundationsStudio } from './FoundationsStudio';
 import { GitSandbox } from './GitSandbox';
+import { CodePlayground } from './CodePlayground';
+import { SavedCodeSnippet } from '@/hooks/use-odyssey-store';
 
 interface ConceptLabsProps {
   onOpenAiMentor?: (prompt?: string) => void;
+  savedSnippets?: SavedCodeSnippet[];
+  onSaveSnippet?: (snippet: { title: string; language: 'python' | 'c'; code: string; tags?: string[] }) => void;
+  onDeleteSnippet?: (id: string) => void;
+  initialLanguage?: 'python' | 'c';
+  initialCode?: string;
 }
 
-export function ConceptLabs({ onOpenAiMentor }: ConceptLabsProps) {
-  const [activeLab, setActiveLab] = useState<'foundations' | 'git' | 'binary' | 'ram' | 'packet'>('foundations');
+export function ConceptLabs({
+  onOpenAiMentor,
+  savedSnippets,
+  onSaveSnippet,
+  onDeleteSnippet,
+  initialLanguage,
+  initialCode,
+}: ConceptLabsProps) {
+  const [activeLab, setActiveLab] = useState<'playground' | 'foundations' | 'git' | 'binary' | 'ram' | 'packet'>('playground');
+  const [prevCode, setPrevCode] = useState(initialCode);
+
+  if (initialCode !== prevCode) {
+    setPrevCode(initialCode);
+    if (initialCode) {
+      setActiveLab('playground');
+    }
+  }
 
   // --- 1. BINARY & HEX FLIPPER STATE ---
   const [bits, setBits] = useState<number[]>([0, 0, 1, 0, 1, 0, 1, 0]); // 42 in binary
@@ -117,6 +137,15 @@ export function ConceptLabs({ onOpenAiMentor }: ConceptLabsProps) {
         {/* Lab Switcher Tabs */}
         <div className="flex rounded-lg bg-slate-900 border border-slate-800 p-1 gap-1 text-xs font-semibold overflow-x-auto no-scrollbar">
           <button
+            onClick={() => setActiveLab('playground')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeLab === 'playground' ? 'bg-cyan-600 text-white shadow-sm font-bold' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Code2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span>💻 Code Playground (Python / C)</span>
+          </button>
+          <button
             onClick={() => setActiveLab('foundations')}
             className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeLab === 'foundations' ? 'bg-cyan-600 text-white shadow-sm font-bold' : 'text-slate-400 hover:text-slate-200'
@@ -163,6 +192,18 @@ export function ConceptLabs({ onOpenAiMentor }: ConceptLabsProps) {
           </button>
         </div>
       </div>
+
+      {/* LAB -1: EMBEDDED CODE PLAYGROUND */}
+      {activeLab === 'playground' && (
+        <CodePlayground
+          initialLanguage={initialLanguage}
+          initialCode={initialCode}
+          onOpenAiMentor={onOpenAiMentor}
+          savedSnippets={savedSnippets}
+          onSaveSnippet={onSaveSnippet}
+          onDeleteSnippet={onDeleteSnippet}
+        />
+      )}
 
       {/* LAB 0: FOUNDATIONS STUDIO */}
       {activeLab === 'foundations' && (

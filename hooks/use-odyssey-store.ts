@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { STAGES_DATA, PORTFOLIO_PROJECTS } from '@/lib/curriculum-data';
+import { sanitizeOdysseyStoreState } from '@/lib/client-security';
 
 export interface StudyLogEntry {
   id: string;
@@ -23,6 +24,27 @@ export interface WeeklyReviewEntry {
   topTasks: string;
 }
 
+export interface UserMilestone {
+  id: string;
+  title: string;
+  category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom';
+  targetDate?: string;
+  completed: boolean;
+  completedAt?: string;
+  stageId?: string;
+  xpReward: number;
+}
+
+export interface SavedCodeSnippet {
+  id: string;
+  title: string;
+  language: 'python' | 'c';
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+}
+
 export interface OdysseyStoreData {
   completedTopics: Record<string, boolean>;
   completedExitChecks: Record<string, boolean>;
@@ -35,6 +57,9 @@ export interface OdysseyStoreData {
   studyLogs: StudyLogEntry[];
   weeklyReviews: WeeklyReviewEntry[];
   startDate: string;
+  dailyGoalMinutes: number;
+  userMilestones: UserMilestone[];
+  savedSnippets: SavedCodeSnippet[];
 }
 
 const STORAGE_KEY = 'cs_odyssey_state_v1';
@@ -54,6 +79,43 @@ const DEFAULT_STATE: OdysseyStoreData = {
     'proj-1': 'in_progress',
   },
   projectNotes: {},
+  dailyGoalMinutes: 30,
+  userMilestones: [
+    {
+      id: 'm-1',
+      title: 'Master Binary, Hex & 8-Bit Registers (Stage 0)',
+      category: 'basics',
+      completed: true,
+      completedAt: new Date().toISOString(),
+      stageId: 'stage-0',
+      xpReward: 75,
+    },
+    {
+      id: 'm-2',
+      title: 'Run First Python & C Programs in Playground',
+      category: 'basics',
+      completed: false,
+      stageId: 'stage-1',
+      xpReward: 75,
+    },
+    {
+      id: 'm-3',
+      title: 'Solve Bandit Levels 0 through 5 over SSH',
+      category: 'bandit',
+      completed: false,
+      stageId: 'stage-1',
+      xpReward: 100,
+    },
+    {
+      id: 'm-4',
+      title: 'Master Big-O Asymptotics & Sorting Algorithms',
+      category: 'algorithms',
+      completed: false,
+      stageId: 'stage-4',
+      xpReward: 100,
+    },
+  ],
+  savedSnippets: [],
   stageNotes: {
     'stage-0': `# Stage 0 Learning Notes
 - Installed VS Code and Python 3.12.
@@ -89,9 +151,10 @@ export function useOdysseyStore() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
+          const sanitized = sanitizeOdysseyStoreState(parsed);
           return {
             ...DEFAULT_STATE,
-            ...parsed,
+            ...sanitized,
           };
         }
       } catch (e) {
@@ -128,6 +191,23 @@ export function useOdysseyStore() {
     [data, saveState]
   );
 
+  const markStageTopicsComplete = useCallback(
+    (stageId: string, completed: boolean) => {
+      const stage = STAGES_DATA.find((s) => s.id === stageId);
+      if (!stage) return;
+      const nextTopics = { ...data.completedTopics };
+      for (const t of stage.topics) {
+        nextTopics[t.id] = completed;
+      }
+      const next = {
+        ...data,
+        completedTopics: nextTopics,
+      };
+      saveState(next);
+    },
+    [data, saveState]
+  );
+
   const toggleExitCheck = useCallback(
     (key: string) => {
       const next = {
@@ -144,10 +224,12 @@ export function useOdysseyStore() {
 
   const toggleBanditLevel = useCallback(
     (level: number) => {
-      const exists = data.solvedBanditLevels.includes(level);
+      const cleanLevel = Math.floor(Number(level));
+      if (isNaN(cleanLevel) || cleanLevel < 0 || cleanLevel > 50) return;
+      const exists = data.solvedBanditLevels.includes(cleanLevel);
       const nextLevels = exists
-        ? data.solvedBanditLevels.filter((l) => l !== level)
-        : [...data.solvedBanditLevels, level];
+        ? data.solvedBanditLevels.filter((l) => l !== cleanLevel)
+        : [...data.solvedBanditLevels, cleanLevel];
       const next = {
         ...data,
         solvedBanditLevels: nextLevels,
@@ -201,12 +283,14 @@ export function useOdysseyStore() {
 
   const addStudyLog = useCallback(
     (minutes: number, stageId: string, notes: string) => {
+      const validMinutes = Math.max(1, Math.min(1440, Math.floor(Number(minutes) || 30)));
+      const cleanNotes = (notes || '').slice(0, 1000);
       const newEntry: StudyLogEntry = {
         id: 'log-' + Date.now(),
         date: new Date().toISOString().split('T')[0],
-        minutes,
+        minutes: validMinutes,
         stageId,
-        notes,
+        notes: cleanNotes,
       };
       const next = {
         ...data,
@@ -235,14 +319,17 @@ export function useOdysseyStore() {
 
   const saveBanditPassword = useCallback(
     (level: number, password: string) => {
+      const cleanLevel = Math.floor(Number(level));
+      if (isNaN(cleanLevel) || cleanLevel < 0 || cleanLevel > 50) return;
+      const cleanPassword = (password || '').trim().slice(0, 100);
       const currentPasswords = data.banditPasswords || {};
-      const nextSolved = Array.from(new Set([...data.solvedBanditLevels, level]));
+      const nextSolved = Array.from(new Set([...data.solvedBanditLevels, cleanLevel]));
       const next = {
         ...data,
         solvedBanditLevels: nextSolved,
         banditPasswords: {
           ...currentPasswords,
-          [level]: password.trim(),
+          [cleanLevel]: cleanPassword,
         },
       };
       saveState(next);
@@ -276,6 +363,130 @@ export function useOdysseyStore() {
     [data, saveState]
   );
 
+  // Milestone Management
+  const addMilestone = useCallback(
+    (title: string, category: UserMilestone['category'] = 'custom', targetDate?: string, stageId?: string, xpReward: number = 75) => {
+      const newMilestone: UserMilestone = {
+        id: 'ms-' + Date.now(),
+        title: title.trim(),
+        category,
+        targetDate,
+        stageId,
+        completed: false,
+        xpReward,
+      };
+      const next = {
+        ...data,
+        userMilestones: [newMilestone, ...(data.userMilestones || [])],
+      };
+      saveState(next);
+    },
+    [data, saveState]
+  );
+
+  const toggleMilestone = useCallback(
+    (id: string) => {
+      const milestones = data.userMilestones || [];
+      const target = milestones.find((m) => m.id === id);
+      const isNowCompleted = target ? !target.completed : false;
+
+      const updated = milestones.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              completed: isNowCompleted,
+              completedAt: isNowCompleted ? new Date().toISOString() : undefined,
+            }
+          : m
+      );
+
+      let nextStudyLogs = data.studyLogs;
+      if (isNowCompleted && target) {
+        nextStudyLogs = [
+          {
+            id: 'log-ms-' + Date.now(),
+            date: new Date().toISOString().split('T')[0],
+            minutes: 15,
+            stageId: target.stageId || 'stage-0',
+            notes: `🏆 Reached Milestone: "${target.title}" (+${target.xpReward} XP)`,
+          },
+          ...data.studyLogs,
+        ];
+      }
+
+      saveState({
+        ...data,
+        userMilestones: updated,
+        studyLogs: nextStudyLogs,
+      });
+    },
+    [data, saveState]
+  );
+
+  const deleteMilestone = useCallback(
+    (id: string) => {
+      const updated = (data.userMilestones || []).filter((m) => m.id !== id);
+      saveState({
+        ...data,
+        userMilestones: updated,
+      });
+    },
+    [data, saveState]
+  );
+
+  const setDailyGoalMinutes = useCallback(
+    (minutes: number) => {
+      saveState({
+        ...data,
+        dailyGoalMinutes: Math.max(10, Math.min(240, minutes)),
+      });
+    },
+    [data, saveState]
+  );
+
+  // Code Snippet Management
+  const saveCodeSnippet = useCallback(
+    (snippet: Omit<SavedCodeSnippet, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+      const snippets = data.savedSnippets || [];
+      const now = new Date().toISOString();
+      let updated: SavedCodeSnippet[];
+
+      if (snippet.id) {
+        updated = snippets.map((s) =>
+          s.id === snippet.id ? { ...s, ...snippet, updatedAt: now } : s
+        );
+      } else {
+        const newSnippet: SavedCodeSnippet = {
+          id: 'snip-' + Date.now(),
+          title: snippet.title || `${snippet.language.toUpperCase()} Snippet`,
+          language: snippet.language,
+          code: snippet.code,
+          createdAt: now,
+          updatedAt: now,
+          tags: snippet.tags || [],
+        };
+        updated = [newSnippet, ...snippets];
+      }
+
+      saveState({
+        ...data,
+        savedSnippets: updated,
+      });
+    },
+    [data, saveState]
+  );
+
+  const deleteCodeSnippet = useCallback(
+    (id: string) => {
+      const updated = (data.savedSnippets || []).filter((s) => s.id !== id);
+      saveState({
+        ...data,
+        savedSnippets: updated,
+      });
+    },
+    [data, saveState]
+  );
+
   // Compute overall progress stats
   const stats = useMemo(() => {
     let totalTopicsCount = 0;
@@ -293,12 +504,27 @@ export function useOdysseyStore() {
     const completedProjectsCount = Object.values(data.projectStatuses).filter((s) => s === 'completed').length;
     const banditCount = data.solvedBanditLevels.length;
 
+    // Today's study minutes
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayMinutesLogged = data.studyLogs
+      .filter((l) => l.date === todayStr)
+      .reduce((acc, curr) => acc + (curr.minutes || 0), 0);
+
+    const dailyGoalMinutes = data.dailyGoalMinutes || 30;
+    const dailyGoalPercent = Math.min(100, Math.round((todayMinutesLogged / dailyGoalMinutes) * 100));
+
+    // Milestones progress
+    const userMilestones = data.userMilestones || [];
+    const completedMilestonesCount = userMilestones.filter((m) => m.completed).length;
+    const totalMilestonesCount = userMilestones.length;
+
     // XP calculation: 50 XP per topic, 100 XP per Bandit level, 300 XP per Project, 25 XP per 30m study log
     const totalMinutesLogged = data.studyLogs.reduce((acc, curr) => acc + (curr.minutes || 0), 0);
     const xp =
       completedTopicsCount * 50 +
       banditCount * 100 +
       completedProjectsCount * 300 +
+      completedMilestonesCount * 75 +
       Math.floor(totalMinutesLogged / 30) * 25;
 
     // Level: Level 1 (0 XP) up to Level 20 (6000 XP)
@@ -354,6 +580,11 @@ export function useOdysseyStore() {
       totalProjectsCount: PORTFOLIO_PROJECTS.length,
       banditCount,
       totalMinutesLogged,
+      todayMinutesLogged,
+      dailyGoalMinutes,
+      dailyGoalPercent,
+      completedMilestonesCount,
+      totalMilestonesCount,
       xp,
       levelNumber,
       heroTitle,
@@ -377,7 +608,11 @@ export function useOdysseyStore() {
       try {
         const parsed = JSON.parse(jsonString);
         if (parsed && typeof parsed === 'object') {
-          saveState(parsed);
+          const sanitized = sanitizeOdysseyStoreState(parsed);
+          saveState({
+            ...DEFAULT_STATE,
+            ...sanitized,
+          });
           return true;
         }
       } catch (e) {
@@ -400,6 +635,7 @@ export function useOdysseyStore() {
     lastSaved,
     stats,
     toggleTopic,
+    markStageTopicsComplete,
     toggleExitCheck,
     toggleBanditLevel,
     saveBanditPassword,
@@ -409,6 +645,12 @@ export function useOdysseyStore() {
     updateStageNotes,
     addStudyLog,
     addWeeklyReview,
+    addMilestone,
+    toggleMilestone,
+    deleteMilestone,
+    setDailyGoalMinutes,
+    saveCodeSnippet,
+    deleteCodeSnippet,
     exportBackup,
     importBackup,
     resetAll,

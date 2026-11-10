@@ -20,9 +20,19 @@ import {
   Copy,
   Check,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  BookOpen,
+  Search,
+  Filter,
+  Code2,
+  Layers,
+  ChevronRight,
+  ChevronDown,
+  Info
 } from 'lucide-react';
 import { BANDIT_LEVELS, BanditLevel } from '@/lib/curriculum-data';
+import { BANDIT_QUICK_COMMANDS, QuickCommand } from '@/lib/bandit-commands-data';
+import { resolveVirtualPath, sanitizeTerminalOutput } from '@/lib/client-security';
 
 interface TerminalSimulatorProps {
   solvedLevels: number[];
@@ -30,6 +40,7 @@ interface TerminalSimulatorProps {
   onSaveBanditPassword?: (level: number, password: string) => void;
   onToggleLevel: (level: number) => void;
   onOpenAiMentor: (context?: string) => void;
+  isActive?: boolean;
 }
 
 interface FileSystemNode {
@@ -47,10 +58,19 @@ export function TerminalSimulator({
   onSaveBanditPassword,
   onToggleLevel,
   onOpenAiMentor,
+  isActive = true,
 }: TerminalSimulatorProps) {
   const [selectedLevelIndex, setSelectedLevelIndex] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [copiedFlag, setCopiedFlag] = useState<string | null>(null);
+
+  // --- COMMAND QUICK-REFERENCE SIDE PANEL STATE ---
+  const [showQuickRef, setShowQuickRef] = useState(true);
+  const [quickRefFilter, setQuickRefFilter] = useState<'relevant' | 'all'>('relevant');
+  const [quickRefCategory, setQuickRefCategory] = useState<string>('all');
+  const [quickRefSearch, setQuickRefSearch] = useState('');
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  const [expandedCmd, setExpandedCmd] = useState<string | null>(null);
 
   // --- LIVE SSH STATE ---
   const [isLiveSshMode, setIsLiveSshMode] = useState(false);
@@ -82,6 +102,7 @@ export function TerminalSimulator({
   const [inputVal, setInputVal] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
+  const [tempDraft, setTempDraft] = useState<string>('');
   const [currentPath, setCurrentPath] = useState<string[]>(['home', 'bandit0']);
   const [currentUser, setCurrentUser] = useState('bandit0');
   const [envVars, setEnvVars] = useState<Record<string, string>>({
@@ -151,6 +172,61 @@ export function TerminalSimulator({
   });
 
   const level = BANDIT_LEVELS[selectedLevelIndex] || BANDIT_LEVELS[0];
+
+  const handleInsertCommand = (cmdText: string) => {
+    // If command has placeholder or example, extract first executable command
+    const primaryCmd = cmdText.split('\n')[0].trim();
+    setInputVal(primaryCmd);
+    setHistoryIdx(-1);
+    setTempDraft('');
+    inputRef.current?.focus();
+  };
+
+  const handleCopyCommand = (name: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCmd(name);
+    setTimeout(() => setCopiedCmd(null), 2000);
+  };
+
+  // Automatically focus command input field when tab becomes active, on mount, or when browser tab/window is focused
+  useEffect(() => {
+    if (!isActive) return;
+
+    const focusInput = () => {
+      // Focus command input if element is present in DOM
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+
+    // Immediate focus call and microtask frame for initial render
+    focusInput();
+    const frameId = requestAnimationFrame(focusInput);
+    const timeoutId = setTimeout(focusInput, 60);
+
+    // Focus when browser window or document tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isActive) {
+        focusInput();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      if (isActive) {
+        focusInput();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [isActive]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -375,10 +451,7 @@ export function TerminalSimulator({
     const trimmed = cmdLine.trim();
     if (!trimmed) return;
 
-    setCmdHistory((prev) => [...prev, trimmed]);
-    setHistoryIdx(-1);
-
-    // If awaiting password for interactive SSH
+    // If awaiting password for interactive SSH, do NOT store credentials in command history!
     if (awaitingPasswordFor) {
       const { user, host, port } = awaitingPasswordFor;
       setAwaitingPasswordFor(null);
@@ -391,6 +464,16 @@ export function TerminalSimulator({
       connectToLiveBandit(lvlNum, trimmed);
       return;
     }
+
+    // Save command to history (avoid consecutive duplicates)
+    setCmdHistory((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1] === trimmed) {
+        return prev;
+      }
+      return [...prev, trimmed];
+    });
+    setHistoryIdx(-1);
+    setTempDraft('');
 
     // --- MODE 1: LIVE SSH MODE TO OVERTHEWIRE ---
     if (isLiveSshMode) {
@@ -579,34 +662,27 @@ export function TerminalSimulator({
           break;
         }
 
-        if (target === '..') {
-          if (currentPath.length > 1) {
-            setCurrentPath((prev) => prev.slice(0, prev.length - 1));
+        try {
+          const newPath = resolveVirtualPath(currentPath, target);
+          const node = getNodeAtPath(newPath);
+          if (!node) {
+            setHistory((prev) => [
+              ...prev,
+              { type: 'output', text: `bash: cd: ${target}: No such file or directory` },
+            ]);
+          } else if (node.type !== 'dir') {
+            setHistory((prev) => [
+              ...prev,
+              { type: 'output', text: `bash: cd: ${target}: Not a directory` },
+            ]);
+          } else {
+            setCurrentPath(newPath);
           }
-          break;
-        }
-
-        if (target === '/') {
-          setCurrentPath([]);
-          break;
-        }
-
-        const segments = target.split('/').filter(Boolean);
-        const newPath = target.startsWith('/') ? [...segments] : [...currentPath, ...segments];
-
-        const node = getNodeAtPath(newPath);
-        if (!node) {
+        } catch (pathErr: any) {
           setHistory((prev) => [
             ...prev,
-            { type: 'output', text: `bash: cd: ${target}: No such file or directory` },
+            { type: 'output', text: `bash: cd: ${pathErr.message}`, isError: true },
           ]);
-        } else if (node.type !== 'dir') {
-          setHistory((prev) => [
-            ...prev,
-            { type: 'output', text: `bash: cd: ${target}: Not a directory` },
-          ]);
-        } else {
-          setCurrentPath(newPath);
         }
         break;
       }
@@ -617,21 +693,34 @@ export function TerminalSimulator({
           break;
         }
 
-        let target = args.join(' ');
-        if (target.startsWith('./')) target = target.slice(2);
-
-        const currNode = getNodeAtPath(currentPath);
-        if (currNode && currNode.type === 'dir' && currNode.children && currNode.children[target]) {
-          const file = currNode.children[target];
-          if (file.type === 'dir') {
+        const target = args.join(' ');
+        try {
+          const targetSegments = resolveVirtualPath(currentPath, target);
+          if (targetSegments.length === 0) {
             setHistory((prev) => [...prev, { type: 'output', text: `cat: ${target}: Is a directory` }]);
-          } else {
-            setHistory((prev) => [...prev, { type: 'output', text: file.content || '' }]);
+            break;
           }
-        } else {
+          const parentSegments = targetSegments.slice(0, -1);
+          const fileName = targetSegments[targetSegments.length - 1];
+          const parentNode = getNodeAtPath(parentSegments);
+
+          if (parentNode && parentNode.type === 'dir' && parentNode.children && parentNode.children[fileName]) {
+            const file = parentNode.children[fileName];
+            if (file.type === 'dir') {
+              setHistory((prev) => [...prev, { type: 'output', text: `cat: ${target}: Is a directory` }]);
+            } else {
+              setHistory((prev) => [...prev, { type: 'output', text: sanitizeTerminalOutput(file.content || '') }]);
+            }
+          } else {
+            setHistory((prev) => [
+              ...prev,
+              { type: 'output', text: `cat: ${target}: No such file or directory` },
+            ]);
+          }
+        } catch (pathErr: any) {
           setHistory((prev) => [
             ...prev,
-            { type: 'output', text: `cat: ${target}: No such file or directory` },
+            { type: 'output', text: `cat: ${pathErr.message}`, isError: true },
           ]);
         }
         break;
@@ -699,22 +788,36 @@ export function TerminalSimulator({
       contentToWrite = left.slice(5).replace(/^"|"$/g, '').replace(/^'|'$/g, '');
     }
 
-    const currNode = getNodeAtPath(currentPath);
-    if (currNode && currNode.type === 'dir') {
-      if (!currNode.children) currNode.children = {};
-      const existing = currNode.children[targetFile];
-
-      if (isAppend && existing && existing.type === 'file') {
-        existing.content = (existing.content || '') + '\n' + contentToWrite;
-        existing.size = (existing.content || '').length;
-      } else {
-        currNode.children[targetFile] = {
-          type: 'file',
-          content: contentToWrite,
-          size: contentToWrite.length,
-        };
+    try {
+      const targetSegments = resolveVirtualPath(currentPath, targetFile);
+      if (targetSegments.length === 0) {
+        setHistory((prev) => [...prev, { type: 'output', text: `bash: ${targetFile}: Is a directory`, isError: true }]);
+        return;
       }
-      setHistory((prev) => [...prev, { type: 'output', text: '' }]);
+      const parentSegments = targetSegments.slice(0, -1);
+      const fileName = targetSegments[targetSegments.length - 1];
+      const parentNode = getNodeAtPath(parentSegments);
+
+      if (parentNode && parentNode.type === 'dir') {
+        if (!parentNode.children) parentNode.children = {};
+        const existing = parentNode.children[fileName];
+
+        if (isAppend && existing && existing.type === 'file') {
+          existing.content = (existing.content || '') + '\n' + contentToWrite;
+          existing.size = (existing.content || '').length;
+        } else {
+          parentNode.children[fileName] = {
+            type: 'file',
+            content: contentToWrite,
+            size: contentToWrite.length,
+          };
+        }
+        setHistory((prev) => [...prev, { type: 'output', text: '' }]);
+      } else {
+        setHistory((prev) => [...prev, { type: 'output', text: `bash: ${targetFile}: No such directory`, isError: true }]);
+      }
+    } catch (err: any) {
+      setHistory((prev) => [...prev, { type: 'output', text: `bash: ${err.message}`, isError: true }]);
     }
   };
 
@@ -742,22 +845,66 @@ export function TerminalSimulator({
     if (e.key === 'Enter') {
       executeCommand(inputVal);
       setInputVal('');
+      setHistoryIdx(-1);
+      setTempDraft('');
     } else if (e.key === 'ArrowUp') {
-      if (cmdHistory.length > 0) {
-        const nextIdx = historyIdx === -1 ? cmdHistory.length - 1 : Math.max(0, historyIdx - 1);
-        setHistoryIdx(nextIdx);
-        setInputVal(cmdHistory[nextIdx]);
+      // Don't browse history if entering interactive password or if history is empty
+      if (awaitingPasswordFor || cmdHistory.length === 0) return;
+      e.preventDefault();
+
+      let targetIdx: number;
+      if (historyIdx === -1) {
+        // Cache current draft input before navigating backward
+        setTempDraft(inputVal);
+        targetIdx = cmdHistory.length - 1;
+      } else if (historyIdx > 0) {
+        targetIdx = historyIdx - 1;
+      } else {
+        // Already at oldest recorded command
+        targetIdx = 0;
       }
-    } else if (e.key === 'ArrowDown') {
-      if (historyIdx !== -1) {
-        const nextIdx = historyIdx + 1;
-        if (nextIdx >= cmdHistory.length) {
-          setHistoryIdx(-1);
-          setInputVal('');
-        } else {
-          setHistoryIdx(nextIdx);
-          setInputVal(cmdHistory[nextIdx]);
+
+      setHistoryIdx(targetIdx);
+      const targetCmd = cmdHistory[targetIdx];
+      setInputVal(targetCmd);
+
+      // Keep input reactive and position caret at end of text
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.setSelectionRange(targetCmd.length, targetCmd.length);
         }
+      });
+    } else if (e.key === 'ArrowDown') {
+      // Don't browse history if entering interactive password or not in history browsing mode
+      if (awaitingPasswordFor || historyIdx === -1) return;
+      e.preventDefault();
+
+      if (historyIdx < cmdHistory.length - 1) {
+        const targetIdx = historyIdx + 1;
+        setHistoryIdx(targetIdx);
+        const targetCmd = cmdHistory[targetIdx];
+        setInputVal(targetCmd);
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.setSelectionRange(targetCmd.length, targetCmd.length);
+          }
+        });
+      } else {
+        // Returned to newest prompt: restore drafted input
+        setHistoryIdx(-1);
+        setInputVal(tempDraft);
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.setSelectionRange(tempDraft.length, tempDraft.length);
+          }
+        });
+      }
+    } else if (e.key === 'Escape') {
+      // Escape key cancels history browsing and restores original draft
+      if (historyIdx !== -1) {
+        e.preventDefault();
+        setHistoryIdx(-1);
+        setInputVal(tempDraft);
       }
     }
   };
@@ -828,6 +975,19 @@ export function TerminalSimulator({
           >
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
             <span>Ask AI Coach</span>
+          </button>
+
+          <button
+            onClick={() => setShowQuickRef(!showQuickRef)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+              showQuickRef
+                ? 'border-indigo-500/80 bg-indigo-950/60 text-indigo-300 shadow-md shadow-indigo-950/40'
+                : 'border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+            title="Toggle Command Quick-Reference side panel"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+            <span>{showQuickRef ? 'Hide Quick-Ref' : 'Quick Reference'}</span>
           </button>
         </div>
       </div>
@@ -1017,6 +1177,16 @@ export function TerminalSimulator({
                 </span>
               )}
               <button
+                onClick={() => setShowQuickRef(!showQuickRef)}
+                className={`flex items-center gap-1 transition-colors cursor-pointer px-2 py-0.5 rounded text-[11px] font-mono ${
+                  showQuickRef ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60' : 'hover:text-slate-200'
+                }`}
+                title="Toggle Command Quick-Reference panel"
+              >
+                <BookOpen className="h-3 w-3 text-indigo-400" />
+                <span>Quick-Ref</span>
+              </button>
+              <button
                 onClick={() => setHistory([])}
                 className="hover:text-slate-200 transition-colors cursor-pointer"
               >
@@ -1115,8 +1285,235 @@ export function TerminalSimulator({
               }
               className="flex-1 bg-transparent text-slate-100 focus:outline-none font-mono placeholder:text-slate-600"
             />
+            {historyIdx !== -1 && (
+              <span className="text-[10px] text-cyan-400/90 bg-cyan-950/80 border border-cyan-800/80 rounded px-1.5 py-0.5 select-none shrink-0 font-mono flex items-center gap-1 shadow-sm">
+                <span>↑↓ {historyIdx + 1}/{cmdHistory.length}</span>
+                <span className="text-slate-500 text-[9px] hidden sm:inline">(Esc to cancel)</span>
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Rightmost Side Panel: Command Quick-Reference */}
+        {showQuickRef && (
+          <aside className="w-full lg:w-80 shrink-0 flex flex-col rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl h-[650px] overflow-hidden font-mono">
+            {/* Quick-Ref Panel Header */}
+            <div className="p-3.5 border-b border-slate-800 bg-slate-900/90 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-indigo-400" />
+                  <h3 className="text-xs font-bold text-white tracking-wide uppercase">
+                    Command Quick-Reference
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowQuickRef(false)}
+                  className="text-slate-400 hover:text-white text-xs p-1 rounded hover:bg-slate-800 transition-colors"
+                  title="Close side panel"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Dynamic Level Status Indicator */}
+              <div className="flex items-center justify-between text-[11px] bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                <span className="text-slate-400">Targeting:</span>
+                <span className="text-amber-400 font-bold flex items-center gap-1">
+                  <span>Bandit Level {level.level}</span>
+                  <span className="text-slate-500 font-normal">({level.usefulCommands.length} recommended)</span>
+                </span>
+              </div>
+
+              {/* Filter Tabs: Relevant to Level vs All Commands */}
+              <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/80 text-[11px]">
+                <button
+                  onClick={() => setQuickRefFilter('relevant')}
+                  className={`py-1 rounded font-bold transition-all text-center cursor-pointer ${
+                    quickRefFilter === 'relevant'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  ⭐ Level {level.level} Only
+                </button>
+                <button
+                  onClick={() => setQuickRefFilter('all')}
+                  className={`py-1 rounded font-bold transition-all text-center cursor-pointer ${
+                    quickRefFilter === 'all'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All Commands ({BANDIT_QUICK_COMMANDS.length})
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  value={quickRefSearch}
+                  onChange={(e) => setQuickRefSearch(e.target.value)}
+                  placeholder="Filter by name, syntax, or use..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+                />
+                {quickRefSearch && (
+                  <button
+                    onClick={() => setQuickRefSearch('')}
+                    className="absolute right-2 top-1.5 text-slate-500 hover:text-slate-300 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick-Ref Scrollable List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+              {(() => {
+                const searchLower = quickRefSearch.toLowerCase().trim();
+                const filtered = BANDIT_QUICK_COMMANDS.filter((cmd) => {
+                  // Level relevance check
+                  const isLevelMatched =
+                    cmd.relevantLevels.includes(level.level) ||
+                    level.usefulCommands.some((u) => u.toLowerCase() === cmd.name.toLowerCase().split(' ')[0]);
+
+                  if (quickRefFilter === 'relevant' && !isLevelMatched) {
+                    return false;
+                  }
+
+                  // Search match
+                  if (searchLower) {
+                    const matchName = cmd.name.toLowerCase().includes(searchLower);
+                    const matchSyntax = cmd.syntax.toLowerCase().includes(searchLower);
+                    const matchSummary = cmd.summary.toLowerCase().includes(searchLower);
+                    const matchTip = cmd.proTip?.toLowerCase().includes(searchLower);
+                    if (!matchName && !matchSyntax && !matchSummary && !matchTip) {
+                      return false;
+                    }
+                  }
+
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-xs text-slate-500 space-y-2">
+                      <p>No commands matched your filter.</p>
+                      <button
+                        onClick={() => {
+                          setQuickRefFilter('all');
+                          setQuickRefSearch('');
+                        }}
+                        className="text-indigo-400 hover:underline text-[11px]"
+                      >
+                        Show All Commands
+                      </button>
+                    </div>
+                  );
+                }
+
+                return filtered.map((cmd) => {
+                  const isDirectlyRelevant =
+                    cmd.relevantLevels.includes(level.level) ||
+                    level.usefulCommands.some((u) => u.toLowerCase() === cmd.name.toLowerCase().split(' ')[0]);
+                  const isExpanded = expandedCmd === cmd.name;
+
+                  return (
+                    <div
+                      key={cmd.name}
+                      className={`rounded-xl border p-2.5 transition-all text-xs ${
+                        isDirectlyRelevant
+                          ? 'border-indigo-500/50 bg-indigo-950/20 shadow-sm shadow-indigo-950/40'
+                          : 'border-slate-800/80 bg-slate-900/40 hover:border-slate-700'
+                      }`}
+                    >
+                      {/* Top Row: Command Name + Category Badge + Relevance Badge */}
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <code className="text-xs font-bold text-white bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                            {cmd.name}
+                          </code>
+                          {isDirectlyRelevant && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-0.5">
+                              ⭐ Level {level.level}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleCopyCommand(cmd.name, cmd.syntax)}
+                            className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            title="Copy syntax"
+                          >
+                            {copiedCmd === cmd.name ? (
+                              <Check className="h-3 w-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleInsertCommand(cmd.usageExample || cmd.syntax)}
+                            className="px-1.5 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 text-[10px] font-bold cursor-pointer transition-colors"
+                            title="Insert command into terminal input"
+                          >
+                            Insert ↵
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Syntax Line */}
+                      <div className="bg-slate-950/90 rounded px-2 py-1 font-mono text-[11px] text-cyan-300 border border-slate-800/60 overflow-x-auto select-all mb-1.5">
+                        {cmd.syntax}
+                      </div>
+
+                      {/* Summary */}
+                      <p className="text-[11px] text-slate-300 leading-relaxed font-sans mb-1.5">
+                        {cmd.summary}
+                      </p>
+
+                      {/* Expandable Pro-Tip & Usage Examples */}
+                      <div>
+                        <button
+                          onClick={() => setExpandedCmd(isExpanded ? null : cmd.name)}
+                          className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
+                        >
+                          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          <span>{isExpanded ? 'Hide Pro-Tip & Examples' : 'Show Pro-Tip & Examples'}</span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-2 space-y-2 pt-2 border-t border-slate-800/80">
+                            {cmd.proTip && (
+                              <div className="bg-amber-950/30 border border-amber-900/40 rounded p-2 text-[11px] text-amber-200/90 font-sans">
+                                <span className="font-bold text-amber-400">💡 Pro-Tip:</span> {cmd.proTip}
+                              </div>
+                            )}
+
+                            <div>
+                              <div className="text-[10px] text-slate-400 mb-1">Example Usage:</div>
+                              <pre className="bg-slate-950 p-2 rounded text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre border border-slate-800">
+                                {cmd.usageExample}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Quick-Ref Footer */}
+            <div className="p-2.5 border-t border-slate-800 bg-slate-900/80 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>Click &quot;Insert ↵&quot; to test command</span>
+              <span className="font-bold text-cyan-400">OverTheWire Bandit</span>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ import {
   Check,
   Calculator,
   GitBranch,
+  Code2,
+  Plus,
 } from 'lucide-react';
 import { STAGES_DATA, StageData, TopicItem, CommandItem, ResourceItem } from '@/lib/curriculum-data';
 import { FoundationsStudio } from './FoundationsStudio';
@@ -30,6 +32,9 @@ interface StageExplorerProps {
   onOpenAiMentor: (context?: string) => void;
   onOpenBandit: () => void;
   onOpenNotes: (stageId: string) => void;
+  onOpenPlayground?: (language: 'python' | 'c', code: string) => void;
+  onMarkStageComplete?: (stageId: string, completed: boolean) => void;
+  onAddMilestone?: (title: string, category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom', targetDate?: string, stageId?: string, xpReward?: number) => void;
 }
 
 export function StageExplorer({
@@ -40,6 +45,9 @@ export function StageExplorer({
   onOpenAiMentor,
   onOpenBandit,
   onOpenNotes,
+  onOpenPlayground,
+  onMarkStageComplete,
+  onAddMilestone,
 }: StageExplorerProps) {
   const [selectedStageId, setSelectedStageId] = useState<string>('stage-0');
   const [activeTab, setActiveTab] = useState<'topics' | 'foundations' | 'git' | 'commands' | 'resources' | 'task' | 'exit'>('topics');
@@ -49,6 +57,7 @@ export function StageExplorer({
 
   const stageCompletedTopics = stage.topics.filter((t) => completedTopics[t.id]).length;
   const stageTopicProgress = Math.round((stageCompletedTopics / stage.topics.length) * 100);
+  const isStageFullyComplete = stageCompletedTopics === stage.topics.length && stage.topics.length > 0;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -129,6 +138,40 @@ export function StageExplorer({
 
             {/* Quick action buttons for this stage */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {onMarkStageComplete && (
+                <button
+                  onClick={() => onMarkStageComplete(stage.id, !isStageFullyComplete)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer border ${
+                    isStageFullyComplete
+                      ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60'
+                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-emerald-950/40 hover:border-emerald-600/50 hover:text-emerald-300'
+                  }`}
+                  title={isStageFullyComplete ? 'Reset all topics in this stage' : 'Mark all topics in this stage as complete'}
+                >
+                  <CheckCircle2 className={`h-3.5 w-3.5 ${isStageFullyComplete ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <span>{isStageFullyComplete ? 'Stage Complete ✓' : 'Mark Stage Complete'}</span>
+                </button>
+              )}
+
+              {onAddMilestone && (
+                <button
+                  onClick={() =>
+                    onAddMilestone(
+                      `Complete Stage ${stage.number}: ${stage.title.split(':')[0]}`,
+                      'basics',
+                      undefined,
+                      stage.id,
+                      100
+                    )
+                  }
+                  className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/30 px-3 py-1.5 text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition-colors cursor-pointer"
+                  title="Add this stage as a personalized milestone in your progress tracker"
+                >
+                  <Plus className="h-3.5 w-3.5 text-purple-400" />
+                  <span>Set as Milestone</span>
+                </button>
+              )}
+
               <button
                 onClick={() => onOpenAiMentor(`Quiz me on Stage ${stage.number}: ${stage.title}`)}
                 className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-900/50 transition-colors cursor-pointer"
@@ -304,6 +347,49 @@ export function StageExplorer({
                         <div className="mt-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 px-3 py-1.5 text-[11px] text-slate-400 font-mono">
                           <span className="text-indigo-400 font-semibold">ELI9:</span> {topic.eli9}
                         </div>
+
+                        {topic.codeSnippet && (
+                          <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-2">
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                                <Code2 className="h-3.5 w-3.5" />
+                                <span>Code Example ({topic.codeSnippet.language.toUpperCase()})</span>
+                              </span>
+                              {onOpenPlayground && (
+                                <button
+                                  onClick={() => onOpenPlayground(topic.codeSnippet!.language, topic.codeSnippet!.code)}
+                                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>Open in Playground →</span>
+                                </button>
+                              )}
+                            </div>
+                            <pre className="p-2.5 rounded-lg bg-slate-900 text-[11px] font-mono text-slate-200 overflow-x-auto whitespace-pre">
+                              {topic.codeSnippet.code}
+                            </pre>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              {topic.codeSnippet.explanation}
+                            </div>
+                          </div>
+                        )}
+
+                        {topic.externalLinks && topic.externalLinks.length > 0 && (
+                          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-500">Curated Sources:</span>
+                            {topic.externalLinks.map((link, lIdx) => (
+                              <a
+                                key={lIdx}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 border border-slate-700/60"
+                              >
+                                <span>{link.title}</span>
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

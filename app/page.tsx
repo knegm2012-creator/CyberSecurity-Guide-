@@ -16,6 +16,8 @@ import { AiMentorPanel } from '@/components/AiMentorPanel';
 import { QuickQuizModal } from '@/components/QuickQuizModal';
 import { FoundationsStudio } from '@/components/FoundationsStudio';
 import { GitSandbox } from '@/components/GitSandbox';
+import { AdvancedHeroHub } from '@/components/AdvancedHeroHub';
+import { ProgressDashboard } from '@/components/ProgressDashboard';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import { Terminal, RotateCcw } from 'lucide-react';
 
@@ -24,12 +26,15 @@ export default function HomePage() {
   const [aiMentorOpen, setAiMentorOpen] = useState(false);
   const [aiMentorPrompt, setAiMentorPrompt] = useState<string | undefined>(undefined);
   const [quickQuizOpen, setQuickQuizOpen] = useState(false);
+  const [playgroundCode, setPlaygroundCode] = useState<string | undefined>(undefined);
+  const [playgroundLang, setPlaygroundLang] = useState<'python' | 'c' | undefined>(undefined);
 
   const {
     data,
     isLoaded,
     stats,
     toggleTopic,
+    markStageTopicsComplete,
     toggleExitCheck,
     toggleBanditLevel,
     saveBanditPassword,
@@ -38,10 +43,22 @@ export default function HomePage() {
     updateProjectNotes,
     updateStageNotes,
     addStudyLog,
+    addMilestone,
+    toggleMilestone,
+    deleteMilestone,
+    setDailyGoalMinutes,
+    saveCodeSnippet,
+    deleteCodeSnippet,
     exportBackup,
     importBackup,
     resetAll,
   } = useOdysseyStore();
+
+  const handleOpenPlaygroundWithCode = (lang: 'python' | 'c', code: string) => {
+    setPlaygroundLang(lang);
+    setPlaygroundCode(code);
+    setActiveTab('labs');
+  };
 
   // Dynamically determine current active learning stage from store
   const currentStageId = useMemo(() => {
@@ -100,6 +117,8 @@ export default function HomePage() {
         onOpenQuickQuiz={() => setQuickQuizOpen(true)}
         onOpenFoundations={() => setActiveTab('foundations')}
         onOpenGitSandbox={() => setActiveTab('git')}
+        onOpenProgress={() => setActiveTab('progress')}
+        onOpenHero={() => setActiveTab('hero')}
         onSelectStage={(stageId) => {
           setActiveTab('roadmap');
         }}
@@ -119,7 +138,39 @@ export default function HomePage() {
             onOpenAiMentor={handleOpenAiWithPrompt}
             onOpenBandit={() => setActiveTab('bandit')}
             onOpenNotes={handleOpenNotes}
+            onOpenPlayground={handleOpenPlaygroundWithCode}
+            onMarkStageComplete={markStageTopicsComplete}
+            onAddMilestone={addMilestone}
           />
+        )}
+
+        {activeTab === 'progress' && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+            <ProgressDashboard
+              stats={stats}
+              completedTopics={data.completedTopics}
+              userMilestones={data.userMilestones || []}
+              studyLogs={data.studyLogs}
+              onToggleMilestone={toggleMilestone}
+              onAddMilestone={addMilestone}
+              onDeleteMilestone={deleteMilestone}
+              onSetDailyGoal={setDailyGoalMinutes}
+              onLogStudy={(minutes, stageId, notes) => addStudyLog(minutes, stageId, notes)}
+              onSelectStage={(stageId) => {
+                setActiveTab('roadmap');
+              }}
+              onOpenAiMentor={handleOpenAiWithPrompt}
+            />
+          </div>
+        )}
+
+        {activeTab === 'hero' && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+            <AdvancedHeroHub
+              onOpenAiMentor={handleOpenAiWithPrompt}
+              onOpenPlaygroundWithCode={handleOpenPlaygroundWithCode}
+            />
+          </div>
         )}
 
         {activeTab === 'foundations' && (
@@ -142,6 +193,7 @@ export default function HomePage() {
 
         {activeTab === 'bandit' && (
           <TerminalSimulator
+            isActive={activeTab === 'bandit'}
             solvedLevels={data.solvedBanditLevels}
             banditPasswords={data.banditPasswords}
             onSaveBanditPassword={saveBanditPassword}
@@ -151,7 +203,14 @@ export default function HomePage() {
         )}
 
         {activeTab === 'labs' && (
-          <ConceptLabs onOpenAiMentor={handleOpenAiWithPrompt} />
+          <ConceptLabs
+            onOpenAiMentor={handleOpenAiWithPrompt}
+            savedSnippets={data.savedSnippets}
+            onSaveSnippet={saveCodeSnippet}
+            onDeleteSnippet={deleteCodeSnippet}
+            initialLanguage={playgroundLang}
+            initialCode={playgroundCode}
+          />
         )}
 
         {activeTab === 'projects' && (

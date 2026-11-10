@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, Terminal, Flame, Trophy, Clock, CheckCircle2, ArrowRight, BookOpen, Calculator, GitBranch } from 'lucide-react';
+import { Sparkles, Terminal, Flame, Trophy, Clock, CheckCircle2, ArrowRight, BookOpen, Calculator, GitBranch, Target, Code2 } from 'lucide-react';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import { DailyChallengeWidget } from './DailyChallengeWidget';
 
@@ -14,6 +14,11 @@ interface MissionControlProps {
     totalProjectsCount: number;
     banditCount: number;
     totalMinutesLogged: number;
+    todayMinutesLogged?: number;
+    dailyGoalMinutes?: number;
+    dailyGoalPercent?: number;
+    completedMilestonesCount?: number;
+    totalMilestonesCount?: number;
     xp: number;
     levelNumber: number;
     heroTitle: string;
@@ -26,6 +31,8 @@ interface MissionControlProps {
   onOpenQuickQuiz?: () => void;
   onOpenFoundations?: () => void;
   onOpenGitSandbox?: () => void;
+  onOpenProgress?: () => void;
+  onOpenHero?: () => void;
   onSelectStage: (stageId: string) => void;
   onSelectTab?: (tab: string) => void;
   onCompleteDailyChallenge?: (dateKey: string, xp: number, taskTitle: string, stageId: string) => void;
@@ -41,6 +48,8 @@ export function MissionControl({
   onOpenQuickQuiz,
   onOpenFoundations,
   onOpenGitSandbox,
+  onOpenProgress,
+  onOpenHero,
   onSelectStage,
   onSelectTab,
   onCompleteDailyChallenge,
@@ -89,6 +98,24 @@ export function MissionControl({
               >
                 <Sparkles className="h-4 w-4 text-amber-400" />
                 <span>Quick Quiz</span>
+              </button>
+            )}
+            {onOpenProgress && (
+              <button
+                onClick={onOpenProgress}
+                className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3.5 py-2.5 text-xs font-semibold text-purple-300 hover:bg-purple-900/50 shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                <Target className="h-4 w-4 text-purple-400" />
+                <span>🎯 Goals ({stats.completedMilestonesCount ?? 0}/{stats.totalMilestonesCount ?? 0})</span>
+              </button>
+            )}
+            {onOpenHero && (
+              <button
+                onClick={onOpenHero}
+                className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-950/40 px-3.5 py-2.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-900/50 shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                <Trophy className="h-4 w-4 text-indigo-400" />
+                <span>🏆 Hero Phase</span>
               </button>
             )}
             {onOpenFoundations && (

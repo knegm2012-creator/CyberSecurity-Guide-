@@ -29,6 +29,7 @@ import {
   Check,
   FolderGit2,
   ExternalLink,
+  Code2,
 } from 'lucide-react';
 
 export interface GitCommitNode {
@@ -365,7 +366,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
   const [repo, setRepo] = useState<GitRepoState>(INITIAL_REPO_STATE);
   const [selectedCommitId, setSelectedCommitId] = useState<string>('c1');
   const [activeScenarioId, setActiveScenarioId] = useState<string>('intro');
-  const [viewMode, setViewMode] = useState<'graph' | 'staging' | 'cheatsheet'>('graph');
+  const [viewMode, setViewMode] = useState<'graph' | 'staging' | 'cheatsheet' | 'readme'>('graph');
   const [completedScenarios, setCompletedScenarios] = useState<Record<string, boolean>>({});
 
   // Terminal state
@@ -413,11 +414,9 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     return currentScenario.checkCompletion(repo);
   }, [repo, currentScenario, completedScenarios]);
 
-  useEffect(() => {
-    if (currentScenario.checkCompletion(repo) && !completedScenarios[currentScenario.id]) {
-      setCompletedScenarios((prev) => ({ ...prev, [currentScenario.id]: true }));
-    }
-  }, [repo, currentScenario, completedScenarios]);
+  if (currentScenario.checkCompletion(repo) && !completedScenarios[currentScenario.id]) {
+    setCompletedScenarios((prev) => ({ ...prev, [currentScenario.id]: true }));
+  }
 
   // Generate random short hash
   const generateHash = () => Math.random().toString(16).substring(2, 8);
@@ -481,9 +480,21 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       repo.head.type === 'branch' ? repo.branches[repo.head.target] : repo.head.target;
 
     const currentBranchName = repo.head.type === 'branch' ? repo.head.target : 'detached';
-    const newId = `c${repo.commits.length}`;
+    
+    // Invariant: Collision-free commit ID generation
+    let nextIdx = repo.commits.length;
+    let newId = `c${nextIdx}`;
+    while (repo.commits.some((c) => c.id === newId)) {
+      nextIdx++;
+      newId = `c${nextIdx}`;
+    }
+
     const newHash = generateHash();
     const msg = customMessage || commitMessageInput.trim() || `feat: update on ${currentBranchName}`;
+
+    // Verify parent commit existence in DAG
+    const parentExists = repo.commits.some((c) => c.id === currentHeadCommitId);
+    const safeParents = currentHeadCommitId && parentExists ? [currentHeadCommitId] : [];
 
     // Staged files snapshot
     const staged = repo.stagingArea.length > 0 ? repo.stagingArea : [{ name: 'work.py', status: 'modified' as const }];
@@ -491,7 +502,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     const newCommit: GitCommitNode = {
       id: newId,
       hash: newHash,
-      parents: currentHeadCommitId ? [currentHeadCommitId] : [],
+      parents: safeParents,
       message: msg,
       branchName: currentBranchName,
       timestamp: 'just now',
@@ -534,6 +545,9 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
   const handleCreateBranch = (branchName: string, checkoutImmediately = true) => {
     const cleanName = branchName.trim().replace(/\s+/g, '-');
     if (!cleanName) return 'fatal: empty branch name';
+    if (!/^[a-zA-Z0-9_\-\.\/]+$/.test(cleanName) || cleanName.includes('..') || cleanName.startsWith('/') || cleanName.endsWith('/')) {
+      return `fatal: '${cleanName}' is not a valid branch name`;
+    }
     if (repo.branches[cleanName]) return `fatal: a branch named '${cleanName}' already exists.`;
 
     const currentCommitId =
@@ -865,6 +879,9 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             if (!delBranch || !repo.branches[delBranch]) {
               output = `error: branch '${delBranch}' not found.`;
               isError = true;
+            } else if (delBranch === 'main') {
+              output = "error: Cannot delete default branch 'main'";
+              isError = true;
             } else if (repo.head.type === 'branch' && repo.head.target === delBranch) {
               output = `error: Cannot delete branch '${delBranch}' checked out at ${repo.branches[delBranch]}`;
               isError = true;
@@ -1081,6 +1098,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             { id: 'graph', label: '🌿 Visual Git DAG & Terminal', icon: GitBranch },
             { id: 'staging', label: '🗂️ The 3 Trees: Working vs Staging vs Repo', icon: Layers },
             { id: 'cheatsheet', label: '📘 Mental Models & Golden Rules', icon: ShieldCheck },
+            { id: 'readme', label: '📄 README.md & Git Engineering Spec', icon: FileText },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = viewMode === tab.id;
@@ -1674,7 +1692,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
-                  <span>Press Tab or type 'help'</span>
+                  <span>Press Tab or type &apos;help&apos;</span>
                 </div>
               </div>
 
@@ -1683,7 +1701,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 <div className="text-slate-500 text-[11px] leading-relaxed border-b border-slate-900 pb-2">
                   💡 Type commands like <span className="text-emerald-400">git status</span>,{' '}
                   <span className="text-emerald-400">git add .</span>,{' '}
-                  <span className="text-emerald-400">git commit -m "msg"</span>,{' '}
+                  <span className="text-emerald-400">git commit -m &quot;msg&quot;</span>,{' '}
                   <span className="text-indigo-400">git branch feature-x</span>,{' '}
                   <span className="text-indigo-400">git checkout feature-x</span>,{' '}
                   <span className="text-cyan-400">git merge</span>, or{' '}
@@ -2013,6 +2031,223 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 <strong>Git history is permanent:</strong> Deleting a password in commit #2 does <em>not</em> erase it from commit #1 in the public log!
               </li>
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODE 4: README & Engineering Git Spec */}
+      {viewMode === 'readme' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-cyan-400 font-semibold uppercase tracking-wider">
+                Engineering Specification
+              </span>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                README.md &amp; Git Standards
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              Professional README.md Generator &amp; Git Engineering Standards
+            </h2>
+            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+              Every senior engineering team evaluates code quality by its documentation, commit clarity, branch strategy, and reproducible environments. Learn how to craft production-grade READMEs and maintain spotless repository hygiene.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Column 1: Live Interactive README Template */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 space-y-4 font-mono">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 text-xs text-slate-200 font-bold">
+                  <FileText className="h-4 w-4 text-emerald-400" />
+                  <span>Production README.md Template</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const sampleReadme = `# CS Odyssey: Project Name
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)]()
+
+## 📌 Executive Summary
+A high-performance systems utility demonstrating clean modular architecture, unit test coverage, and defensive error handling.
+
+## 🚀 Key Features
+- **Zero External Dependencies**: Pure standard library implementation.
+- **Defensive I/O**: Automated bounds checking and input sanitation.
+- **Comprehensive Test Suite**: Automated edge case tests with 100% branch coverage.
+
+## 🛠️ Architecture & Directed Acyclic Graph (DAG)
+\`\`\`
+main:     c0 (Initial) ---> c1 (Scaffolding) -----------> c4 (Merge 1.0)
+                               \\                         /
+feature:                        c2 (Auth Logic) ---> c3
+\`\`\`
+
+## 📦 Quickstart & Installation
+\`\`\`bash
+# 1. Clone repository
+git clone https://github.com/your-username/project-name.git
+cd project-name
+
+# 2. Initialize Python virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Run test suite
+pytest -v tests/
+\`\`\`
+
+## 🛡️ Security & Privacy Boundary
+- Zero disk logging of plaintext tokens or credentials.
+- All network sockets strictly bind to \`127.0.0.1\` (localhost).
+
+## 📄 License
+MIT © 2026 CS Odyssey Learner
+`;
+                    navigator.clipboard.writeText(sampleReadme);
+                    alert('Copied Production README.md template to clipboard!');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1"
+                >
+                  <Copy className="h-3 w-3" />
+                  <span>Copy Markdown</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-300 leading-relaxed font-mono space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 max-h-[480px] overflow-y-auto whitespace-pre-wrap">
+{`# CS Odyssey: Project Name
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)]()
+
+## 📌 Executive Summary
+A high-performance systems utility demonstrating clean modular architecture, unit test coverage, and defensive error handling.
+
+## 🚀 Key Features
+- **Zero External Dependencies**: Pure standard library implementation.
+- **Defensive I/O**: Automated bounds checking and input sanitation.
+- **Comprehensive Test Suite**: Automated edge case tests with 100% branch coverage.
+
+## 🛠️ Architecture & Directed Acyclic Graph (DAG)
+\`\`\`
+main:     c0 (Initial) ---> c1 (Scaffolding) -----------> c4 (Merge 1.0)
+                               \\                         /
+feature:                        c2 (Auth Logic) ---> c3
+\`\`\`
+
+## 📦 Quickstart & Installation
+\`\`\`bash
+# 1. Clone repository
+git clone https://github.com/your-username/project-name.git
+cd project-name
+
+# 2. Initialize Python virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Run test suite
+pytest -v tests/
+\`\`\`
+
+## 🛡️ Security & Privacy Boundary
+- Zero disk logging of plaintext tokens or credentials.
+- All network sockets strictly bind to 127.0.0.1 (localhost).
+
+## 📄 License
+MIT © 2026 CS Odyssey Learner`}
+              </div>
+            </div>
+
+            {/* Column 2: Git Hygiene, Commit Conventions & .gitignore Rules */}
+            <div className="space-y-4">
+              {/* Conventional Commits Card */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <Code2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Conventional Commits Standard
+                    </h3>
+                    <span className="text-[11px] text-slate-400 font-mono">Format: &lt;type&gt;(&lt;scope&gt;): &lt;description&gt;</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-emerald-400 font-bold">feat:</span>
+                    <p className="text-[11px] text-slate-400 font-sans mt-0.5">Adds a new user-facing capability or API method.</p>
+                  </div>
+                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-rose-400 font-bold">fix:</span>
+                    <p className="text-[11px] text-slate-400 font-sans mt-0.5">Patches a known bug, edge case, or crash.</p>
+                  </div>
+                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-cyan-400 font-bold">refactor:</span>
+                    <p className="text-[11px] text-slate-400 font-sans mt-0.5">Rewrites code without changing runtime behavior.</p>
+                  </div>
+                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-amber-400 font-bold">test:</span>
+                    <p className="text-[11px] text-slate-400 font-sans mt-0.5">Adds or updates unit, integration, or regression tests.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* .gitignore Standard Blueprint */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Essential .gitignore Blueprint
+                    </h3>
+                    <span className="text-[11px] text-slate-400 font-mono">Keep junk and secrets out of Git history</span>
+                  </div>
+                </div>
+
+                <pre className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] font-mono text-cyan-300 leading-relaxed overflow-x-auto">
+{`# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables & secrets
+.env
+.env.local
+*.pem
+*.key
+sshkey.private
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS specific artifacts
+.DS_Store
+Thumbs.db`}
+                </pre>
+              </div>
+
+              {/* Branching Strategy Card */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-2">
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-emerald-400" />
+                  <span>Trunk-Based vs GitFlow Branching</span>
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  In modern high-velocity software engineering, <strong className="text-emerald-300">Trunk-Based Development</strong> is preferred: short-lived branches (<code className="text-cyan-300">feature/xyz</code>) merged rapidly into <code className="text-emerald-400">main</code> with automated CI tests. Keep branch lifespans under 48 hours to minimize merge conflicts!
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

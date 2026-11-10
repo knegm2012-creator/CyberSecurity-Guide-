@@ -3,6 +3,16 @@ export interface TopicItem {
   title: string;
   description: string;
   eli9: string;
+  codeSnippet?: {
+    language: 'python' | 'c';
+    code: string;
+    explanation: string;
+  };
+  externalLinks?: Array<{
+    title: string;
+    url: string;
+    type: 'Course' | 'Video' | 'Article' | 'Docs';
+  }>;
 }
 
 export interface CommandItem {
@@ -98,76 +108,279 @@ export const STAGES_DATA: StageData[] = [
     eli9Metaphor: 'Before building a skyscraper, you have to understand steel and bricks. In computer science, everything—from video games to encryption—is built on tiny electrical switches (0 and 1), powers of 2, and logic gates. Master this bedrock first, and programming will make total sense!',
     topics: [
       {
+        id: 's0-t0',
+        title: 'Introduction to Computer Science & Computational Thinking',
+        description: 'Computer Science is the study of computation, information theory, and systematic problem solving using algorithms, abstraction, pattern recognition, and decomposition. It transforms complex real-world challenges into finite state machines and deterministic instructions.',
+        eli9: 'Computer Science is not just about fixing laptops—it is teaching a lightning-fast, obedient robot how to solve riddles step-by-step using precise recipes called algorithms!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrates algorithm decomposition: counting steps and solving the prime number search problem systematically.',
+          code: `# Computational Thinking: Prime Finder Algorithm
+def is_prime(n):
+    """Systematically test divisibility with optimal square-root boundary."""
+    if n <= 1:
+        return False
+    if n <= 3:
+        return True
+    if n % 2 == 0 or n % 3 == 0:
+        return False
+    i = 5
+    while i * i <= n:
+        if n % i == 0 or n % (i + 2) == 0:
+            return False
+        i += 6
+    return True
+
+test_numbers = [2, 7, 15, 29, 33, 97, 100]
+print("--- Prime Number Detection ---")
+for num in test_numbers:
+    status = "PRIME" if is_prime(num) else "COMPOSITE"
+    print(f"Number {num:3d} -> {status}")
+`
+        },
+        externalLinks: [
+          { title: 'Harvard CS50: Computational Thinking', url: 'https://cs50.harvard.edu/x/', type: 'Course' },
+          { title: 'Crash Course CS #1: Early Computing', url: 'https://www.youtube.com/watch?v=O5nskjZ_GoI', type: 'Video' },
+          { title: 'Khan Academy: What is Computing?', url: 'https://www.khanacademy.org/computing', type: 'Article' }
+        ]
+      },
+      {
         id: 's0-t1',
-        title: 'Bits, Bytes & Binary (Base-2 Number System)',
-        description: 'Understand electrical voltage logic (high=1, low=0), binary place values (1, 2, 4, 8, 16, 32, 64, 128), and how to convert any decimal number into 8-bit binary by hand.',
-        eli9: 'Computers cannot read numbers like 42. They only have tiny microscopic light switches: OFF is 0, ON is 1. Place values double each step: 1, 2, 4, 8, 16, 32, 64, 128!'
+        title: 'How Computers Work: CPU, ALU, RAM & The Instruction Cycle',
+        description: 'Discover how microscopic transistors act as electrical switches (0V / 5V) to form logic gates, registers, and the Arithmetic Logic Unit (ALU). Understand the Fetch-Decode-Execute instruction cycle, CPU clock cycles, L1/L2/L3 caches, volatile RAM memory, and non-volatile storage.',
+        eli9: 'The CPU is a lightning-fast chef with tiny hands (Registers), RAM is the wide kitchen counter holding open recipes, and the SSD is the deep storage freezer down in the basement!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Simulating the CPU Fetch-Decode-Execute cycle with Program Counter (PC), Accumulator register, and instructions.',
+          code: `# Toy CPU Architecture Simulation: Fetch-Decode-Execute Cycle
+class ToyCPU:
+    def __init__(self):
+        self.pc = 0           # Program Counter
+        self.accumulator = 0  # General register (ALU output)
+        self.memory = [
+            ("LOAD", 15),     # Fetch instruction 0
+            ("ADD", 27),      # Fetch instruction 1
+            ("SUB", 5),       # Fetch instruction 2
+            ("PRINT", None),  # Fetch instruction 3
+            ("HALT", None)    # Fetch instruction 4
+        ]
+        self.halted = False
+
+    def step(self):
+        # 1. Fetch
+        opcode, operand = self.memory[self.pc]
+        print(f"[PC={self.pc}] Fetching: {opcode} {operand or ''}")
+        self.pc += 1
+
+        # 2. Decode & Execute
+        if opcode == "LOAD":
+            self.accumulator = operand
+        elif opcode == "ADD":
+            self.accumulator += operand
+        elif opcode == "SUB":
+            self.accumulator -= operand
+        elif opcode == "PRINT":
+            print(f">>> ALU Accumulator Output: {self.accumulator}")
+        elif opcode == "HALT":
+            self.halted = True
+            print(">>> CPU Halted cleanly.")
+
+cpu = ToyCPU()
+while not cpu.halted:
+    cpu.step()
+`
+        },
+        externalLinks: [
+          { title: 'Crash Course CS: How CPUs Work (Ep 7)', url: 'https://www.youtube.com/watch?v=FZGugFqDr60', type: 'Video' },
+          { title: 'Code.org: How Computers Work', url: 'https://code.org/curriculum/how-computers-work', type: 'Video' },
+          { title: 'Nand2Tetris: The Elements of Computing Systems', url: 'https://www.nand2tetris.org', type: 'Course' }
+        ]
       },
       {
         id: 's0-t2',
-        title: 'Hexadecimal & Nibbles (Base-16)',
-        description: 'Why engineers use hex (0-9, A-F), how each hex digit maps directly to 4 binary bits (a nibble), and recognizing hex in memory addresses (0x7ffe...), MAC addresses, and hash digests.',
-        eli9: 'Writing 8 bits like 11111111 is exhausting. Hexadecimal groups 4 bits into one character (1111 = F), so 11111111 becomes FF! It is shorthand for binary.'
+        title: 'Bits, Bytes, Nibbles & Binary (Base-2 Number System)',
+        description: 'Understand electrical voltage logic (high=1, low=0), binary place values (1, 2, 4, 8, 16, 32, 64, 128), and how to convert any decimal number into 8-bit binary by hand using repeated division or powers of two.',
+        eli9: 'Computers cannot read numbers like 42. They only have tiny microscopic switches: OFF is 0, ON is 1. Place values double each step: 1, 2, 4, 8, 16, 32, 64, 128!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrating decimal-to-binary bitmask inspection and powers of 2 breakdown.',
+          code: `# Decimal to 8-Bit Binary Conversion by First Principles
+def decimal_to_8bit_binary(n):
+    bits = []
+    powers = [128, 64, 32, 16, 8, 4, 2, 1]
+    remainder = n
+    for p in powers:
+        if remainder >= p:
+            bits.append("1")
+            remainder -= p
+        else:
+            bits.append("0")
+    return "".join(bits)
+
+for val in [0, 1, 5, 42, 127, 255]:
+    bin_str = decimal_to_8bit_binary(val)
+    print(f"Decimal {val:3d} = Binary {bin_str} (Built-in: {bin(val)})")
+`
+        },
+        externalLinks: [
+          { title: 'Khan Academy: Binary Numbers', url: 'https://www.khanacademy.org/math/algebra-home/alg-intro-to-algebra/algebra-alternate-number-bases/v/number-bases', type: 'Video' },
+          { title: '3Blue1Brown: Binary Mathematics', url: 'https://www.3blue1brown.com', type: 'Article' },
+          { title: 'Math is Fun: Binary System', url: 'https://www.mathsisfun.com/binary-number-system.html', type: 'Docs' }
+        ]
       },
       {
         id: 's0-t3',
-        title: 'Powers of Two (2^0 to 2^16) & Computer Algebra',
-        description: 'Memorize powers of 2 (1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536). Understand KiB/MiB/GiB vs KB/MB/GB and solve basic equations for network subnetting.',
-        eli9: 'Every time you add a bit, you double the possibilities. 8 bits gives 256 values. 10 bits gives 1024 (1 KiB). 16 bits gives 65,536 (the total number of network ports)!'
+        title: 'Hexadecimal & Memory Addressing (Base-16)',
+        description: 'Why engineers use hex (0-9, A-F), how each hex digit maps directly to 4 binary bits (a nibble), and recognizing hex in memory addresses (0x7ffe...), MAC addresses, and hash digests.',
+        eli9: 'Writing 8 bits like 11111111 is exhausting. Hexadecimal groups 4 bits into one character (1111 = F), so 11111111 becomes FF! It is shorthand for binary.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Converting decimal to hexadecimal and mapping 4-bit binary nibbles to hex digits.',
+          code: `# Hexadecimal & Memory Address Simulator
+val = 42
+hex_repr = hex(val) # '0x2a'
+bin_repr = bin(val) # '0b101010'
+
+# Format as 32-bit and 64-bit memory addresses
+virtual_addr_32 = f"0x{val:08X}"
+virtual_addr_64 = f"0x{val:016X}"
+
+print(f"Decimal Value: {val}")
+print(f"Hex Representation: {hex_repr}")
+print(f"Formatted 32-bit Memory Pointer: {virtual_addr_32}")
+print(f"Formatted 64-bit Memory Pointer: {virtual_addr_64}")
+
+# Demonstrate Nibble mapping (4 bits = 1 Hex character)
+byte_val = 0xAF
+upper_nibble = (byte_val >> 4) & 0x0F  # 0xA = 1010
+lower_nibble = byte_val & 0x0F         # 0xF = 1111
+print(f"Byte 0xAF -> High Nibble: {hex(upper_nibble)} ({upper_nibble:04b}), Low Nibble: {hex(lower_nibble)} ({lower_nibble:04b})")
+`
+        },
+        externalLinks: [
+          { title: 'CS50: Memory & Hexadecimal', url: 'https://cs50.harvard.edu/x/2024/weeks/4/', type: 'Course' },
+          { title: 'GeeksforGeeks: Hexadecimal Base', url: 'https://www.geeksforgeeks.org/hexadecimal-number-system/', type: 'Docs' }
+        ]
       },
       {
         id: 's0-t4',
         title: 'Boolean Logic Gates & Truth Tables (AND, OR, NOT, XOR)',
         description: 'Master Boolean operations: AND, OR, NOT, XOR. Draw and verify truth tables, and understand how logic gates combine inside the CPU to perform addition and comparisons.',
-        eli9: 'Logic gates are like bouncers at a club door. AND only lets you in if BOTH ticket AND ID are valid. XOR only lets you in if you have EITHER one, but NEVER both!'
+        eli9: 'Logic gates are like bouncers at a club door. AND only lets you in if BOTH ticket AND ID are valid. XOR only lets you in if you have EITHER one, but NEVER both!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Constructing complete truth tables and a 1-bit binary half-adder using logic gates.',
+          code: `# Logic Gates & Truth Table Simulator
+def half_adder(a, b):
+    sum_bit = a ^ b   # XOR gate calculates the sum bit
+    carry_bit = a & b # AND gate calculates the carry bit
+    return sum_bit, carry_bit
+
+print("--- Boolean Logic Truth Tables ---")
+print("A | B | AND | OR  | XOR | Half-Adder (Sum, Carry)")
+print("-" * 52)
+for a in [0, 1]:
+    for b in [0, 1]:
+        s, c = half_adder(a, b)
+        print(f"{a} | {b} |  {a & b}  |  {a | b}  |  {a ^ b}  | Sum={s}, Carry={c}")
+`
+        },
+        externalLinks: [
+          { title: 'Computerphile: Boolean Logic Gates', url: 'https://www.youtube.com/watch?v=gI-qXk7XojA', type: 'Video' },
+          { title: 'Nand2Tetris: Boolean Logic', url: 'https://www.nand2tetris.org/project01', type: 'Course' }
+        ]
       },
       {
         id: 's0-t5',
         title: 'Signed Integers, Two\'s Complement & Byte Overflow',
         description: 'Learn how computers represent negative numbers using Two\'s Complement (MSB sign bit), and what happens when an 8-bit counter exceeds 255 (integer overflow security bug).',
-        eli9: 'Like a car odometer that flips from 999,999 back to 000,000, an 8-bit byte that reaches 255 and adds 1 flips back to 0! Hackers exploit this to bypass limit checks.'
+        eli9: 'Like a car odometer that flips from 999,999 back to 000,000, an 8-bit byte that reaches 255 and adds 1 flips back to 0! Hackers exploit this to bypass limit checks.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrating 8-bit Two\'s Complement conversion and integer overflow boundary wrapping.',
+          code: `# Two's Complement & 8-Bit Overflow Demonstration
+def to_twos_complement_8bit(val):
+    if val < 0:
+        return (1 << 8) + val
+    return val
+
+def from_twos_complement_8bit(byte_val):
+    if byte_val >= 128:
+        return byte_val - 256
+    return byte_val
+
+print("--- Two's Complement 8-Bit Representation ---")
+for num in [0, 1, 42, 127, -1, -42, -128]:
+    twos = to_twos_complement_8bit(num)
+    print(f"Number: {num:4d} -> Binary: {twos:08b} (Hex: 0x{twos:02X})")
+
+# Simulated 8-bit unsigned overflow: 255 + 1
+counter = 255
+counter = (counter + 1) & 0xFF  # Simulates 8-bit hardware truncation
+print(f"\\n8-Bit Overflow: 255 + 1 wrapped to -> {counter}")
+`
+        },
+        externalLinks: [
+          { title: 'Computerphile: Signed Numbers', url: 'https://www.youtube.com/watch?v=lKTsv6iVxV4', type: 'Video' },
+          { title: 'GeeksforGeeks: Two\'s Complement', url: 'https://www.geeksforgeeks.org/twos-complement/', type: 'Article' }
+        ]
       },
       {
         id: 's0-t6',
-        title: 'ASCII & Character Encoding',
+        title: 'ASCII & Character Encoding (UTF-8)',
         description: 'How letters, digits, and punctuation map to byte values (e.g. \'A\'=65=0x41, \'a\'=97=0x61), why text files are raw binary streams, and why text/images require encoding standards.',
-        eli9: 'The computer does not know what the letter "A" looks like. It agreed with all computers in the world that number 65 means "A", 66 means "B", and 32 is a space bar.'
+        eli9: 'The computer does not know what the letter "A" looks like. It agreed with all computers in the world that number 65 means "A", 66 means "B", and 32 is a space bar.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Inspecting ASCII character codes, binary representations, and UTF-8 multi-byte sequences.',
+          code: `# ASCII & UTF-8 Encoding Inspector
+message = "CS Hero!"
+print("Char | ASCII Dec | Hex  | Binary")
+print("-" * 34)
+for ch in message:
+    code = ord(ch)
+    print(f" '{ch}' |    {code:3d}    | 0x{code:02X} | {code:08b}")
+
+# UTF-8 multi-byte encoding for emojis and international symbols
+emoji = "🚀"
+emoji_bytes = emoji.encode('utf-8')
+print(f"\\nEmoji {emoji} UTF-8 bytes ({len(emoji_bytes)} bytes): {[hex(b) for b in emoji_bytes]}")
+`
+        },
+        externalLinks: [
+          { title: 'Joel on Software: Unicode & UTF-8', url: 'https://www.joelonsoftware.com/2003/10/08/the-absolute-minimum-every-software-developer-absolutely-positively-must-know-about-unicode-and-character-sets-no-excuses/', type: 'Article' },
+          { title: 'ASCII Chart Reference', url: 'https://www.asciitable.com/', type: 'Docs' }
+        ]
       },
       {
         id: 's0-t7',
-        title: 'Hardware Architecture: CPU, ALU, RAM & The Bus',
-        description: 'Understand the internal computer components: Central Processing Unit (CPU), Arithmetic Logic Unit (ALU), Registers, L1/L2/L3 Cache, RAM, Storage (SSD/NVMe), and the Fetch-Decode-Execute cycle.',
-        eli9: 'The CPU is the lightning-fast chef with tiny hands (Registers), RAM is the wide kitchen counter holding current ingredients, and the SSD is the deep storage freezer in the basement.'
-      },
-      {
-        id: 's0-t8',
         title: 'Files, Folders, File Extensions & Path Hierarchies',
         description: 'Understand how operating systems organize data, absolute vs relative paths, what extensions (.py, .c, .txt, .json) mean to compilers, and path navigation.',
-        eli9: 'File extensions are like name tags that tell the computer what tool to use to open them. Paths are the exact GPS coordinates in your folder tree.'
-      },
-      {
-        id: 's0-t9',
-        title: 'Code Editor Setup (VS Code) & Tooling',
-        description: 'Install Visual Studio Code, configure essential extensions (Python, C/C++, GitLens), and master keyboard shortcuts to navigate code without touching the mouse.',
-        eli9: 'VS Code is your digital workbench with syntax highlighters, lint rulers, and terminal integration all in one clean window.'
-      },
-      {
-        id: 's0-t10',
-        title: 'Git First-Time Configuration & First Commit',
-        description: 'Configure git user.name and user.email, initialize your first local repository, write your first README.md, and record your first commit snapshot.',
-        eli9: 'Git is like a magical time-machine camera that takes permanent snapshots of your work so you can never lose your progress.'
-      },
-      {
-        id: 's0-t11',
-        title: 'Touch Typing & Technical English Habit',
-        description: 'Reach 40+ WPM on TypingClub to prevent typing speed from bottlenecking your thinking flow, and maintain a technical vocabulary log (packet, protocol, kernel, payload, hash).',
-        eli9: 'Typing without looking lets your brain focus 100% on solving computer science puzzles rather than searching for keys.'
-      },
-      {
-        id: 's0-t12',
-        title: 'Technical Question Formulation',
-        description: 'Learn how senior engineers ask questions: state the goal, expected result, actual output, exact error code, and what you attempted.',
-        eli9: 'Asking clear questions gets you instant, helpful answers from senior developers and AI mentors.'
+        eli9: 'File extensions are like name tags that tell the computer what tool to use to open them. Paths are the exact GPS coordinates in your folder tree.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrating path resolution, relative paths, and file extensions using standard library pathlib.',
+          code: `from pathlib import Path
+
+# Working with OS paths in modern code
+base_dir = Path("/home/student/cs-odyssey")
+source_file = base_dir / "src" / "main.py"
+
+print(f"Full Path:      {source_file}")
+print(f"Filename:       {source_file.name}")
+print(f"Extension:      {source_file.suffix}")
+print(f"Parent Folder:  {source_file.parent}")
+print(f"Is Absolute?    {source_file.is_absolute()}")
+
+# Relative navigation: . (current) vs .. (parent)
+relative_sample = Path("../notebooks/week1.md")
+print(f"Relative Path:  {relative_sample}")
+`
+        },
+        externalLinks: [
+          { title: 'Linux Journey: Navigating the Filesystem', url: 'https://linuxjourney.com/', type: 'Course' },
+          { title: 'Real Python: Python Pathlib Guide', url: 'https://realpython.com/python-pathlib/', type: 'Article' }
+        ]
       }
     ],
     commands: [
@@ -271,39 +484,228 @@ export const STAGES_DATA: StageData[] = [
     topics: [
       {
         id: 's1-t1',
-        title: 'Variables, Types & Boolean Logic',
-        description: 'Master int, float, str, bool, type conversions, and truth tables (and, or, not).',
-        eli9: 'Variables are like containers with labels. A string holds text, an integer holds whole numbers.'
+        title: 'Basic Programming Concepts: Variables, Data Types & Memory',
+        description: 'Variables are labeled references to memory addresses that store values during execution. Master primitive data types: integers (int), floating-point numbers (float), strings (str), and Booleans (bool). Understand dynamic vs static typing, memory footprints, and safe type conversion.',
+        eli9: 'Variables are labeled boxes on a shelf. An integer box holds whole numbers (like 42), a float box holds decimals (like 3.14), and a string box holds letters!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Declaring variables, inspecting runtime types with type(), formatted f-strings, and safe type casting.',
+          code: `# Variables, Types & Memory Inspector
+student_name = "Kareem"       # str
+student_age = 15              # int
+gpa = 3.92                    # float
+is_enrolled = True            # bool
+
+print(f"Name: {student_name} | Type: {type(student_name).__name__}")
+print(f"Age:  {student_age} | Type: {type(student_age).__name__}")
+print(f"GPA:  {gpa} | Type: {type(gpa).__name__}")
+print(f"Enrolled? {is_enrolled} | Type: {type(is_enrolled).__name__}")
+
+# Explicit Type Conversion
+raw_input_age = "16"
+parsed_age = int(raw_input_age)
+print(f"\\nParsed age + 1 year: {parsed_age + 1}")
+`
+        },
+        externalLinks: [
+          { title: 'Harvard CS50P: Variables & Types', url: 'https://cs50.harvard.edu/python/2022/weeks/0/', type: 'Course' },
+          { title: 'Python Official Docs: Data Types', url: 'https://docs.python.org/3/library/stdtypes.html', type: 'Docs' },
+          { title: 'W3Schools: Python Variables', url: 'https://www.w3schools.com/python/python_variables.asp', type: 'Article' }
+        ]
       },
       {
         id: 's1-t2',
-        title: 'Control Flow (if/elif/else & Loops)',
-        description: 'Construct conditional decision trees and iteration using while loops and for-in loops with ranges.',
-        eli9: 'If-statements make decisions; loops repeat chores automatically so you never have to do them by hand.'
+        title: 'Operators: Arithmetic, Comparison & Logical Operations',
+        description: 'Operators perform mathematical and logical evaluations. Master arithmetic operators (+, -, *, /, // floor division, % modulo, ** power), comparison operators (==, !=, <, >, <=, >=), and logical operators (and, or, not). Understand operator precedence and short-circuit evaluation.',
+        eli9: 'Operators are the tools in your math toolkit: + adds, % gives the remainder to check if numbers are even or odd, and \'and\' / \'or\' let your code make smart decisions!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrating arithmetic precedence, modulo parity checks, and logical short-circuit evaluation.',
+          code: `# Operators & Boolean Evaluation Demonstration
+a = 17
+b = 5
+
+print("--- Arithmetic Operators ---")
+print(f"Standard Division (a / b):   {a / b}")    # 3.4
+print(f"Floor Division (a // b):     {a // b}")   # 3
+print(f"Modulo Remainder (a % b):    {a % b}")    # 2 (Useful for parity/even-odd)
+print(f"Exponentiation (b ** 3):      {b ** 3}")   # 125
+
+print("\\n--- Comparison & Logical Operators ---")
+is_even = (a % 2 == 0)
+print(f"Is {a} even? {is_even}")
+
+# Logical chaining and short-circuit
+has_permission = True
+account_active = True
+can_access = has_permission and account_active and (a > 10)
+print(f"Access granted? {can_access}")
+`
+        },
+        externalLinks: [
+          { title: 'Real Python: Operators & Expressions', url: 'https://realpython.com/python-operators-expressions/', type: 'Article' },
+          { title: 'W3Schools: Python Operators', url: 'https://www.w3schools.com/python/python_operators.asp', type: 'Docs' }
+        ]
       },
       {
         id: 's1-t3',
-        title: 'Functions, Parameters & Scope',
-        description: 'Decompose complex problems into small, reusable functions with explicit inputs and return values.',
-        eli9: 'A function is like a vending machine: you pass in coins (arguments), it does work inside, and spits out a snack (return value).'
+        title: 'Simple Control Flow: Conditional Branching (if / elif / else)',
+        description: 'Construct conditional decision trees based on runtime boolean expressions. Learn if, elif, and else statements, truthy and falsy values (0, empty strings, empty lists evaluate to False), nested conditions, and guard clauses for clean code.',
+        eli9: 'An if-statement is a fork in the road: IF you have a pass, enter; ELIF you have student ID, get a discount; ELSE purchase a ticket!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'A clean grading and security clearance decision tree using guard clauses and if/elif/else.',
+          code: `# Control Flow: Grade & Access Evaluation
+def evaluate_score(score):
+    # Guard clause: check invalid boundaries first
+    if score < 0 or score > 100:
+        return "Invalid Score (Must be 0-100)"
+    
+    # Decision hierarchy
+    if score >= 90:
+        return "A (Hero Honors)"
+    elif score >= 80:
+        return "B (Proficient)"
+    elif score >= 70:
+        return "C (Competent)"
+    elif score >= 60:
+        return "D (Needs Review)"
+    else:
+        return "F (Redo Module)"
+
+for test_score in [95, 82, 73, 58, 105]:
+    print(f"Score {test_score:3d} -> Result: {evaluate_score(test_score)}")
+`
+        },
+        externalLinks: [
+          { title: 'Harvard CS50P: Conditionals', url: 'https://cs50.harvard.edu/python/2022/weeks/1/', type: 'Course' },
+          { title: 'Python Docs: More Control Flow', url: 'https://docs.python.org/3/tutorial/controlflow.html#if-statements', type: 'Docs' }
+        ]
       },
       {
         id: 's1-t4',
-        title: 'Collections: Lists, Tuples, Dictionaries & Sets',
-        description: 'Store and manipulate structured data. Dictionaries for fast key-value lookups; sets for deduplication.',
-        eli9: 'A list is a numbered shopping list; a dictionary is like a contact list where a person’s name gets you their phone number.'
+        title: 'Simple Control Flow: Iteration & Repetition (while & for Loops)',
+        description: 'Automate repetitive chore work without copy-pasting code. Master while loops (condition-driven iteration), for-in loops (sequence-driven iteration with range()), loop accumulators, and control statements (break to exit early, continue to skip to the next iteration).',
+        eli9: 'Loops repeat chores automatically: instead of writing "print number" 100 times, a for loop repeats the action in 2 lines!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Comparing while loops and for-range loops with break and continue statements.',
+          code: `# Iteration: For Loops & While Loops
+print("--- 1. For Loop with range() Accumulator ---")
+total_sum = 0
+for n in range(1, 11): # 1 to 10
+    total_sum += n
+print(f"Sum of 1 to 10: {total_sum}")
+
+print("\\n--- 2. While Loop: Binary Halving Countdown ---")
+count = 64
+steps = 0
+while count > 1:
+    count //= 2
+    steps += 1
+    print(f"Step {steps}: value is now {count}")
+
+print("\\n--- 3. Loop Control: Break & Continue ---")
+print("Filtering even numbers under 10 (skipping odd with continue):")
+for i in range(1, 10):
+    if i % 2 != 0:
+        continue # Skip odd numbers
+    if i > 6:
+        print(f"  Reached limit ({i}), breaking early!")
+        break
+    print(f"  Found even number: {i}")
+`
+        },
+        externalLinks: [
+          { title: 'Harvard CS50P: Loops', url: 'https://cs50.harvard.edu/python/2022/weeks/2/', type: 'Course' },
+          { title: 'Real Python: For Loops in Python', url: 'https://realpython.com/python-for-loop/', type: 'Article' }
+        ]
       },
       {
         id: 's1-t5',
-        title: 'Files & Exceptions (try/except)',
-        description: 'Read and write text, CSV, and JSON files safely while gracefully catching FileNotFoundError and ValueError.',
-        eli9: 'Exception handling is wearing a seatbelt: if the code crashes, try/except stops the program from exploding.'
+        title: 'Functions, Parameters, Return Values & Scope',
+        description: 'Decompose complex problems into small, reusable functions with explicit inputs and return values using def. Understand positional arguments, default values, docstrings, and local vs global variable scope.',
+        eli9: 'A function is like a vending machine: you pass in coins (arguments), it executes instructions inside, and returns a cold drink (return value)!',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Defining pure functions with type hints, docstrings, default arguments, and multi-return tuples.',
+          code: `# Functions & Local Scope
+def calculate_rectangle(width: float, height: float = 1.0):
+    """Calculates the area and perimeter of a rectangle."""
+    area = width * height
+    perimeter = 2 * (width + height)
+    return area, perimeter # Returns a tuple
+
+# Calling function with positional and default arguments
+rect_area, rect_perim = calculate_rectangle(5.0, 3.0)
+print(f"Rectangle (5x3) -> Area: {rect_area}, Perimeter: {rect_perim}")
+
+square_area, square_perim = calculate_rectangle(4.0) # Uses default height=1.0
+print(f"Rectangle (4x1) -> Area: {square_area}, Perimeter: {square_perim}")
+`
+        },
+        externalLinks: [
+          { title: 'Harvard CS50P: Functions', url: 'https://cs50.harvard.edu/python/2022/weeks/0/', type: 'Course' },
+          { title: 'Python Docs: Defining Functions', url: 'https://docs.python.org/3/tutorial/controlflow.html#defining-functions', type: 'Docs' }
+        ]
       },
       {
         id: 's1-t6',
-        title: 'Unit Testing & Debugging',
-        description: 'Write simple unit tests with pytest or assert statements to verify edge cases and prove code correctness.',
-        eli9: 'Tests are like practice exam questions you write for your own code to make sure it never gets an answer wrong.'
+        title: 'Collections: Lists, Tuples, Dictionaries & Sets',
+        description: 'Store and manipulate structured data in memory. Lists for ordered mutable sequences; Dictionaries for fast key-value lookups in O(1) time; Sets for mathematical deduplication; Tuples for immutable records.',
+        eli9: 'A list is a numbered shopping list; a dictionary is like a contact list where a person’s name gets you their phone number.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrating lists, dictionaries with key-value iteration, and set deduplication.',
+          code: `# Collections: Lists, Dicts & Sets
+languages = ["Python", "C", "SQL", "Bash"]
+languages.append("Go")
+print(f"Languages list: {languages} (Length: {len(languages)})")
+
+# Key-Value Dictionary Lookup
+student_profiles = {
+    "s001": {"name": "Alex", "stage": 0, "xp": 150},
+    "s002": {"name": "Kareem", "stage": 1, "xp": 350}
+}
+print(f"Student s002 name: {student_profiles['s002']['name']}")
+
+# Set Deduplication
+raw_ips = ["192.168.1.1", "10.0.0.1", "192.168.1.1", "172.16.0.5"]
+unique_ips = set(raw_ips)
+print(f"Raw IPs: {len(raw_ips)} -> Unique IPs: {unique_ips}")
+`
+        },
+        externalLinks: [
+          { title: 'Real Python: Python Dictionaries', url: 'https://realpython.com/python-dicts/', type: 'Article' },
+          { title: 'Python Docs: Data Structures', url: 'https://docs.python.org/3/tutorial/datastructures.html', type: 'Docs' }
+        ]
+      },
+      {
+        id: 's1-t7',
+        title: 'Defensive Programming: Files & Exceptions (try/except)',
+        description: 'Read and write text, CSV, and JSON files safely using context managers (with open(...)) while gracefully catching FileNotFoundError and ValueError without crashing.',
+        eli9: 'Exception handling is wearing a seatbelt: if the code encounters an error, try/except stops the program from exploding.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Safe file parsing and exception handling with try/except/finally.',
+          code: `# Robust Exception Handling & Defensive File I/O
+def safe_parse_integer(text_val):
+    try:
+        val = int(text_val)
+        return val, "OK"
+    except ValueError as e:
+        return None, f"Parsing Error: '{text_val}' is not a valid integer"
+
+test_inputs = ["42", "100", "invalid_num", "3.14"]
+for item in test_inputs:
+    result, status = safe_parse_integer(item)
+    print(f"Input: {item:12s} -> Output: {result} ({status})")
+`
+        },
+        externalLinks: [
+          { title: 'Real Python: Python Exceptions Guide', url: 'https://realpython.com/python-exceptions/', type: 'Article' },
+          { title: 'Harvard CS50P: Exceptions', url: 'https://cs50.harvard.edu/python/2022/weeks/3/', type: 'Course' }
+        ]
       }
     ],
     commands: [
@@ -2199,3 +2601,581 @@ export const WEEKLY_SCHEDULE_ROUTINE = [
   { day: 'Saturday', hours: '3.0 h', focus: 'Hands-on project, Bandit wargame, or CTF lab', deliverable: 'One Git commit and documented README update' },
   { day: 'Sunday', hours: '1.0 h', focus: 'Weekly 6-question reflection & planning next week', deliverable: 'Saved weekly review log + rest' }
 ];
+
+export interface AdvancedHeroTopic {
+  id: string;
+  subjectArea:
+    | 'Algorithms & Data Structures'
+    | 'Operating Systems & Concurrency'
+    | 'Databases & Relational Theory'
+    | 'Computer Networking & Protocols'
+    | 'Software Engineering & System Design'
+    | 'Distributed Systems & Cloud Architecture'
+    | 'Systems Security & Cryptography';
+  title: string;
+  badge: string;
+  overview: string;
+  keyConcepts: string[];
+  keyCommands: Array<{ command: string; purpose: string }>;
+  recommendedSources: Array<{
+    title: string;
+    authorOrPlatform: string;
+    type: 'Book' | 'Course' | 'Paper' | 'Documentation';
+    url: string;
+    isClassic?: boolean;
+    notes: string;
+  }>;
+  essentialTips: string[];
+  sampleCodeSnippet?: {
+    language: 'python' | 'c';
+    code: string;
+    description: string;
+  };
+}
+
+export const ADVANCED_HERO_TOPICS: AdvancedHeroTopic[] = [
+  {
+    id: 'hero-dsa',
+    subjectArea: 'Algorithms & Data Structures',
+    title: 'Asymptotics, Graph Traversals & Dynamic Programming',
+    badge: 'Core Theory',
+    overview: 'The mathematical spine of computer science. Moving beyond basic arrays into balanced search trees, heaps, amortized analysis, graph traversals (BFS, DFS, Dijkstra, A*), and dynamic programming paradigms.',
+    keyConcepts: [
+      'Big-O, Big-Omega, Big-Theta Asymptotic Notation & Recurrence Relations (Master Theorem)',
+      'Hash Tables, Collision Resolution (Open Addressing vs Chaining), and Universal Hashing',
+      'Self-Balancing Binary Search Trees (AVL, Red-Black Trees, B-Trees)',
+      'Graph Representations (Adjacency Matrix vs List), Shortest Paths & Topological Sort',
+      'Dynamic Programming: Memoization (Top-down) vs Tabulation (Bottom-up), Overlapping Subproblems'
+    ],
+    keyCommands: [
+      { command: 'python3 -m cProfile -s time script.py', purpose: 'Profiles code runtime to identify algorithmic hot-spots' },
+      { command: 'time ./a.out', purpose: 'Measures real, user, and sys CPU execution time' },
+      { command: 'dot -Tsvg graph.dot -o graph.svg', purpose: 'Visualizes graph data structures from Graphviz definitions' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Introduction to Algorithms (CLRS)',
+        authorOrPlatform: 'Cormen, Leiserson, Rivest, Stein (MIT Press)',
+        type: 'Book',
+        url: 'https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/',
+        isClassic: true,
+        notes: 'The undisputed gold standard collegiate algorithm textbook.'
+      },
+      {
+        title: 'MIT 6.006: Introduction to Algorithms',
+        authorOrPlatform: 'MIT OpenCourseWare (Prof. Erik Demaine)',
+        type: 'Course',
+        url: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/',
+        isClassic: true,
+        notes: 'Free, world-class lecture series covering asymptotic analysis and data structures.'
+      },
+      {
+        title: 'Grokking Algorithms: An Illustrated Guide',
+        authorOrPlatform: 'Aditya Bhargava',
+        type: 'Book',
+        url: 'https://www.manning.com/books/grokking-algorithms',
+        notes: 'Visual, intuitive introduction to sorting, graphs, and dynamic programming.'
+      }
+    ],
+    essentialTips: [
+      'Always state your invariant and base case on paper before writing a single line of recursion.',
+      'Space-time tradeoffs are real: caching results (memoization) costs RAM to save CPU cycles.',
+      'Recognize graph problems in disguise: dependency resolution, state transitions, and mazes are all graphs.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Dynamic Programming: Longest Increasing Subsequence with memoization',
+      code: `def longest_increasing_subsequence(nums):
+    if not nums:
+        return 0
+    # dp[i] stores the length of LIS ending at index i
+    dp = [1] * len(nums)
+    for i in range(1, len(nums)):
+        for j in range(i):
+            if nums[i] > nums[j]:
+                dp[i] = max(dp[i], dp[j] + 1)
+    return max(dp)
+
+arr = [10, 9, 2, 5, 3, 7, 101, 18]
+print(f"Array: {arr}")
+print(f"Length of Longest Increasing Subsequence: {longest_increasing_subsequence(arr)}")
+`
+    }
+  },
+  {
+    id: 'hero-os',
+    subjectArea: 'Operating Systems & Concurrency',
+    title: 'Kernel Architecture, Virtual Memory & Concurrency',
+    badge: 'Systems Bedrock',
+    overview: 'Understanding the barrier between user space and kernel space. How the CPU collaborates with the Memory Management Unit (MMU) for virtual memory paging, process scheduling, synchronization primitives (mutexes, semaphores), and inter-process communication.',
+    keyConcepts: [
+      'Kernel vs User Mode (Ring 0 vs Ring 3), CPU Context Switching & System Calls',
+      'Virtual Memory: Page Tables, Translation Lookaside Buffer (TLB), Page Faults & Demand Paging',
+      'Processes vs Threads: Memory Layout, Stack vs Heap, Thread Local Storage (TLS)',
+      'Concurrency Hazards: Race Conditions, Deadlocks (Coffman Conditions), Priority Inversion',
+      'Synchronization Primitives: Mutexes, Spinlocks, Semaphores, Condition Variables'
+    ],
+    keyCommands: [
+      { command: 'strace -c ./program', purpose: 'Intercepts and counts all Linux system calls executed by a process' },
+      { command: 'lsof -p <PID>', purpose: 'Lists all open file descriptors and sockets held by a process' },
+      { command: 'valgrind --leak-check=full ./a.out', purpose: 'Detects memory leaks, double-frees, and invalid pointer dereferences' },
+      { command: 'pmap -x <PID>', purpose: 'Displays the virtual memory address map of a running process' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Operating Systems: Three Easy Pieces (OSTEP)',
+        authorOrPlatform: 'Remzi & Andrea Arpaci-Dusseau (University of Wisconsin)',
+        type: 'Book',
+        url: 'https://pages.cs.wisc.edu/~remzi/OSTEP/',
+        isClassic: true,
+        notes: 'Freely available, witty, and exceptionally clear textbook on Virtualization, Concurrency, and Persistence.'
+      },
+      {
+        title: 'Computer Systems: A Programmer\'s Perspective (CS:APP)',
+        authorOrPlatform: 'Bryant & O\'Hallaron (Carnegie Mellon)',
+        type: 'Book',
+        url: 'https://csapp.cs.cmu.edu/',
+        isClassic: true,
+        notes: 'The definitive book bridging assembly, compilers, caching, linking, and OS concepts.'
+      }
+    ],
+    essentialTips: [
+      'In Linux, everything is an abstraction of a file descriptor or a process task.',
+      'Never lock mutexes in differing order across threads; always establish a global lock acquisition hierarchy to prevent deadlocks.',
+      'Use strace to uncover mysterious bugs: it reveals the exact syscall parameters and return errors.'
+    ],
+    sampleCodeSnippet: {
+      language: 'c',
+      description: 'System calls in C: Forking child processes and handling wait status',
+      code: `#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main(void) {
+    pid_t pid = fork();
+    
+    if (pid < 0) {
+        perror("Fork failed");
+        return 1;
+    } else if (pid == 0) {
+        // Child process
+        printf("[Child PID %d] Hello from the child process! Parent is PID %d\\n", getpid(), getppid());
+        _exit(42);
+    } else {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            printf("[Parent PID %d] Child process %d exited cleanly with code: %d\\n", getpid(), pid, WEXITSTATUS(status));
+        }
+    }
+    return 0;
+}
+`
+    }
+  },
+  {
+    id: 'hero-databases',
+    subjectArea: 'Databases & Relational Theory',
+    title: 'Relational Algebra, B+ Trees, ACID & Storage Engines',
+    badge: 'Data Engineering',
+    overview: 'How database engines persist petabytes of data reliably while answering queries in milliseconds. Delving into the Relational Model, B+ Tree indexing, Write-Ahead Logging (WAL) for durability, transaction isolation levels, and query execution plans.',
+    keyConcepts: [
+      'Relational Algebra: Select, Project, Join, Set Operations, and Codd\'s Relational Model',
+      'Storage Engines & Page Layout: Row-oriented (Postgres) vs Columnar (Parquet/ClickHouse)',
+      'Index Structures: B+ Trees (range queries) vs Hash Indexes vs Inverted Indexes (Full-Text)',
+      'ACID Guarantees: Atomicity, Consistency, Isolation (Dirty Read, Non-repeatable Read, Phantom Read), Durability',
+      'Query Optimizer: Cost-based query plans, Sequential Scan vs Index Scan, Hash Join vs Nested Loop'
+    ],
+    keyCommands: [
+      { command: 'psql -U postgres -d odyssey -c "\\d+ users"', purpose: 'Inspects relational table schema, column types, and indices' },
+      { command: 'EXPLAIN (ANALYZE, BUFFERS) SELECT ...', purpose: 'Executes query and displays exact execution plan, buffer hits, and timing' },
+      { command: 'sqlite3 local.db ".schema"', purpose: 'Dumps SQLite relational schema and index definitions' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Designing Data-Intensive Applications (DDIA)',
+        authorOrPlatform: 'Martin Kleppmann (Cambridge University / O\'Reilly)',
+        type: 'Book',
+        url: 'https://dataintensive.net/',
+        isClassic: true,
+        notes: 'The modern bible of data architecture: storage engines, transactions, replication, and consensus.'
+      },
+      {
+        title: 'CMU 15-445/645: Database Systems',
+        authorOrPlatform: 'Prof. Andy Pavlo (Carnegie Mellon Database Group)',
+        type: 'Course',
+        url: 'https://15445.courses.cs.cmu.edu/',
+        isClassic: true,
+        notes: 'Legendary hands-on course building a storage engine and query executor from scratch in C++.'
+      }
+    ],
+    essentialTips: [
+      'Indices are not free: they accelerate SELECT queries by O(log N) but add overhead to every INSERT/UPDATE/DELETE.',
+      'Always run EXPLAIN ANALYZE on slow queries before blindly adding indexes or rewriting code.',
+      'Understand transaction isolation levels: Read Committed vs Repeatable Read vs Serializable.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'In-memory relational B-Tree index lookup simulation',
+      code: `import bisect
+
+class SimpleBTreeIndex:
+    def __init__(self):
+        self.keys = []
+        self.record_ids = []
+
+    def insert(self, key, record_id):
+        idx = bisect.bisect_left(self.keys, key)
+        self.keys.insert(idx, key)
+        self.record_ids.insert(idx, record_id)
+
+    def find_range(self, min_key, max_key):
+        start = bisect.bisect_left(self.keys, min_key)
+        end = bisect.bisect_right(self.keys, max_key)
+        return [(self.keys[i], self.record_ids[i]) for i in range(start, end)]
+
+# Indexing 1000 simulated student records
+index = SimpleBTreeIndex()
+for uid, score in enumerate([72, 85, 99, 64, 91, 88, 95, 78, 100, 83], 101):
+    index.insert(score, f"Student-{uid}")
+
+high_performers = index.find_range(90, 100)
+print("Query: Students with score between 90 and 100 (Indexed Range Scan):")
+for score, student in high_performers:
+    print(f"  Score {score} -> {student}")
+`
+    }
+  },
+  {
+    id: 'hero-networking',
+    subjectArea: 'Computer Networking & Protocols',
+    title: 'OSI 7 Layers, TCP/IP Handshake, Sockets & TLS 1.3',
+    badge: 'Infrastructure',
+    overview: 'Demystifying how data traverses the global internet. The layered architecture (Physical to Application), IP packet routing, TCP reliable byte stream delivery, UDP low-latency transport, socket programming in C, DNS resolution, and cryptographic TLS handshakes.',
+    keyConcepts: [
+      'Layered Architecture: OSI 7-Layer Model vs TCP/IP 4-Layer Internet Model',
+      'Network Layer (IPv4/IPv6): Subnetting (CIDR), Routing Tables, ARP, ICMP (Ping/Traceroute)',
+      'Transport Layer (TCP vs UDP): 3-Way Handshake (SYN, SYN-ACK, ACK), Flow Control, Sliding Window',
+      'BSD Socket API: socket(), bind(), listen(), accept(), connect(), send(), recv()',
+      'Application Security & TLS: Diffie-Hellman Key Exchange, Digital Certificates (X.509), TLS 1.3'
+    ],
+    keyCommands: [
+      { command: 'tcpdump -nnvv -i any port 80 or port 443', purpose: 'Captures and displays raw network packet headers in real-time' },
+      { command: 'ss -tulpn', purpose: 'Displays all listening TCP/UDP sockets and owning process IDs' },
+      { command: 'curl -vvv --tlsv1.3 https://example.com', purpose: 'Verbose TLS 1.3 handshake negotiation inspection' },
+      { command: 'dig +trace example.com', purpose: 'Performs hierarchical iterative DNS resolution from root servers down' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Computer Networking: A Top-Down Approach',
+        authorOrPlatform: 'Kurose & Ross (Pearson)',
+        type: 'Book',
+        url: 'https://www.pearson.com/en-us/subject-catalog/p/computer-networking-a-top-down-approach/P200000003310',
+        isClassic: true,
+        notes: 'The world\'s most popular university networking textbook.'
+      },
+      {
+        title: 'Beej\'s Guide to Network Programming',
+        authorOrPlatform: 'Brian "Beej" Hall',
+        type: 'Documentation',
+        url: 'https://beej.us/guide/bgnet/',
+        isClassic: true,
+        notes: 'The legendary free guide for mastering C sockets and client-server architectures.'
+      }
+    ],
+    essentialTips: [
+      'Packets can be duplicated, reordered, delayed, or dropped; TCP exists precisely to create an illusion of order.',
+      'Remember that DNS caching occurs at multiple tiers: browser, OS resolver, home router, and ISP recursive resolver.',
+      'Firewall rules operate on bitmasks: understanding port numbers and TCP flags (SYN, ACK, FIN, RST) is critical for cybersecurity.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Raw TCP client socket: Fetching an HTTP header without external libraries',
+      code: `import socket
+
+host = "example.com"
+port = 80
+
+print(f"Connecting raw TCP socket to {host}:{port}...")
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.settimeout(5.0)
+    s.connect((host, port))
+    
+    # Send minimal HTTP/1.1 HEAD request
+    request = f"HEAD / HTTP/1.1\\r\\nHost: {host}\\r\\nConnection: close\\r\\n\\r\\n"
+    s.sendall(request.encode("ascii"))
+    
+    response = b""
+    while True:
+        chunk = s.recv(1024)
+        if not chunk:
+            break
+        response += chunk
+
+print("\\n[Server Response Headers]:")
+print(response.decode("utf-8", errors="replace").strip())
+`
+    }
+  },
+  {
+    id: 'hero-software-eng',
+    subjectArea: 'Software Engineering & System Design',
+    title: 'Clean Architecture, SOLID, Design Patterns & Distributed Systems',
+    badge: 'Production Systems',
+    overview: 'Transitioning from writing code that merely runs to designing robust, maintainable, and scalable systems. Mastering SOLID principles, design patterns (Factory, Observer, Strategy), testing methodologies, containerization, and distributed system trade-offs (CAP theorem).',
+    keyConcepts: [
+      'SOLID Principles: Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion',
+      'GoF Design Patterns: Creational (Factory), Structural (Adapter, Decorator), Behavioral (Strategy, Observer)',
+      'Clean Architecture: Decoupling business logic from frameworks, databases, and UI',
+      'Distributed Systems Trade-offs: CAP Theorem (Consistency, Availability, Partition Tolerance), Eventual Consistency',
+      'DevOps & Resilience: Automated CI/CD pipelines, containerization (Docker), Circuit Breaker pattern'
+    ],
+    keyCommands: [
+      { command: 'pytest -v --cov=. tests/', purpose: 'Executes automated unit tests with code coverage analysis' },
+      { command: 'docker build -t app:v1 . && docker run -p 8080:80 app:v1', purpose: 'Builds and runs an isolated containerized application' },
+      { command: 'git diff --stat HEAD~1', purpose: 'Inspects changes and scope of modifications before code review' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Clean Code & Clean Architecture',
+        authorOrPlatform: 'Robert C. Martin (Uncle Bob)',
+        type: 'Book',
+        url: 'https://www.oreilly.com/library/view/clean-code-a/9780136083238/',
+        isClassic: true,
+        notes: 'Fundamental principles for writing readable, refactorable, and professional code.'
+      },
+      {
+        title: 'System Design Interview: An Insider\'s Guide',
+        authorOrPlatform: 'Alex Xu (ByteByteGo)',
+        type: 'Book',
+        url: 'https://bytebytego.com/',
+        notes: 'Invaluable diagrams and architectural breakdowns of real-world scale (rate limiters, chat apps, YouTube).'
+      }
+    ],
+    essentialTips: [
+      'Make it work, make it right, make it fast — in that exact order.',
+      'Write tests for bug fixes: if a bug occurred once, ensure a unit test prevents it from ever returning.',
+      'Keep interfaces small and explicit. Program to an interface, not an implementation.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Strategy Pattern: Decoupling authentication strategies cleanly',
+      code: `from abc import ABC, abstractmethod
+
+class AuthStrategy(ABC):
+    @abstractmethod
+    def authenticate(self, credentials: dict) -> bool:
+        pass
+
+class PasswordAuth(AuthStrategy):
+    def authenticate(self, credentials: dict) -> bool:
+        print("[PasswordAuth] Verifying bcrypt hash...")
+        return credentials.get("password") == "secret123"
+
+class TokenAuth(AuthStrategy):
+    def authenticate(self, credentials: dict) -> bool:
+        print("[TokenAuth] Verifying cryptographic JWT signature...")
+        return bool(credentials.get("token", "").startswith("Bearer eyJ"))
+
+class SecurityGateway:
+    def __init__(self, strategy: AuthStrategy):
+        self.strategy = strategy
+
+    def login(self, creds: dict):
+        if self.strategy.authenticate(creds):
+            print(">>> Access Granted!")
+        else:
+            print(">>> Access Denied!")
+
+# Testing different strategies with zero code changes to SecurityGateway
+gateway = SecurityGateway(PasswordAuth())
+gateway.login({"password": "secret123"})
+
+gateway.strategy = TokenAuth()
+gateway.login({"token": "Bearer eyJhbGciOi..."})
+`
+    }
+  },
+  {
+    id: 'hero-distributed',
+    subjectArea: 'Distributed Systems & Cloud Architecture',
+    title: 'Consensus Protocols (Raft & Paxos), Eventual Consistency & RPCs',
+    badge: 'Distributed Systems',
+    overview: 'Moving beyond single-node machines to global distributed architectures. Learn how distributed consensus algorithms (Raft, Paxos) solve the two generals problem, how vector clocks order concurrent events, how leader elections work, and how gRPC protocol buffers serialize network traffic efficiently.',
+    keyConcepts: [
+      'CAP Theorem & PACELC: Trade-offs between Consistency, Availability, and Partition Tolerance',
+      'Consensus Algorithms: Raft Leader Election, Heartbeats, Term Numbers, and Log Replication',
+      'Split-Brain Prevention: Quorum majorities (N/2 + 1) to prevent divergent state forks',
+      'Eventual Consistency & CRDTs: Conflict-free Replicated Data Types for collaborative software',
+      'Remote Procedure Calls (RPC): gRPC, Protobuf serialization, idempotent retries, and backoff'
+    ],
+    keyCommands: [
+      { command: 'etcdctl endpoint health', purpose: 'Checks raft consensus and cluster health across etcd nodes' },
+      { command: 'grpcurl -plaintext localhost:50051 list', purpose: 'Inspects exposed gRPC services and methods in real-time' },
+      { command: 'consul members', purpose: 'Lists all cluster nodes and gossip protocol membership status' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Designing Data-Intensive Applications',
+        authorOrPlatform: 'Martin Kleppmann (Cambridge University)',
+        type: 'Book',
+        url: 'https://dataintensive.net/',
+        isClassic: true,
+        notes: 'Chapters 8 and 9 are the definitive modern explanation of distributed time, consensus, and linearizability.'
+      },
+      {
+        title: 'In Search of an Understandable Consensus Algorithm (Raft Paper)',
+        authorOrPlatform: 'Diego Ongaro & John Ousterhout (Stanford University)',
+        type: 'Paper',
+        url: 'https://raft.github.io/raft.pdf',
+        isClassic: true,
+        notes: 'The readable landmark paper introducing the Raft consensus state machine.'
+      },
+      {
+        title: 'MIT 6.824: Distributed Systems',
+        authorOrPlatform: 'Prof. Robert Morris (MIT OpenCourseWare)',
+        type: 'Course',
+        url: 'https://pdos.csail.mit.edu/6.824/',
+        isClassic: true,
+        notes: 'Legendary MIT course with labs building Raft and a distributed key-value store in Go.'
+      }
+    ],
+    essentialTips: [
+      'Network partitions will occur: always design your state machine so nodes refuse writes rather than corrupting state (CP) or gracefully degrade (AP).',
+      'Never rely on physical wall-clock time across machines; NTP drift makes physical timestamps unreliable for ordering transactions.',
+      'Always implement idempotent APIs: when network timeouts occur, the client will retry, and retrying must be safe.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Toy Raft Consensus: Leader election and quorum vote simulation in Python',
+      code: `import random
+
+class RaftNode:
+    def __init__(self, node_id, total_nodes):
+        self.node_id = node_id
+        self.total_nodes = total_nodes
+        self.term = 0
+        self.state = "Follower" # Follower, Candidate, Leader
+        self.voted_for = None
+
+    def start_election(self, peers):
+        self.term += 1
+        self.state = "Candidate"
+        self.voted_for = self.node_id
+        votes = 1
+        print(f"[Node {self.node_id}] Heartbeat timed out! Starting Term {self.term} Election...")
+
+        for peer in peers:
+            if peer.node_id != self.node_id:
+                # Peer grants vote if peer has not voted in this term yet
+                if peer.voted_for is None or peer.term < self.term:
+                    peer.term = self.term
+                    peer.voted_for = self.node_id
+                    votes += 1
+
+        quorum = (self.total_nodes // 2) + 1
+        print(f"[Node {self.node_id}] Received {votes}/{self.total_nodes} votes (Quorum needed: {quorum})")
+
+        if votes >= quorum:
+            self.state = "Leader"
+            print(f">>> [Node {self.node_id}] Won election! State is now LEADER for Term {self.term}.")
+        else:
+            self.state = "Follower"
+            print(f"[Node {self.node_id}] Election lost. Stepping down to Follower.")
+
+# Create 5-node cluster
+cluster = [RaftNode(i, 5) for i in range(1, 6)]
+# Node 3 starts an election
+cluster[2].start_election(cluster)
+`
+    }
+  },
+  {
+    id: 'hero-security',
+    subjectArea: 'Systems Security & Cryptography',
+    title: 'Memory Corruption, Cryptographic Primitives & Zero Trust',
+    badge: 'Offensive & Defensive Security',
+    overview: 'Understanding how code breaks at the machine level and how mathematical cryptography protects data. Delve into stack frame memory layouts, buffer overflows, return-oriented programming (ROP), exploit mitigations (ASLR, Stack Canaries, NX/DEP), and modern cryptographic suites (AES-256-GCM, Ed25519, SHA-256).',
+    keyConcepts: [
+      'x86-64 Stack Frame Memory Layout: Local variables, Saved Base Pointer (RBP), Saved Return Address (RIP)',
+      'Buffer Overflow Mechanics: Writing past boundaries to hijack the instruction pointer (EIP/RIP)',
+      'Binary Mitigations: Stack Canaries, Non-Executable Stack (DEP/NX), Address Space Layout Randomization (ASLR)',
+      'Cryptographic Primitives: Symmetric Encryption (AES-GCM), Asymmetric (RSA, ECC Curve25519), One-way Hashing (SHA-256)',
+      'Integrity & Authenticity: Hash-based Message Authentication Codes (HMAC) and Public Key Infrastructure (PKI)'
+    ],
+    keyCommands: [
+      { command: 'checksec --file=./binary', purpose: 'Audits ELF binary for security mitigations (Canaries, NX, PIE, Fortify)' },
+      { command: 'gdb -q -ex "disassemble main" ./binary', purpose: 'Disassembles function prologue and epilogue to inspect stack allocation' },
+      { command: 'openssl dgst -sha256 -hmac "secretkey" message.txt', purpose: 'Computes cryptographic HMAC-SHA256 signature' },
+      { command: 'openssl s_client -connect google.com:443 -tls1_3', purpose: 'Validates server X.509 certificate chain and TLS 1.3 handshake' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Hacking: The Art of Exploitation (2nd Edition)',
+        authorOrPlatform: 'Jon Erickson (No Starch Press)',
+        type: 'Book',
+        url: 'https://nostarch.com/hacking2.htm',
+        isClassic: true,
+        notes: 'The foundational book teaching C, assembly, memory architecture, stack overflows, and debugging.'
+      },
+      {
+        title: 'Serious Cryptography: A Practical Introduction',
+        authorOrPlatform: 'Jean-Philippe Aumasson (No Starch Press)',
+        type: 'Book',
+        url: 'https://nostarch.com/seriouscrypto',
+        isClassic: true,
+        notes: 'Accessible and rigorous guide to modern ciphers, hashes, authenticated encryption, and key exchange.'
+      },
+      {
+        title: 'PortSwigger Web Security Academy',
+        authorOrPlatform: 'PortSwigger (Makers of Burp Suite)',
+        type: 'Course',
+        url: 'https://portswigger.net/web-security',
+        isClassic: true,
+        notes: 'World-class interactive free security labs covering SQL injection, authentication flaws, and SSRF.'
+      }
+    ],
+    essentialTips: [
+      'Buffer overflows occur when functions write past allocated buffer bounds; always use bounds-checked functions (snprintf vs sprintf, fgets vs gets).',
+      'Never roll your own cryptography: always rely on audited, standardized libraries like libsodium, OpenSSL, or Python cryptography.',
+      'Always verify authentication tags before decrypting (Encrypt-then-MAC or Authenticated Encryption like AES-GCM).'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'HMAC-SHA256 Cryptographic Signature & Tamper-Proof Message Verification in Python',
+      code: `import hmac
+import hashlib
+
+SECRET_KEY = b"hero-super-secret-key-2026"
+
+def sign_payload(data: str) -> str:
+    """Creates a cryptographic HMAC-SHA256 signature for a message payload."""
+    sig = hmac.new(SECRET_KEY, data.encode('utf-8'), hashlib.sha256).hexdigest()
+    return f"{data}|{sig}"
+
+def verify_payload(signed_msg: str) -> bool:
+    """Verifies that the message was not tampered with in transit."""
+    try:
+        data, received_sig = signed_msg.rsplit("|", 1)
+        expected_sig = hmac.new(SECRET_KEY, data.encode('utf-8'), hashlib.sha256).hexdigest()
+        # Constant-time comparison to prevent timing attacks
+        return hmac.compare_digest(received_sig, expected_sig)
+    except Exception:
+        return False
+
+# 1. Honest transmission
+packet = sign_payload("transfer_credits:amount=500;recipient=Alex")
+print("Signed Packet:", packet)
+print("Is Packet Authentic?", verify_payload(packet)) # True
+
+# 2. Adversary attempts to tamper with the amount from 500 to 50000
+tampered = packet.replace("amount=500", "amount=50000")
+print("\\nTampered Packet:", tampered)
+print("Is Tampered Packet Authentic?", verify_payload(tampered)) # False!
+`
+    }
+  }
+];
+

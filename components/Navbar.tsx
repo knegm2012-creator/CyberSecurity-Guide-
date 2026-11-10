@@ -19,15 +19,17 @@ interface NavbarProps {
 export function Navbar({ activeTab, setActiveTab, openAiMentor, openQuickQuiz, stats }: NavbarProps) {
   const navItems = [
     { id: 'roadmap', label: '12 Stages' },
-    { id: 'foundations', label: '⚡ Binary & Math Lab' },
+    { id: 'progress', label: '🎯 Progress & Goals' },
+    { id: 'labs', label: '💻 Labs & Playground' },
+    { id: 'hero', label: '🏆 Hero Advanced' },
+    { id: 'foundations', label: '⚡ Binary & Math' },
     { id: 'git', label: '🌿 Git Sandbox' },
     { id: 'bandit', label: 'Bandit & Shell' },
-    { id: 'labs', label: 'Concept Labs' },
     { id: 'projects', label: '14 Projects' },
     { id: 'vault', label: 'Command Vault' },
-    { id: 'directory', label: 'Resources & Tracks' },
+    { id: 'directory', label: 'Resources' },
     { id: 'glossary', label: 'Glossary' },
-    { id: 'notebook', label: 'Notes & Review' },
+    { id: 'notebook', label: 'Notes' },
   ];
 
   return (
