@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Code2,
 } from 'lucide-react';
+import { SoapBubbleButton } from '@/components/soap-bubble';
 
 export interface GitCommitNode {
   id: string; // e.g. 'c0', 'c1'
@@ -403,20 +404,26 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [terminalHistory]);
 
+  const [copiedReadme, setCopiedReadme] = useState(false);
+
   // Current scenario check
   const currentScenario = useMemo(
     () => SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0],
     [activeScenarioId]
   );
 
-  const isCurrentScenarioDone = useMemo(() => {
-    if (completedScenarios[currentScenario.id]) return true;
-    return currentScenario.checkCompletion(repo);
-  }, [repo, currentScenario, completedScenarios]);
+  const isCurrentScenarioDone =
+    currentScenario.checkCompletion(repo) || Boolean(completedScenarios[currentScenario.id]);
 
-  if (currentScenario.checkCompletion(repo) && !completedScenarios[currentScenario.id]) {
-    setCompletedScenarios((prev) => ({ ...prev, [currentScenario.id]: true }));
-  }
+  // Helper to apply repo transitions cleanly and record scenario completion without nesting setState
+  const commitRepoTransition = (next: GitRepoState) => {
+    setRepo(next);
+    if (currentScenario.checkCompletion(next)) {
+      setCompletedScenarios((done) =>
+        done[currentScenario.id] ? done : { ...done, [currentScenario.id]: true }
+      );
+    }
+  };
 
   // Generate random short hash
   const generateHash = () => Math.random().toString(16).substring(2, 8);
@@ -514,25 +521,21 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       })),
     };
 
-    setRepo((prev) => {
-      const nextCommits = [...prev.commits, newCommit];
-      const nextBranches = { ...prev.branches };
-      let nextHead = { ...prev.head };
+    const nextBranches = { ...repo.branches };
+    let nextHead = { ...repo.head };
+    if (repo.head.type === 'branch') {
+      nextBranches[repo.head.target] = newId;
+    } else {
+      nextHead = { type: 'commit', target: newId };
+    }
 
-      if (prev.head.type === 'branch') {
-        nextBranches[prev.head.target] = newId;
-      } else {
-        nextHead = { type: 'commit', target: newId };
-      }
-
-      return {
-        ...prev,
-        commits: nextCommits,
-        branches: nextBranches,
-        head: nextHead,
-        stagingArea: [],
-        workingTree: prev.workingTree.filter((w) => !staged.some((s) => s.name === w.name)),
-      };
+    commitRepoTransition({
+      ...repo,
+      commits: [...repo.commits, newCommit],
+      branches: nextBranches,
+      head: nextHead,
+      stagingArea: [],
+      workingTree: repo.workingTree.filter((w) => !staged.some((s) => s.name === w.name)),
     });
 
     setSelectedCommitId(newId);
@@ -553,14 +556,10 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     const currentCommitId =
       repo.head.type === 'branch' ? repo.branches[repo.head.target] : repo.head.target;
 
-    setRepo((prev) => {
-      const nextBranches = { ...prev.branches, [cleanName]: currentCommitId };
-      const nextHead = checkoutImmediately ? { type: 'branch' as const, target: cleanName } : prev.head;
-      return {
-        ...prev,
-        branches: nextBranches,
-        head: nextHead,
-      };
+    commitRepoTransition({
+      ...repo,
+      branches: { ...repo.branches, [cleanName]: currentCommitId },
+      head: checkoutImmediately ? { type: 'branch' as const, target: cleanName } : repo.head,
     });
 
     setNewBranchInput('');
@@ -575,20 +574,20 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
   const handleCheckout = (target: string) => {
     const clean = target.trim();
     if (repo.branches[clean]) {
-      setRepo((prev) => ({
-        ...prev,
+      commitRepoTransition({
+        ...repo,
         head: { type: 'branch', target: clean },
-      }));
+      });
       setSelectedCommitId(repo.branches[clean]);
       return `Switched to branch '${clean}'`;
     }
 
     const matchedCommit = repo.commits.find((c) => c.id === clean || c.hash === clean);
     if (matchedCommit) {
-      setRepo((prev) => ({
-        ...prev,
+      commitRepoTransition({
+        ...repo,
         head: { type: 'commit', target: matchedCommit.id },
-      }));
+      });
       setSelectedCommitId(matchedCommit.id);
       return `Note: switching to '${clean}'.\n\nYou are in 'detached HEAD' state. You can look around, make experimental\nchanges and commit them, and you can discard any commits you make in this\nstate without impacting any branches.`;
     }
@@ -612,12 +611,10 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       return `merge: ${sourceBranch} - not something we can merge`;
     }
 
-    // Check if already up to date
     if (currentCommitId === sourceCommitId) {
       return 'Already up to date.';
     }
 
-    // Check if Fast-Forward is possible: is currentCommitId an ancestor of sourceCommitId?
     const isAncestor = (ancestorId: string, descendantId: string): boolean => {
       if (ancestorId === descendantId) return true;
       const desc = repo.commits.find((c) => c.id === descendantId);
@@ -626,20 +623,18 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     };
 
     if (isAncestor(currentCommitId, sourceCommitId)) {
-      // Fast forward!
-      setRepo((prev) => ({
-        ...prev,
+      commitRepoTransition({
+        ...repo,
         branches: {
-          ...prev.branches,
+          ...repo.branches,
           [currentBranch]: sourceCommitId,
         },
-      }));
+      });
       setSelectedCommitId(sourceCommitId);
       setShowMergeModal(false);
       return `Updating ${currentCommitId.slice(0, 6)}..${sourceCommitId.slice(0, 6)}\nFast-forward\n Merged branch '${sourceBranch}' into '${currentBranch}' cleanly.`;
     }
 
-    // Diverged: 3-way merge commit
     const newId = `c${repo.commits.length}`;
     const newHash = generateHash();
     const mergeCommit: GitCommitNode = {
@@ -660,14 +655,14 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       ],
     };
 
-    setRepo((prev) => ({
-      ...prev,
-      commits: [...prev.commits, mergeCommit],
+    commitRepoTransition({
+      ...repo,
+      commits: [...repo.commits, mergeCommit],
       branches: {
-        ...prev.branches,
+        ...repo.branches,
         [currentBranch]: newId,
       },
-    }));
+    });
     setSelectedCommitId(newId);
     setShowMergeModal(false);
 
@@ -688,7 +683,6 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       return `fatal: invalid upstream '${targetBaseBranch}'`;
     }
 
-    // Rebase current branch commit on top of targetBaseBranch
     const newId = `c${repo.commits.length}`;
     const newHash = generateHash();
     const currentCommit = repo.commits.find((c) => c.id === repo.branches[currentBranch]);
@@ -704,14 +698,14 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       files: currentCommit?.files || [{ name: 'feature.py', status: 'added' }],
     };
 
-    setRepo((prev) => ({
-      ...prev,
-      commits: [...prev.commits, rebasedCommit],
+    commitRepoTransition({
+      ...repo,
+      commits: [...repo.commits, rebasedCommit],
       branches: {
-        ...prev.branches,
+        ...repo.branches,
         [currentBranch]: newId,
       },
-    }));
+    });
     setSelectedCommitId(newId);
     setShowRebaseModal(false);
 
@@ -732,13 +726,13 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
     }
 
     const parentId = currentCommit.parents[0];
-    setRepo((prev) => ({
-      ...prev,
+    commitRepoTransition({
+      ...repo,
       branches: {
-        ...prev.branches,
+        ...repo.branches,
         [currentBranch]: parentId,
       },
-    }));
+    });
     setSelectedCommitId(parentId);
 
     return `HEAD is now at ${parentId} (moved back 1 commit)`;
@@ -758,12 +752,12 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       timestamp: 'just now',
     };
 
-    setRepo((prev) => ({
-      ...prev,
-      stash: [newStash, ...prev.stash],
+    commitRepoTransition({
+      ...repo,
+      stash: [newStash, ...repo.stash],
       stagingArea: [],
       workingTree: [],
-    }));
+    });
 
     return `Saved working directory and index state "${newStash.message}"`;
   };
@@ -773,11 +767,11 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       return 'error: No stash entries found.';
     }
     const popped = repo.stash[0];
-    setRepo((prev) => ({
-      ...prev,
-      stash: prev.stash.slice(1),
+    commitRepoTransition({
+      ...repo,
+      stash: repo.stash.slice(1),
       workingTree: [{ name: 'work.py', status: 'modified' }],
-    }));
+    });
     return `Dropped ${popped.id} (${popped.message})\nRestored modified changes to working tree.`;
   };
 
@@ -839,21 +833,20 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             output = 'Nothing specified, nothing added. (use `git add .` or file name)';
             isError = true;
           } else {
-            setRepo((prev) => ({
-              ...prev,
+            commitRepoTransition({
+              ...repo,
               stagingArea: [
-                ...prev.stagingArea,
-                ...prev.workingTree.map((w) => ({ name: w.name, status: 'modified' as const })),
+                ...repo.stagingArea,
+                ...repo.workingTree.map((w) => ({ name: w.name, status: 'modified' as const })),
               ],
               workingTree: [],
-            }));
+            });
             output = `Staged files for commit.`;
           }
           break;
         }
 
         case 'commit': {
-          // parse -m "message"
           const mIndex = parts.indexOf('-m');
           let msg = '';
           if (mIndex !== -1 && parts[mIndex + 1]) {
@@ -866,7 +859,6 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
         case 'branch': {
           const branchArg = parts[2];
           if (!branchArg) {
-            // list branches
             const list = Object.keys(repo.branches)
               .map((b) => {
                 const isCurrent = repo.head.type === 'branch' && repo.head.target === b;
@@ -886,11 +878,9 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
               output = `error: Cannot delete branch '${delBranch}' checked out at ${repo.branches[delBranch]}`;
               isError = true;
             } else {
-              setRepo((prev) => {
-                const nextB = { ...prev.branches };
-                delete nextB[delBranch];
-                return { ...prev, branches: nextB };
-              });
+              const nextB = { ...repo.branches };
+              delete nextB[delBranch];
+              commitRepoTransition({ ...repo, branches: nextB });
               output = `Deleted branch ${delBranch} (was ${repo.branches[delBranch]}).`;
             }
           } else {
@@ -1032,41 +1022,31 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
   return (
     <div className="space-y-6">
       {/* 1. Header & Callout Deck */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 backdrop-blur-sm">
+      <div className="optical-panel rounded-2xl p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
-                <GitBranch className="h-3.5 w-3.5" />
-                Interactive Version Control Lab
-              </span>
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-[11px] font-mono text-slate-300">
-                Stage 0 & 1 Bedrock → Stage 2
-              </span>
+            <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-emerald-400">
+              Interactive Version Control Lab · DAG &amp; CLI Simulation
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-              <span>Interactive Git Sandbox</span>
-              <span className="text-sm font-normal text-slate-400 hidden sm:inline">
-                · Visual DAG & Terminal Simulation
-              </span>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-white [text-wrap:balance]">
+              Interactive Git Sandbox
             </h1>
-            <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
-              Visualize branch pointers, commit lineages, fast-forward vs 3-way merges, and rebasing in real-time.
-              Build an unshakable mental model of the Git Directed Acyclic Graph before jumping into GitHub repositories!
+            <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">
+              Visualize branch pointers, commit lineages, fast-forward vs 3-way merges, and rebasing in real time.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {onOpenAiMentor && (
               <button
                 onClick={() =>
                   onOpenAiMentor(
-                    'Explain Git branches and the Directed Acyclic Graph (DAG) for a high school computer science student. Why are branches so lightweight in Git compared to copying folders?'
+                    'Explain Git branches and the Directed Acyclic Graph (DAG) for a computer science student. Why are branches lightweight pointers in Git compared to copying folders?'
                   )
                 }
-                className="flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-950/40 px-3.5 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-900/50 transition-all cursor-pointer shadow-md"
+                className="flex items-center gap-2 rounded-xl border border-indigo-400/35 bg-indigo-500/15 px-3.5 py-2 text-xs font-medium text-indigo-200 hover:bg-indigo-500/25 transition-colors cursor-pointer"
               >
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
                 <span>Ask AI Mentor</span>
               </button>
             )}
@@ -1074,16 +1054,16 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             {onNavigateToProjects && (
               <button
                 onClick={onNavigateToProjects}
-                className="flex items-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-3.5 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-900/50 transition-all cursor-pointer shadow-md"
+                className="flex items-center gap-2 rounded-xl border border-sky-400/35 bg-sky-500/15 px-3.5 py-2 text-xs font-medium text-sky-200 hover:bg-sky-500/25 transition-colors cursor-pointer"
               >
-                <FolderGit2 className="h-3.5 w-3.5 text-cyan-400" />
-                <span>14 GitHub Projects Studio →</span>
+                <FolderGit2 className="h-3.5 w-3.5 text-sky-300" />
+                <span>Portfolio Projects Studio</span>
               </button>
             )}
 
             <button
               onClick={() => resetToScenario(activeScenarioId)}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-all cursor-pointer"
+              className="optical-card flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer"
               title="Reset current sandbox state"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -1093,23 +1073,25 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
         </div>
 
         {/* Quick View Mode Switcher */}
-        <div className="mt-6 flex border-b border-slate-800 gap-6 text-xs font-medium overflow-x-auto no-scrollbar">
-          {[
-            { id: 'graph', label: '🌿 Visual Git DAG & Terminal', icon: GitBranch },
-            { id: 'staging', label: '🗂️ The 3 Trees: Working vs Staging vs Repo', icon: Layers },
-            { id: 'cheatsheet', label: '📘 Mental Models & Golden Rules', icon: ShieldCheck },
-            { id: 'readme', label: '📄 README.md & Git Engineering Spec', icon: FileText },
-          ].map((tab) => {
+        <div className="mt-5 optical-subnav rounded-xl p-1 flex gap-1 text-xs font-medium overflow-x-auto no-scrollbar">
+          {(
+            [
+              { id: 'graph', label: 'Visual Git DAG & Terminal', icon: GitBranch },
+              { id: 'staging', label: 'The 3 Trees (Working / Staging / Repo)', icon: Layers },
+              { id: 'cheatsheet', label: 'Mental Models & Rules', icon: ShieldCheck },
+              { id: 'readme', label: 'README.md & Git Standards', icon: FileText },
+            ] as const
+          ).map((tab) => {
             const Icon = tab.icon;
             const isActive = viewMode === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setViewMode(tab.id as any)}
-                className={`flex items-center gap-2 py-3 border-b-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                onClick={() => setViewMode(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'border-emerald-500 text-emerald-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent hover:bg-white/[0.04]'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -1121,31 +1103,31 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       </div>
 
       {/* 2. Interactive Guided Scenarios Carousel */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <div className="optical-panel rounded-2xl p-5">
         <div className="flex items-center justify-between gap-4 mb-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
             <Play className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Interactive Guided Missions ({Object.keys(completedScenarios).length}/{SCENARIOS.length} Solved)</span>
+            <span>Guided Missions ({Object.keys(completedScenarios).length}/{SCENARIOS.length} Solved)</span>
           </div>
-          <span className="text-xs text-slate-400 font-mono">Click any mission to auto-load setup</span>
+          <span className="text-xs text-slate-500 font-mono">Click any mission to reset &amp; load</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {SCENARIOS.map((sc) => {
             const isSelected = activeScenarioId === sc.id;
-            const isDone = completedScenarios[sc.id] || sc.checkCompletion(repo);
+            const isDone = completedScenarios[sc.id] || (isSelected && sc.checkCompletion(repo));
             return (
               <button
                 key={sc.id}
                 onClick={() => resetToScenario(sc.id)}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between gap-2 ${
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between gap-2 ${
                   isSelected
-                    ? 'border-emerald-500/70 bg-emerald-950/20 ring-1 ring-emerald-500/40'
-                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700 hover:bg-slate-900/60'
+                    ? 'border-emerald-400/50 bg-emerald-500/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : 'optical-card'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     {isDone ? (
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                     ) : (
@@ -1153,7 +1135,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     )}
                     <span className="truncate">{sc.title}</span>
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 shrink-0">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-slate-300 shrink-0">
                     {sc.badge}
                   </span>
                 </div>
@@ -1169,10 +1151,10 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
 
         {/* Active Scenario Goal Status Banner */}
         <div
-          className={`mt-4 p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          className={`mt-4 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
             isCurrentScenarioDone
-              ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
-              : 'border-amber-500/40 bg-amber-950/20 text-amber-300'
+              ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+              : 'border-amber-400/35 bg-amber-500/[0.08] text-amber-200'
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -1184,7 +1166,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             <div>
               <div className="font-bold">
                 {isCurrentScenarioDone
-                  ? `🎉 Goal Achieved: ${currentScenario.title}`
+                  ? `Goal Achieved: ${currentScenario.title}`
                   : `Active Challenge: ${currentScenario.goal}`}
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
@@ -1193,8 +1175,8 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-mono text-[11px]">
-              {isCurrentScenarioDone ? '✅ Verified (+50 XP)' : 'In Progress'}
+            <span className="px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.08] text-slate-200 font-mono text-[11px]">
+              {isCurrentScenarioDone ? 'Verified (+50 XP)' : 'In Progress'}
             </span>
           </div>
         </div>
@@ -1204,7 +1186,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       {viewMode === 'graph' && (
         <div className="space-y-6">
           {/* Top Control Deck: Visual Buttons */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+          <div className="optical-panel rounded-2xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-slate-400 mr-2 flex items-center gap-1.5">
@@ -1213,32 +1195,35 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 </span>
 
                 {/* + New Commit */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={commitMessageInput}
                     onChange={(e) => setCommitMessageInput(e.target.value)}
                     placeholder="commit message..."
-                    className="h-8 rounded-lg border border-slate-700 bg-slate-950 px-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 sm:w-56"
+                    className="h-8 rounded-xl border border-white/[0.1] bg-black/45 px-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400/60 w-44 sm:w-56"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateCommit();
                     }}
                   />
-                  <button
+                  <SoapBubbleButton
                     onClick={() => handleCreateCommit()}
-                    className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-sm"
+                    tint="rgb(16 185 129)"
+                    opacity={0.92}
+                    style={{ fontSize: 12 }}
+                    className="!min-h-[32px] !px-3.5 font-semibold text-white"
                   >
                     <GitCommit className="h-3.5 w-3.5" />
                     <span>Commit</span>
-                  </button>
+                  </SoapBubbleButton>
                 </div>
 
-                <div className="h-4 w-px bg-slate-800 mx-1 hidden sm:block" />
+                <div className="h-4 w-px bg-white/[0.1] mx-1 hidden sm:block" />
 
                 {/* + New Branch */}
                 <button
                   onClick={() => setShowBranchModal(true)}
-                  className="h-8 px-3 rounded-lg border border-indigo-500/50 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="h-8 px-3 rounded-xl border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <GitBranch className="h-3.5 w-3.5" />
                   <span>+ Branch</span>
@@ -1247,19 +1232,19 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 {/* Merge Branch */}
                 <button
                   onClick={() => setShowMergeModal(true)}
-                  className="h-8 px-3 rounded-lg border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="h-8 px-3 rounded-xl border border-sky-400/35 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <GitMerge className="h-3.5 w-3.5" />
-                  <span>🔀 Merge</span>
+                  <span>Merge</span>
                 </button>
 
                 {/* Rebase Branch */}
                 <button
                   onClick={() => setShowRebaseModal(true)}
-                  className="h-8 px-3 rounded-lg border border-amber-500/50 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  className="h-8 px-3 rounded-xl border border-amber-400/35 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Split className="h-3.5 w-3.5" />
-                  <span>⤴️ Rebase</span>
+                  <span>Rebase</span>
                 </button>
 
                 {/* Reset HEAD */}
@@ -1268,7 +1253,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     const res = handleResetHead();
                     setTerminalHistory((p) => [...p, { cmd: 'git reset HEAD~1', output: res }]);
                   }}
-                  className="h-8 px-2.5 rounded-lg border border-rose-500/40 bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 text-xs transition-all flex items-center gap-1 cursor-pointer"
+                  className="h-8 px-2.5 rounded-xl border border-rose-400/35 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 text-xs transition-colors flex items-center gap-1 cursor-pointer"
                   title="Undo last commit on current branch (git reset HEAD~1)"
                 >
                   <Undo2 className="h-3.5 w-3.5" />
@@ -1281,7 +1266,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     const res = handleStash();
                     setTerminalHistory((p) => [...p, { cmd: 'git stash', output: res }]);
                   }}
-                  className="h-8 px-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all flex items-center gap-1 cursor-pointer"
+                  className="optical-card h-8 px-2.5 rounded-xl text-slate-300 text-xs flex items-center gap-1 cursor-pointer"
                   title="Stash working changes"
                 >
                   <Archive className="h-3.5 w-3.5" />
@@ -1289,16 +1274,16 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 </button>
               </div>
 
-              {/* Current HEAD indicator badge */}
+              {/* Current HEAD indicator */}
               <div className="flex items-center gap-2 text-xs font-mono">
                 <span className="text-slate-400">HEAD:</span>
                 {repo.head.type === 'branch' ? (
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 font-bold flex items-center gap-1">
                     <GitBranch className="h-3 w-3" />
                     <span>{repo.head.target}</span>
                   </span>
                 ) : (
-                  <span className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/35 text-amber-300 font-bold flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     <span>detached at {repo.head.target}</span>
                   </span>
@@ -1308,14 +1293,14 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
           </div>
 
           {/* SVG Visual Directed Acyclic Graph (DAG) */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 relative overflow-x-auto shadow-2xl">
+          <div className="optical-panel rounded-2xl p-6 relative overflow-x-auto">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <GitCommit className="h-4 w-4 text-emerald-400" />
                   Commit Graph (DAG)
                 </span>
-                <span className="text-xs text-slate-500 font-mono">
+                <span className="text-xs text-slate-500 font-mono tabular-nums">
                   {repo.commits.length} commits · {Object.keys(repo.branches).length} branches
                 </span>
               </div>
@@ -1568,25 +1553,25 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             </div>
 
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between border-t border-slate-900 pt-3">
-              <span>💡 Click any commit node above to view its contents, parent hashes, and file diffs.</span>
+              <span>Click any commit node above to inspect its contents, parent hashes, and file diffs.</span>
               <span className="font-mono text-emerald-400">Selected: {selectedCommit.id} ({selectedCommit.hash})</span>
             </div>
           </div>
 
           {/* Dual Panel: Commit Inspector + Terminal CLI */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Commit Node Inspector (4 cols) */}
-            <div className="lg:col-span-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            {/* Left: Commit Node Inspector (5 cols) */}
+            <div className="lg:col-span-5 optical-panel rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-xs">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-mono font-bold text-xs">
                     {selectedCommit.id}
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <span>Commit {selectedCommit.hash}</span>
                       {selectedCommit.isMerge && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950 border border-sky-500/40 text-sky-300">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/35 text-sky-300">
                           3-way merge
                         </span>
                       )}
@@ -1602,7 +1587,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     const res = handleCheckout(selectedCommit.id);
                     setTerminalHistory((p) => [...p, { cmd: `git checkout ${selectedCommit.id}`, output: res }]);
                   }}
-                  className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 font-mono transition-all cursor-pointer"
+                  className="optical-card px-3 py-1.5 rounded-xl text-xs text-slate-200 font-mono cursor-pointer"
                   title="Checkout this commit directly"
                 >
                   Checkout
@@ -1614,20 +1599,20 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                   Commit Message
                 </span>
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 font-mono">
+                <div className="optical-inset p-2.5 rounded-xl text-xs text-slate-200 font-mono">
                   {selectedCommit.message}
                 </div>
               </div>
 
               {/* Author & Lineage */}
               <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <div className="optical-inset p-2.5 rounded-xl">
                   <span className="text-[10px] text-slate-400 block">Parents</span>
                   <span className="text-cyan-400 font-bold">
                     {selectedCommit.parents.length > 0 ? selectedCommit.parents.join(', ') : '(root)'}
                   </span>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <div className="optical-inset p-2.5 rounded-xl">
                   <span className="text-[10px] text-slate-400 block">Author</span>
                   <span className="text-slate-300 truncate block">{selectedCommit.author}</span>
                 </div>
@@ -1640,18 +1625,18 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 </span>
                 <div className="space-y-2">
                   {selectedCommit.files.map((f, i) => (
-                    <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-xs font-mono">
+                    <div key={i} className="optical-inset rounded-xl p-2.5 text-xs font-mono">
                       <div className="flex items-center justify-between text-slate-300 mb-1">
                         <span className="flex items-center gap-1.5 font-bold">
                           <FileText className="h-3.5 w-3.5 text-cyan-400" />
                           {f.name}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-emerald-400">
                           {f.status}
                         </span>
                       </div>
                       {f.diff && (
-                        <pre className="p-2 rounded bg-slate-900 text-[11px] text-slate-300 overflow-x-auto whitespace-pre font-mono">
+                        <pre className="p-2 rounded-lg bg-black/45 text-[11px] text-slate-300 overflow-x-auto whitespace-pre font-mono">
                           {f.diff.split('\n').map((line, lIdx) => (
                             <div
                               key={lIdx}
@@ -1675,15 +1660,12 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
             </div>
 
             {/* Right: Functional Terminal CLI (7 cols) */}
-            <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-950 flex flex-col h-[480px] shadow-2xl overflow-hidden">
+            <div className="lg:col-span-7 optical-panel rounded-2xl flex flex-col h-[480px] overflow-hidden">
               {/* Terminal Window Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 py-2.5 select-none shrink-0">
+              <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.03] px-4 py-2.5 select-none shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-rose-500/80" />
-                  <span className="h-3 w-3 rounded-full bg-amber-500/80" />
-                  <span className="h-3 w-3 rounded-full bg-emerald-500/80" />
-                  <span className="ml-2 font-mono text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                    <TerminalIcon className="h-3.5 w-3.5 text-emerald-400" />
+                  <TerminalIcon className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="font-mono text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                     git bash · ~/cs-odyssey/repo (
                     <span className="text-emerald-400">
                       {repo.head.type === 'branch' ? repo.head.target : `detached:${repo.head.target}`}
@@ -1697,14 +1679,14 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
               </div>
 
               {/* Terminal Output Stream */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-xs text-slate-200">
-                <div className="text-slate-500 text-[11px] leading-relaxed border-b border-slate-900 pb-2">
-                  💡 Type commands like <span className="text-emerald-400">git status</span>,{' '}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-xs text-slate-200 bg-[#040710]/85">
+                <div className="text-slate-500 text-[11px] leading-relaxed border-b border-white/[0.06] pb-2">
+                  Commands: <span className="text-emerald-400">git status</span>,{' '}
                   <span className="text-emerald-400">git add .</span>,{' '}
                   <span className="text-emerald-400">git commit -m &quot;msg&quot;</span>,{' '}
                   <span className="text-indigo-400">git branch feature-x</span>,{' '}
                   <span className="text-indigo-400">git checkout feature-x</span>,{' '}
-                  <span className="text-cyan-400">git merge</span>, or{' '}
+                  <span className="text-sky-400">git merge</span>, or{' '}
                   <span className="text-amber-400">help</span>.
                 </div>
 
@@ -1716,10 +1698,10 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     </div>
                     {item.output && (
                       <pre
-                        className={`whitespace-pre-wrap leading-relaxed text-[11px] pl-4 border-l-2 ${
+                        className={`whitespace-pre-wrap leading-relaxed text-[11px] rounded-xl px-3 py-2 ${
                           item.isError
-                            ? 'border-rose-500/50 text-rose-300'
-                            : 'border-slate-800 text-slate-300'
+                            ? 'bg-rose-500/10 border border-rose-400/25 text-rose-300'
+                            : 'bg-white/[0.025] border border-white/[0.05] text-slate-300'
                         }`}
                       >
                         {item.output}
@@ -1731,7 +1713,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
               </div>
 
               {/* Terminal Input Bar */}
-              <div className="border-t border-slate-800 bg-slate-900/60 p-3 shrink-0">
+              <div className="border-t border-white/[0.08] bg-white/[0.03] p-3 shrink-0">
                 <div className="flex items-center gap-2 font-mono text-xs">
                   <span className="text-emerald-400 font-bold flex items-center gap-1 shrink-0">
                     <span>user@cs-odyssey</span>
@@ -1752,12 +1734,15 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                     className="flex-1 bg-transparent text-white placeholder-slate-600 focus:outline-none"
                     autoFocus
                   />
-                  <button
+                  <SoapBubbleButton
                     onClick={() => executeGitCommand(terminalInput)}
-                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer shrink-0"
+                    tint="rgb(16 185 129)"
+                    opacity={0.9}
+                    style={{ fontSize: 11 }}
+                    className="!min-h-[28px] !px-3 font-semibold text-white shrink-0"
                   >
                     Run
-                  </button>
+                  </SoapBubbleButton>
                 </div>
               </div>
             </div>
@@ -1767,9 +1752,9 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
 
       {/* 4. TAB 2: THE 3 TREES OF GIT (Working Tree vs Staging vs Repo) */}
       {viewMode === 'staging' && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-6">
+        <div className="optical-panel rounded-2xl p-6 space-y-6">
           <div className="max-w-3xl space-y-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <h2 className="font-display text-lg font-bold text-white flex items-center gap-2">
               <Layers className="h-5 w-5 text-cyan-400" />
               The Three Trees of Git: How Code Moves to GitHub
             </h2>
@@ -1784,102 +1769,114 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
           {/* 4 Columns Diagram */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Column 1: Working Directory */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  1. Working Directory
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                  Local Files
-                </span>
+            <div className="optical-inset rounded-xl p-4 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                    1. Working Directory
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                    Local Files
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Your actual files on your SSD/laptop where you edit Python and C++ in VS Code.
+                </p>
+                <div className="space-y-1.5 pt-1">
+                  {repo.workingTree.length === 0 ? (
+                    <div className="text-[11px] font-mono text-slate-500 italic">Working tree clean</div>
+                  ) : (
+                    repo.workingTree.map((w, i) => (
+                      <div key={i} className="p-2 rounded-lg bg-black/40 border border-white/[0.06] text-xs font-mono flex items-center justify-between">
+                        <span className="text-rose-400">{w.name}</span>
+                        <span className="text-[10px] text-slate-400">{w.status}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Your actual files on your SSD/laptop where you edit Python and C++ in VS Code.
-              </p>
-              <div className="space-y-1.5 pt-2">
-                {repo.workingTree.length === 0 ? (
-                  <div className="text-[11px] font-mono text-slate-500 italic">Working tree clean</div>
-                ) : (
-                  repo.workingTree.map((w, i) => (
-                    <div key={i} className="p-2 rounded bg-slate-900 border border-slate-800 text-xs font-mono flex items-center justify-between">
-                      <span className="text-rose-400">{w.name}</span>
-                      <span className="text-[10px] text-slate-500">{w.status}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-              <button
+              <SoapBubbleButton
                 onClick={() => {
                   executeGitCommand('git add .');
                 }}
                 disabled={repo.workingTree.length === 0}
-                className="w-full mt-3 py-2 rounded-lg bg-cyan-600/80 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600/80 text-white text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                tint="rgb(6 182 212)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="w-full !min-h-[34px] font-mono font-bold text-white"
               >
                 <span>git add . →</span>
-              </button>
+              </SoapBubbleButton>
             </div>
 
             {/* Column 2: Staging Area */}
-            <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/10 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
-                  2. Staging Area (Index)
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-400">
-                  Ready to Commit
-                </span>
+            <div className="rounded-xl border border-cyan-400/25 bg-cyan-500/[0.06] p-4 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                    2. Staging Area (Index)
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-300/90 shrink-0">
+                    Ready to Commit
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  The drafting board. You select precisely which files and lines should be bundled into the next snapshot.
+                </p>
+                <div className="space-y-1.5 pt-1">
+                  {repo.stagingArea.length === 0 ? (
+                    <div className="text-[11px] font-mono text-slate-500 italic">Staging area empty</div>
+                  ) : (
+                    repo.stagingArea.map((s, i) => (
+                      <div key={i} className="p-2 rounded-lg bg-black/40 border border-cyan-400/25 text-xs font-mono flex items-center justify-between">
+                        <span className="text-emerald-400 font-bold">{s.name}</span>
+                        <span className="text-[10px] text-cyan-300">staged</span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400">
-                The drafting board. You select precisely which files and lines should be bundled into the next snapshot.
-              </p>
-              <div className="space-y-1.5 pt-2">
-                {repo.stagingArea.length === 0 ? (
-                  <div className="text-[11px] font-mono text-slate-500 italic">Staging area empty</div>
-                ) : (
-                  repo.stagingArea.map((s, i) => (
-                    <div key={i} className="p-2 rounded bg-slate-900 border border-cyan-500/30 text-xs font-mono flex items-center justify-between">
-                      <span className="text-emerald-400 font-bold">{s.name}</span>
-                      <span className="text-[10px] text-cyan-300">staged</span>
-                    </div>
-                  ))
-                )}
-              </div>
-              <button
+              <SoapBubbleButton
                 onClick={() => {
                   executeGitCommand('git commit -m "feat: staged changes snapshot"');
                 }}
                 disabled={repo.stagingArea.length === 0}
-                className="w-full mt-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                tint="rgb(16 185 129)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="w-full !min-h-[34px] font-mono font-bold text-white"
               >
                 <span>git commit -m →</span>
-              </button>
+              </SoapBubbleButton>
             </div>
 
             {/* Column 3: Local Repository (.git) */}
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-                  3. Local Repo (.git DAG)
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-400">
-                  {repo.commits.length} Snapshots
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                The permanent immutable database inside <code className="text-slate-300">.git/</code> with all commit nodes and branch pointers.
-              </p>
-              <div className="space-y-1.5 pt-2 max-h-40 overflow-y-auto">
-                {repo.commits.slice(-3).reverse().map((c) => (
-                  <div key={c.id} className="p-2 rounded bg-slate-900 border border-slate-800 text-xs font-mono">
-                    <div className="flex items-center justify-between text-emerald-400 font-bold">
-                      <span>{c.id} ({c.hash})</span>
-                      <span className="text-[10px] text-slate-400">{c.branchName}</span>
+            <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.06] p-4 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                    3. Local Repo (.git DAG)
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-300 tabular-nums shrink-0">
+                    {repo.commits.length} Snapshots
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  The permanent immutable database inside <code className="text-slate-300">.git/</code> with all commit nodes and branch pointers.
+                </p>
+                <div className="space-y-1.5 pt-1 max-h-40 overflow-y-auto">
+                  {repo.commits.slice(-3).reverse().map((c) => (
+                    <div key={c.id} className="p-2 rounded-lg bg-black/40 border border-white/[0.06] text-xs font-mono">
+                      <div className="flex items-center justify-between text-emerald-400 font-bold">
+                        <span>{c.id} ({c.hash})</span>
+                        <span className="text-[10px] text-slate-400">{c.branchName}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 truncate mt-0.5">{c.message}</div>
                     </div>
-                    <div className="text-[11px] text-slate-300 truncate mt-0.5">{c.message}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-              <button
+              <SoapBubbleButton
                 onClick={() => {
                   setTerminalHistory((p) => [
                     ...p,
@@ -1890,44 +1887,52 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                   ]);
                   setViewMode('graph');
                 }}
-                className="w-full mt-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                tint="rgb(99 102 241)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="w-full !min-h-[34px] font-mono font-bold text-white"
               >
                 <span>git push origin →</span>
-              </button>
+              </SoapBubbleButton>
             </div>
 
             {/* Column 4: Remote GitHub */}
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-950/10 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
-                  4. Remote (GitHub)
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 border border-indigo-500/40 text-indigo-400">
-                  Cloud Proof
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                The cloud backup, team collaboration hub, and collegiate admissions portfolio where your commits are public proof of mastery.
-              </p>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-slate-300 font-bold">
-                  <FolderGit2 className="h-4 w-4 text-indigo-400" />
-                  <span>github.com/alex-student</span>
+            <div className="rounded-xl border border-indigo-400/25 bg-indigo-500/[0.06] p-4 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                    4. Remote (GitHub)
+                  </span>
+                  <span className="text-[10px] font-mono text-indigo-300 shrink-0">
+                    Cloud Proof
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-400">
-                  Default branch: <span className="font-mono text-emerald-400">main</span>
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  Continuous Integration: <span className="text-emerald-400 font-semibold">Passing</span>
+                <p className="text-[11px] text-slate-400">
+                  The cloud backup, team collaboration hub, and collegiate admissions portfolio where your commits are public proof of mastery.
+                </p>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-slate-300 font-bold">
+                    <FolderGit2 className="h-4 w-4 text-indigo-400" />
+                    <span>github.com/alex-student</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Default branch: <span className="font-mono text-emerald-400">main</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Continuous Integration: <span className="text-emerald-400 font-semibold">Passing</span>
+                  </div>
                 </div>
               </div>
               {onNavigateToProjects && (
-                <button
+                <SoapBubbleButton
                   onClick={onNavigateToProjects}
-                  className="w-full mt-3 py-2 rounded-lg border border-indigo-500/50 bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  tint="rgb(99 102 241)"
+                  opacity={0.85}
+                  style={{ fontSize: 12 }}
+                  className="w-full !min-h-[34px] font-semibold text-white"
                 >
                   <span>Build Portfolio Projects →</span>
-                </button>
+                </SoapBubbleButton>
               )}
             </div>
           </div>
@@ -1938,13 +1943,13 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       {viewMode === 'cheatsheet' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card 1: What is a Commit? */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
+          <div className="optical-panel rounded-2xl p-6 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <div className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
                 <GitCommit className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">What Actually is a Git Commit?</h3>
+                <h3 className="font-display text-sm font-bold text-white">What Actually is a Git Commit?</h3>
                 <span className="text-xs text-slate-400">Mental Model 1</span>
               </div>
             </div>
@@ -1953,7 +1958,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
               that moment in time. If a file didn&apos;t change, Git simply stores a lightweight cryptographic pointer to
               the identical blob from the previous commit!
             </p>
-            <div className="rounded-xl bg-slate-950 p-3 font-mono text-[11px] text-slate-300 space-y-1">
+            <div className="optical-inset rounded-xl p-3 font-mono text-[11px] text-slate-300 space-y-1">
               <div>commit 9f4c3b (SHA-1 hash of contents + metadata)</div>
               <div>tree: 7d1e8a (root folder structure)</div>
               <div>parent: e82a10 (previous commit hash)</div>
@@ -1962,13 +1967,13 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
           </div>
 
           {/* Card 2: What is a Branch? */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
+          <div className="optical-panel rounded-2xl p-6 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <div className="h-9 w-9 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
                 <GitBranch className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">What is a Git Branch?</h3>
+                <h3 className="font-display text-sm font-bold text-white">What is a Git Branch?</h3>
                 <span className="text-xs text-slate-400">Mental Model 2</span>
               </div>
             </div>
@@ -1977,20 +1982,20 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
               file in <code className="text-cyan-400">.git/refs/heads/branch-name</code> containing the 40-character
               SHA hash of its newest commit! Creating a branch takes microseconds and uses almost zero disk space.
             </p>
-            <div className="rounded-xl bg-slate-950 p-3 font-mono text-[11px] text-slate-300 space-y-1">
+            <div className="optical-inset rounded-xl p-3 font-mono text-[11px] text-slate-300 space-y-1">
               <div>cat .git/refs/heads/main</div>
               <div className="text-emerald-400">9f4c3b52a1d82f7e0018ac49...</div>
             </div>
           </div>
 
           {/* Card 3: Merge vs Rebase */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
+          <div className="optical-panel rounded-2xl p-6 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <div className="h-9 w-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400">
                 <Split className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Merge vs Rebase: The Golden Rule</h3>
+                <h3 className="font-display text-sm font-bold text-white">Merge vs Rebase: The Golden Rule</h3>
                 <span className="text-xs text-slate-400">Team Strategy</span>
               </div>
             </div>
@@ -2003,20 +2008,20 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 <strong>Rebase (<code className="text-amber-400">git rebase</code>):</strong> Replays your local commits on top of the
                 latest main branch, producing a strictly linear history without merge bubbles.
               </p>
-              <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[11px] font-mono">
-                ⚠️ Golden Rule: Never rebase commits that you have already pushed to a shared public branch!
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-400/30 text-rose-200 text-[11px] font-mono">
+                Golden Rule: Never rebase commits that you have already pushed to a shared public branch.
               </div>
             </div>
           </div>
 
           {/* Card 4: Golden Privacy Rule */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
+          <div className="optical-panel rounded-2xl p-6 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <div className="h-9 w-9 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Golden Privacy &amp; Security Rules</h3>
+                <h3 className="font-display text-sm font-bold text-white">Golden Privacy &amp; Security Rules</h3>
                 <span className="text-xs text-slate-400">Cybersecurity Bedrock</span>
               </div>
             </div>
@@ -2025,7 +2030,7 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
                 <strong>Never commit secrets:</strong> Passwords, API tokens, <code className="text-amber-300">.env</code> files, and SSH private keys.
               </li>
               <li>
-                <strong>Use <code className="text-cyan-300">.gitignore</code> early:</strong> Add patterns before making your first commit so credentials are never tracked.
+                <strong>Use <code className="text-sky-300">.gitignore</code> early:</strong> Add patterns before making your first commit so credentials are never tracked.
               </li>
               <li>
                 <strong>Git history is permanent:</strong> Deleting a password in commit #2 does <em>not</em> erase it from commit #1 in the public log!
@@ -2039,108 +2044,95 @@ export function GitSandbox({ onOpenAiMentor, onNavigateToProjects }: GitSandboxP
       {viewMode === 'readme' && (
         <div className="space-y-6">
           {/* Header */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-cyan-400 font-semibold uppercase tracking-wider">
-                Engineering Specification
-              </span>
-              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                README.md &amp; Git Standards
-              </span>
+          <div className="optical-panel rounded-2xl p-6 space-y-2">
+            <div className="text-[11px] font-mono text-sky-400 font-semibold uppercase tracking-wider">
+              Engineering Specification · README.md &amp; Git Standards
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Professional README.md Generator &amp; Git Engineering Standards
+            <h2 className="font-display text-xl font-bold text-white tracking-tight">
+              Production README.md Template &amp; Git Engineering Standards
             </h2>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Every senior engineering team evaluates code quality by its documentation, commit clarity, branch strategy, and reproducible environments. Learn how to craft production-grade READMEs and maintain spotless repository hygiene.
+            <p className="text-xs text-slate-400 max-w-3xl leading-relaxed">
+              Every senior engineering team evaluates code quality by its documentation, commit clarity, branch strategy, and reproducible environments.
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Column 1: Live Interactive README Template */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 space-y-4 font-mono">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="optical-panel rounded-2xl p-6 space-y-4 font-mono">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <div className="flex items-center gap-2 text-xs text-slate-200 font-bold">
                   <FileText className="h-4 w-4 text-emerald-400" />
                   <span>Production README.md Template</span>
                 </div>
                 <button
                   onClick={() => {
-                    const sampleReadme = `# CS Odyssey: Project Name
+                    const sampleReadme = `# Project Name
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)]()
+## Executive Summary
+A systems utility demonstrating clean modular architecture, unit test coverage, and defensive error handling.
 
-## 📌 Executive Summary
-A high-performance systems utility demonstrating clean modular architecture, unit test coverage, and defensive error handling.
-
-## 🚀 Key Features
+## Key Features
 - **Zero External Dependencies**: Pure standard library implementation.
-- **Defensive I/O**: Automated bounds checking and input sanitation.
-- **Comprehensive Test Suite**: Automated edge case tests with 100% branch coverage.
+- **Defensive I/O**: Automated bounds checking and input sanitization.
+- **Comprehensive Test Suite**: Automated edge case tests with branch coverage.
 
-## 🛠️ Architecture & Directed Acyclic Graph (DAG)
+## Architecture & Directed Acyclic Graph (DAG)
 \`\`\`
 main:     c0 (Initial) ---> c1 (Scaffolding) -----------> c4 (Merge 1.0)
                                \\                         /
 feature:                        c2 (Auth Logic) ---> c3
 \`\`\`
 
-## 📦 Quickstart & Installation
+## Quickstart & Installation
 \`\`\`bash
-# 1. Clone repository
 git clone https://github.com/your-username/project-name.git
 cd project-name
-
-# 2. Initialize Python virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 3. Run test suite
 pytest -v tests/
 \`\`\`
 
-## 🛡️ Security & Privacy Boundary
+## Security & Privacy Boundary
 - Zero disk logging of plaintext tokens or credentials.
 - All network sockets strictly bind to \`127.0.0.1\` (localhost).
 
-## 📄 License
-MIT © 2026 CS Odyssey Learner
+## License
+MIT
 `;
                     navigator.clipboard.writeText(sampleReadme);
-                    alert('Copied Production README.md template to clipboard!');
+                    setCopiedReadme(true);
+                    setTimeout(() => setCopiedReadme(false), 2000);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-400/35 text-[11px] font-semibold cursor-pointer transition-colors flex items-center gap-1"
                 >
-                  <Copy className="h-3 w-3" />
-                  <span>Copy Markdown</span>
+                  {copiedReadme ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  <span>{copiedReadme ? 'Copied' : 'Copy Markdown'}</span>
                 </button>
               </div>
 
-              <div className="text-xs text-slate-300 leading-relaxed font-mono space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 max-h-[480px] overflow-y-auto whitespace-pre-wrap">
+              <div className="optical-inset text-xs text-slate-300 leading-relaxed font-mono space-y-3 p-4 rounded-xl max-h-[480px] overflow-y-auto whitespace-pre-wrap">
 {`# CS Odyssey: Project Name
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)]()
 
-## 📌 Executive Summary
+## Executive Summary
 A high-performance systems utility demonstrating clean modular architecture, unit test coverage, and defensive error handling.
 
-## 🚀 Key Features
+## Key Features
 - **Zero External Dependencies**: Pure standard library implementation.
-- **Defensive I/O**: Automated bounds checking and input sanitation.
+- **Defensive I/O**: Automated bounds checking and input sanitization.
 - **Comprehensive Test Suite**: Automated edge case tests with 100% branch coverage.
 
-## 🛠️ Architecture & Directed Acyclic Graph (DAG)
+## Architecture & Directed Acyclic Graph (DAG)
 \`\`\`
 main:     c0 (Initial) ---> c1 (Scaffolding) -----------> c4 (Merge 1.0)
                                \\                         /
 feature:                        c2 (Auth Logic) ---> c3
 \`\`\`
 
-## 📦 Quickstart & Installation
+## Quickstart & Installation
 \`\`\`bash
 # 1. Clone repository
 git clone https://github.com/your-username/project-name.git
@@ -2154,11 +2146,11 @@ source .venv/bin/activate
 pytest -v tests/
 \`\`\`
 
-## 🛡️ Security & Privacy Boundary
+## Security & Privacy Boundary
 - Zero disk logging of plaintext tokens or credentials.
 - All network sockets strictly bind to 127.0.0.1 (localhost).
 
-## 📄 License
+## License
 MIT © 2026 CS Odyssey Learner`}
               </div>
             </div>
@@ -2166,9 +2158,9 @@ MIT © 2026 CS Odyssey Learner`}
             {/* Column 2: Git Hygiene, Commit Conventions & .gitignore Rules */}
             <div className="space-y-4">
               {/* Conventional Commits Card */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+              <div className="optical-panel rounded-2xl p-5 space-y-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <div className="h-8 w-8 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
                     <Code2 className="h-4 w-4" />
                   </div>
                   <div>
@@ -2180,19 +2172,19 @@ MIT © 2026 CS Odyssey Learner`}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="optical-inset p-2.5 rounded-xl">
                     <span className="text-emerald-400 font-bold">feat:</span>
                     <p className="text-[11px] text-slate-400 font-sans mt-0.5">Adds a new user-facing capability or API method.</p>
                   </div>
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="optical-inset p-2.5 rounded-xl">
                     <span className="text-rose-400 font-bold">fix:</span>
                     <p className="text-[11px] text-slate-400 font-sans mt-0.5">Patches a known bug, edge case, or crash.</p>
                   </div>
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="optical-inset p-2.5 rounded-xl">
                     <span className="text-cyan-400 font-bold">refactor:</span>
                     <p className="text-[11px] text-slate-400 font-sans mt-0.5">Rewrites code without changing runtime behavior.</p>
                   </div>
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div className="optical-inset p-2.5 rounded-xl">
                     <span className="text-amber-400 font-bold">test:</span>
                     <p className="text-[11px] text-slate-400 font-sans mt-0.5">Adds or updates unit, integration, or regression tests.</p>
                   </div>
@@ -2200,9 +2192,9 @@ MIT © 2026 CS Odyssey Learner`}
               </div>
 
               {/* .gitignore Standard Blueprint */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+              <div className="optical-panel rounded-2xl p-5 space-y-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <div className="h-8 w-8 rounded-xl bg-rose-500/15 border border-rose-400/30 flex items-center justify-center text-rose-400">
                     <ShieldCheck className="h-4 w-4" />
                   </div>
                   <div>
@@ -2213,7 +2205,7 @@ MIT © 2026 CS Odyssey Learner`}
                   </div>
                 </div>
 
-                <pre className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] font-mono text-cyan-300 leading-relaxed overflow-x-auto">
+                <pre className="optical-inset p-3 rounded-xl text-[11px] font-mono text-cyan-300 leading-relaxed overflow-x-auto">
 {`# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -2238,7 +2230,7 @@ Thumbs.db`}
               </div>
 
               {/* Branching Strategy Card */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-2">
+              <div className="optical-panel rounded-2xl p-5 space-y-2">
                 <h4 className="text-xs font-bold text-white flex items-center gap-2">
                   <GitBranch className="h-4 w-4 text-emerald-400" />
                   <span>Trunk-Based vs GitFlow Branching</span>
@@ -2254,18 +2246,18 @@ Thumbs.db`}
 
       {/* MODAL 1: Create New Branch */}
       {showBranchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+          <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="font-display text-base font-bold text-white flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-indigo-400" />
                 Create New Git Branch
               </h3>
               <button
                 onClick={() => setShowBranchModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -2281,19 +2273,19 @@ Thumbs.db`}
                 value={newBranchInput}
                 onChange={(e) => setNewBranchInput(e.target.value)}
                 placeholder="e.g. feature/auth, bugfix/packet-leak"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                className="w-full rounded-xl border border-white/[0.1] bg-black/45 px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400/60 font-mono"
                 autoFocus
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 onClick={() => setShowBranchModal(false)}
-                className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white"
+                className="optical-card px-3.5 py-1.5 rounded-xl text-xs text-slate-300 cursor-pointer"
               >
                 Cancel
               </button>
-              <button
+              <SoapBubbleButton
                 onClick={() => {
                   const res = handleCreateBranch(newBranchInput, true);
                   setTerminalHistory((p) => [
@@ -2301,10 +2293,13 @@ Thumbs.db`}
                     { cmd: `git checkout -b ${newBranchInput.trim()}`, output: res },
                   ]);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white cursor-pointer"
+                tint="rgb(99 102 241)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="!min-h-[34px] !px-4 font-bold text-white"
               >
                 Create &amp; Switch
-              </button>
+              </SoapBubbleButton>
             </div>
           </div>
         </div>
@@ -2312,18 +2307,18 @@ Thumbs.db`}
 
       {/* MODAL 2: Merge Branch */}
       {showMergeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+          <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="font-display text-base font-bold text-white flex items-center gap-2">
                 <GitMerge className="h-4 w-4 text-cyan-400" />
                 Merge Branch into {repo.head.type === 'branch' ? repo.head.target : 'HEAD'}
               </h3>
               <button
                 onClick={() => setShowMergeModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -2341,7 +2336,7 @@ Thumbs.db`}
                       const res = handleMerge(bName);
                       setTerminalHistory((p) => [...p, { cmd: `git merge ${bName}`, output: res }]);
                     }}
-                    className="w-full p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-cyan-500/50 hover:bg-slate-900 text-left transition-all flex items-center justify-between cursor-pointer"
+                    className="optical-card w-full p-3 rounded-xl text-left flex items-center justify-between cursor-pointer"
                   >
                     <div>
                       <div className="text-xs font-bold text-white font-mono">{bName}</div>
@@ -2364,18 +2359,18 @@ Thumbs.db`}
 
       {/* MODAL 3: Rebase Branch */}
       {showRebaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+          <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="font-display text-base font-bold text-white flex items-center gap-2">
                 <Split className="h-4 w-4 text-amber-400" />
                 Rebase {repo.head.type === 'branch' ? repo.head.target : 'HEAD'} onto Upstream
               </h3>
               <button
                 onClick={() => setShowRebaseModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -2393,7 +2388,7 @@ Thumbs.db`}
                       const res = handleRebase(bName);
                       setTerminalHistory((p) => [...p, { cmd: `git rebase ${bName}`, output: res }]);
                     }}
-                    className="w-full p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-amber-500/50 hover:bg-slate-900 text-left transition-all flex items-center justify-between cursor-pointer"
+                    className="optical-card w-full p-3 rounded-xl text-left flex items-center justify-between cursor-pointer"
                   >
                     <div>
                       <div className="text-xs font-bold text-white font-mono">{bName}</div>

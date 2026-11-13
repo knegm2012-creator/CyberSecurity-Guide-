@@ -22,17 +22,32 @@ import {
   RotateCcw,
   AlertTriangle,
   BookOpen,
-  Search,
   Filter,
   Code2,
   Layers,
   ChevronRight,
   ChevronDown,
-  Info
+  Info,
+  Volume2,
+  VolumeX,
+  ExternalLink,
+  Folder,
+  FolderOpen,
+  File,
+  FileText,
+  FileCode,
+  Columns,
+  Hash,
+  ArrowUp,
+  X,
 } from 'lucide-react';
+import { SoapBubbleButton, SoapBubbleSearch, SoapBubbleToggle } from '@/components/soap-bubble';
 import { BANDIT_LEVELS, BanditLevel } from '@/lib/curriculum-data';
 import { BANDIT_QUICK_COMMANDS, QuickCommand } from '@/lib/bandit-commands-data';
 import { resolveVirtualPath, sanitizeTerminalOutput } from '@/lib/client-security';
+import { terminalAudio } from '@/lib/terminal-audio';
+import { CheatSheetModal } from '@/components/CheatSheetModal';
+import { AsciiTerminalHeader } from '@/components/AsciiTerminalHeader';
 
 interface TerminalSimulatorProps {
   solvedLevels: number[];
@@ -51,6 +66,59 @@ interface FileSystemNode {
   owner?: string;
   children?: Record<string, FileSystemNode>;
 }
+
+export interface OpenedFileState {
+  name: string;
+  path: string;
+  content: string;
+  size: number;
+  permissions?: string;
+  owner?: string;
+  isBinary?: boolean;
+}
+
+// Generate formatted 16-byte hex dump for binary inspection
+const generateHexDump = (content: string, maxBytes = 512): string => {
+  const bytes: number[] = [];
+  for (let i = 0; i < Math.min(content.length, maxBytes); i++) {
+    bytes.push(content.charCodeAt(i) & 0xff);
+  }
+  const lines: string[] = [];
+  for (let i = 0; i < bytes.length; i += 16) {
+    const chunk = bytes.slice(i, i + 16);
+    const offset = i.toString(16).padStart(8, '0');
+    const hex = chunk
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join(' ')
+      .padEnd(48, ' ');
+    const ascii = chunk
+      .map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : '.'))
+      .join('');
+    lines.push(`${offset}: ${hex}  |${ascii}|`);
+  }
+  if (content.length > maxBytes) {
+    lines.push(`... [truncated ${content.length - maxBytes} additional bytes]`);
+  }
+  return lines.join('\n');
+};
+
+// Detect standard 32-character wargame password flags inside file content
+const extractFlagFromContent = (content: string): string | null => {
+  const trimmed = content.trim();
+  if (/^[a-zA-Z0-9]{32}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const lines = trimmed.split('\n');
+  for (const l of lines) {
+    const words = l.trim().split(/\s+/);
+    for (const w of words) {
+      if (/^[a-zA-Z0-9]{32}$/.test(w)) {
+        return w;
+      }
+    }
+  }
+  return null;
+};
 
 export function TerminalSimulator({
   solvedLevels,
@@ -71,6 +139,15 @@ export function TerminalSimulator({
   const [quickRefSearch, setQuickRefSearch] = useState('');
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [expandedCmd, setExpandedCmd] = useState<string | null>(null);
+
+  // --- RETRO AUDIO & CHEAT SHEET STATE ---
+  const [audioEnabled, setAudioEnabled] = useState(() => terminalAudio.getEnabled());
+  const [showCheatSheet, setShowCheatSheet] = useState(false);
+
+  const handleToggleAudio = () => {
+    const next = terminalAudio.toggle();
+    setAudioEnabled(next);
+  };
 
   // --- LIVE SSH STATE ---
   const [isLiveSshMode, setIsLiveSshMode] = useState(false);
@@ -94,10 +171,11 @@ export function TerminalSimulator({
 
   // Local Terminal state
   const [history, setHistory] = useState<Array<{ type: 'input' | 'output'; text: string; isError?: boolean; isSuccess?: boolean }>>([
-    { type: 'output', text: 'CS Odyssey Linux & Bandit Real-Time Terminal Engine [Version 6.2.0-odyssey]' },
-    { type: 'output', text: '🟢 REAL SSH AVAILABLE: You can live SSH directly to OverTheWire Bandit servers!' },
-    { type: 'output', text: 'Commands: Type "ssh bandit0" to connect to Bandit, or use the top "Connect Live" button.' },
-    { type: 'output', text: 'Logged in as: guest@odyssey-box:~$' },
+    { type: 'output', text: 'Cyber Citadel Wargame & Linux Terminal Engine [v6.4.0-hardened]' },
+    { type: 'output', text: '[SANDBOX] 100% Offline Virtual Filesystem loaded. All 20 levels playable locally.' },
+    { type: 'output', text: '[SSH] External gateway bridge available for bandit.labs.overthewire.org:2220.' },
+    { type: 'output', text: 'Commands: Type "help", "cheat", or click "Quick-Ref" to browse commands with audio feedback.' },
+    { type: 'output', text: 'Logged in as: citadel-agent@cyber-box:~$' },
   ]);
   const [inputVal, setInputVal] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
@@ -116,6 +194,14 @@ export function TerminalSimulator({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // --- INTERACTIVE FILE SYSTEM & SPLIT-VIEW READER STATE ---
+  const [showFsView, setShowFsView] = useState(true);
+  const [showAsciiHeader, setShowAsciiHeader] = useState(true);
+  const [openedFile, setOpenedFile] = useState<OpenedFileState | null>(null);
+  const [fileViewMode, setFileViewMode] = useState<'text' | 'hex'>('text');
+  const [showDotfiles, setShowDotfiles] = useState(true);
+  const [fsRevision, setFsRevision] = useState(0);
+
   // Virtual Filesystem representation (for local sandbox fallback)
   const fsRef = useRef<FileSystemNode>({
     type: 'dir',
@@ -127,13 +213,14 @@ export function TerminalSimulator({
             type: 'dir',
             children: {
               readme: { type: 'file', content: '6y2kwnwK6grgvwvpvLaa2T1cpFEKOhNR', size: 33 },
-              'notes.txt': { type: 'file', content: 'Welcome to Linux! Practice cat, ls, touch, grep, and pipes.', size: 62 },
+              'notes.txt': { type: 'file', content: 'Welcome to Cyber Citadel! Practice cat, ls, touch, grep, and pipes.', size: 62 },
             },
           },
           bandit1: {
             type: 'dir',
             children: {
               '-': { type: 'file', content: '263QgYKgLtSmLiBu16ZwHeEpWfh0Zw0A', size: 33 },
+              'hints.txt': { type: 'file', content: 'Leading dashes can be opened with: cat ./- or cat -- -', size: 52 },
             },
           },
           bandit2: {
@@ -161,15 +248,191 @@ export function TerminalSimulator({
                 children: {
                   '-file00': { type: 'file', content: '\x00\x01\x02\x03\x04', size: 50 },
                   '-file01': { type: 'file', content: '\x10\x11\x12\x13', size: 60 },
+                  '-file02': { type: 'file', content: '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR', size: 120 },
+                  '-file03': { type: 'file', content: '\x7fELF\x02\x01\x01\x00\x00\x00', size: 240 },
+                  '-file04': { type: 'file', content: '\x1f\x8b\x08\x00\x00\x00\x00\x00', size: 85 },
                   '-file07': { type: 'file', content: '4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw', size: 33 },
                 },
               },
+            },
+          },
+          bandit5: {
+            type: 'dir',
+            children: {
+              inhere: {
+                type: 'dir',
+                children: {
+                  maybehere01: {
+                    type: 'dir',
+                    children: {
+                      file1: { type: 'file', content: 'Not this one', size: 12 },
+                    },
+                  },
+                  maybehere07: {
+                    type: 'dir',
+                    children: {
+                      '.file2': { type: 'file', content: 'HWasnPhtq9AVKe0dmk45nxy20cvUa6EG\n' + 'padding_data_to_reach_1033_bytes_'.repeat(30), size: 1033 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          bandit6: {
+            type: 'dir',
+            children: {
+              'task.txt': { type: 'file', content: 'Find a file owned by user bandit7, group bandit6, 33 bytes in size.', size: 67 },
+            },
+          },
+          bandit7: {
+            type: 'dir',
+            children: {
+              'data.txt': { type: 'file', content: 'millionth\tz7WtoNQU2XfjmMtWA8u5rN4vzqu4v99S\nsecond\tabc123\nthird\txyz789', size: 75 },
+            },
+          },
+          bandit8: {
+            type: 'dir',
+            children: {
+              'data.txt': { type: 'file', content: 'repeated_line_abc\nrepeated_line_abc\nTESKZC0XvTetysLTcq5ZWVTLL922CAmp\nrepeated_line_xyz\nrepeated_line_xyz', size: 110 },
+            },
+          },
+          bandit9: {
+            type: 'dir',
+            children: {
+              'data.txt': { type: 'file', content: '\x00\x01\x02========== the password is G7w8LIi6J3IVbDTbuHGDesymDaoPtKW8\x00\x03', size: 68 },
+            },
+          },
+        },
+      },
+      etc: {
+        type: 'dir',
+        children: {
+          bandit_pass: {
+            type: 'dir',
+            children: {
+              bandit0: { type: 'file', content: 'bandit0', size: 7 },
+              bandit1: { type: 'file', content: '6y2kwnwK6grgvwvpvLaa2T1cpFEKOhNR', size: 33 },
+              bandit2: { type: 'file', content: '263QgYKgLtSmLiBu16ZwHeEpWfh0Zw0A', size: 33 },
+              bandit3: { type: 'file', content: 'MNk8KAF3cggoVxd6qq5SyMoNYb22jDe2', size: 33 },
+              bandit4: { type: 'file', content: '2WmrDFRmJIq3kgx4tKPrLfdRTbv3ZxAY', size: 33 },
+            },
+          },
+        },
+      },
+      var: {
+        type: 'dir',
+        children: {
+          log: {
+            type: 'dir',
+            children: {
+              syslog: { type: 'file', content: 'Oct 14 06:25:01 systemd[1]: Started Cyber Citadel Linux Sandbox.', size: 64 },
             },
           },
         },
       },
     },
   });
+
+  // Query items in current working directory for the visual explorer
+  const directoryItems = React.useMemo(() => {
+    // Reference fsRevision to ensure re-eval on file mutations
+    void fsRevision;
+    let curr: FileSystemNode | undefined = fsRef.current;
+    for (const segment of currentPath) {
+      if (!curr || curr.type !== 'dir' || !curr.children) return [];
+      curr = curr.children[segment];
+    }
+    if (!curr || curr.type !== 'dir' || !curr.children) return [];
+
+    const names = Object.keys(curr.children);
+    const items = names.map((name) => {
+      const child = curr!.children![name];
+      const isDir = child.type === 'dir';
+      const count = isDir && child.children ? Object.keys(child.children).length : undefined;
+      const isBinary = !isDir && (child.content?.includes('\x00') || /[\x00-\x08\x0E-\x1F]/.test(child.content || ''));
+      return {
+        name,
+        type: child.type,
+        size: child.size || (isDir ? 4096 : (child.content?.length || 0)),
+        permissions: child.permissions || (isDir ? 'drwxr-xr-x' : '-rw-r--r--'),
+        owner: child.owner || currentUser,
+        itemCount: count,
+        content: child.content,
+        isBinary,
+        isHidden: name.startsWith('.'),
+      };
+    });
+
+    items.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return showDotfiles ? items : items.filter((it) => !it.isHidden);
+  }, [currentPath, showDotfiles, fsRevision, currentUser]);
+
+  // Click on a file in the explorer to open in the split-view reader
+  const handleOpenFile = (item: {
+    name: string;
+    content?: string;
+    size: number;
+    permissions?: string;
+    owner?: string;
+    isBinary?: boolean;
+  }) => {
+    terminalAudio.playKeyClick();
+    const fullPath = '/' + currentPath.join('/') + '/' + item.name;
+    setOpenedFile({
+      name: item.name,
+      path: fullPath,
+      content: item.content ?? '',
+      size: item.size,
+      permissions: item.permissions,
+      owner: item.owner,
+      isBinary: item.isBinary,
+    });
+    if (item.isBinary) {
+      setFileViewMode('hex');
+    } else {
+      setFileViewMode('text');
+    }
+  };
+
+  // Click on a folder to cd into it or up
+  const handleNavigateDir = (dirName: string) => {
+    terminalAudio.playKeyClick();
+    if (dirName === '..') {
+      if (currentPath.length > 0) {
+        setCurrentPath((prev) => prev.slice(0, -1));
+      }
+    } else {
+      setCurrentPath((prev) => [...prev, dirName]);
+    }
+  };
+
+  // Breadcrumb segment click to jump to parent directory
+  const handleBreadcrumbClick = (index: number) => {
+    terminalAudio.playKeyClick();
+    if (index === -1) {
+      setCurrentPath([]);
+    } else {
+      setCurrentPath((prev) => prev.slice(0, index + 1));
+    }
+  };
+
+  // Execute cat command from file reader in the active terminal
+  const handleRunCatInTerminal = (fileName: string) => {
+    let formattedCmd = `cat ${fileName}`;
+    if (fileName.includes(' ')) {
+      formattedCmd = `cat "${fileName}"`;
+    } else if (fileName.startsWith('-')) {
+      formattedCmd = `cat ./${fileName}`;
+    } else if (fileName.startsWith('.')) {
+      formattedCmd = `cat ./${fileName}`;
+    }
+    terminalAudio.playReturnClick();
+    executeCommand(formattedCmd);
+  };
 
   const level = BANDIT_LEVELS[selectedLevelIndex] || BANDIT_LEVELS[0];
 
@@ -279,6 +542,7 @@ export function TerminalSimulator({
       const data = await res.json();
 
       if (!res.ok || data.error) {
+        terminalAudio.playErrorBeep();
         setHistory((prev) => [
           ...prev,
           {
@@ -292,6 +556,7 @@ export function TerminalSimulator({
       }
 
       // Successful connection!
+      terminalAudio.playConnectChime();
       setIsLiveSshMode(true);
       setSshUser(targetUser);
       setSshPassword(pwd);
@@ -358,6 +623,7 @@ export function TerminalSimulator({
       const data = await res.json();
 
       if (!res.ok || data.error) {
+        terminalAudio.playErrorBeep();
         setHistory((prev) => [
           ...prev,
           {
@@ -386,6 +652,7 @@ export function TerminalSimulator({
 
       // Check if any Bandit passwords / flags were discovered!
       if (data.detectedFlags && data.detectedFlags.length > 0) {
+        terminalAudio.playSuccessBeep();
         const foundFlags = data.detectedFlags as string[];
         setDetectedFlags((prev) => Array.from(new Set([...prev, ...foundFlags])));
 
@@ -401,12 +668,13 @@ export function TerminalSimulator({
           ...prev,
           {
             type: 'output',
-            text: `🎉 [FLAG DETECTED] OverTheWire Bandit Password Found: ${mainFlag}\nThis is the password for bandit${nextLvlNum}! Save it to unlock the next level.`,
+            text: `🎉 [FLAG DETECTED] Password Found: ${mainFlag}\nThis is the password for Level ${nextLvlNum}! Save it to unlock the next level.`,
             isSuccess: true,
           },
         ]);
       }
     } catch (err: any) {
+      terminalAudio.playErrorBeep();
       setHistory((prev) => [
         ...prev,
         {
@@ -710,6 +978,15 @@ export function TerminalSimulator({
               setHistory((prev) => [...prev, { type: 'output', text: `cat: ${target}: Is a directory` }]);
             } else {
               setHistory((prev) => [...prev, { type: 'output', text: sanitizeTerminalOutput(file.content || '') }]);
+              setOpenedFile({
+                name: fileName,
+                path: '/' + targetSegments.join('/'),
+                content: file.content || '',
+                size: file.size || (file.content || '').length,
+                permissions: file.permissions || '-rw-r--r--',
+                owner: file.owner || currentUser,
+                isBinary: file.content?.includes('\x00') || /[\x00-\x08\x0E-\x1F]/.test(file.content || ''),
+              });
             }
           } else {
             setHistory((prev) => [
@@ -722,6 +999,107 @@ export function TerminalSimulator({
             ...prev,
             { type: 'output', text: `cat: ${pathErr.message}`, isError: true },
           ]);
+        }
+        break;
+      }
+
+      case 'touch': {
+        if (args.length === 0) {
+          setHistory((prev) => [...prev, { type: 'output', text: 'touch: missing file operand' }]);
+          break;
+        }
+        const target = args[0];
+        try {
+          const targetSegments = resolveVirtualPath(currentPath, target);
+          const parentSegments = targetSegments.slice(0, -1);
+          const fileName = targetSegments[targetSegments.length - 1];
+          const parentNode = getNodeAtPath(parentSegments);
+          if (parentNode && parentNode.type === 'dir') {
+            if (!parentNode.children) parentNode.children = {};
+            if (!parentNode.children[fileName]) {
+              parentNode.children[fileName] = {
+                type: 'file',
+                content: '',
+                size: 0,
+                permissions: '-rw-r--r--',
+                owner: currentUser,
+              };
+            }
+            setFsRevision((r) => r + 1);
+          } else {
+            setHistory((prev) => [...prev, { type: 'output', text: `touch: cannot touch '${target}': No such file or directory`, isError: true }]);
+          }
+        } catch (err: any) {
+          setHistory((prev) => [...prev, { type: 'output', text: `touch: ${err.message}`, isError: true }]);
+        }
+        break;
+      }
+
+      case 'mkdir': {
+        if (args.length === 0) {
+          setHistory((prev) => [...prev, { type: 'output', text: 'mkdir: missing operand' }]);
+          break;
+        }
+        const target = args[0];
+        try {
+          const targetSegments = resolveVirtualPath(currentPath, target);
+          const parentSegments = targetSegments.slice(0, -1);
+          const dirName = targetSegments[targetSegments.length - 1];
+          const parentNode = getNodeAtPath(parentSegments);
+          if (parentNode && parentNode.type === 'dir') {
+            if (!parentNode.children) parentNode.children = {};
+            if (parentNode.children[dirName]) {
+              setHistory((prev) => [...prev, { type: 'output', text: `mkdir: cannot create directory '${target}': File exists`, isError: true }]);
+            } else {
+              parentNode.children[dirName] = {
+                type: 'dir',
+                children: {},
+                permissions: 'drwxr-xr-x',
+                owner: currentUser,
+              };
+              setFsRevision((r) => r + 1);
+            }
+          } else {
+            setHistory((prev) => [...prev, { type: 'output', text: `mkdir: cannot create directory '${target}': No such file or directory`, isError: true }]);
+          }
+        } catch (err: any) {
+          setHistory((prev) => [...prev, { type: 'output', text: `mkdir: ${err.message}`, isError: true }]);
+        }
+        break;
+      }
+
+      case 'rm': {
+        if (args.length === 0) {
+          setHistory((prev) => [...prev, { type: 'output', text: 'rm: missing operand' }]);
+          break;
+        }
+        const isRecursive = args.includes('-r') || args.includes('-rf') || args.includes('-R');
+        const target = args.find((a) => !a.startsWith('-')) || '';
+        if (!target) {
+          setHistory((prev) => [...prev, { type: 'output', text: 'rm: missing operand' }]);
+          break;
+        }
+        try {
+          const targetSegments = resolveVirtualPath(currentPath, target);
+          const parentSegments = targetSegments.slice(0, -1);
+          const itemName = targetSegments[targetSegments.length - 1];
+          const parentNode = getNodeAtPath(parentSegments);
+          if (parentNode && parentNode.type === 'dir' && parentNode.children && parentNode.children[itemName]) {
+            const item = parentNode.children[itemName];
+            if (item.type === 'dir' && !isRecursive) {
+              setHistory((prev) => [...prev, { type: 'output', text: `rm: cannot remove '${target}': Is a directory`, isError: true }]);
+            } else {
+              delete parentNode.children[itemName];
+              if (openedFile && openedFile.name === itemName) {
+                setOpenedFile(null);
+              }
+              setFsRevision((r) => r + 1);
+            }
+          } else {
+            setHistory((prev) => [...prev, { type: 'output', text: `rm: cannot remove '${target}': No such file or directory`, isError: true }]);
+          }
+        } catch (err: any) {
+          setHistory((prev) => [...prev, { type: 'output', text: `rm: ${err.message}`, isError: true }]);
         }
         break;
       }
@@ -812,6 +1190,7 @@ export function TerminalSimulator({
             size: contentToWrite.length,
           };
         }
+        setFsRevision((r) => r + 1);
         setHistory((prev) => [...prev, { type: 'output', text: '' }]);
       } else {
         setHistory((prev) => [...prev, { type: 'output', text: `bash: ${targetFile}: No such directory`, isError: true }]);
@@ -843,6 +1222,7 @@ export function TerminalSimulator({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      terminalAudio.playReturnClick();
       executeCommand(inputVal);
       setInputVal('');
       setHistoryIdx(-1);
@@ -851,6 +1231,7 @@ export function TerminalSimulator({
       // Don't browse history if entering interactive password or if history is empty
       if (awaitingPasswordFor || cmdHistory.length === 0) return;
       e.preventDefault();
+      terminalAudio.playKeyClick();
 
       let targetIdx: number;
       if (historyIdx === -1) {
@@ -878,6 +1259,7 @@ export function TerminalSimulator({
       // Don't browse history if entering interactive password or not in history browsing mode
       if (awaitingPasswordFor || historyIdx === -1) return;
       e.preventDefault();
+      terminalAudio.playKeyClick();
 
       if (historyIdx < cmdHistory.length - 1) {
         const targetIdx = historyIdx + 1;
@@ -903,6 +1285,7 @@ export function TerminalSimulator({
       // Escape key cancels history browsing and restores original draft
       if (historyIdx !== -1) {
         e.preventDefault();
+        terminalAudio.playKeyClick();
         setHistoryIdx(-1);
         setInputVal(tempDraft);
       }
@@ -913,95 +1296,125 @@ export function TerminalSimulator({
   const savedPasswordForSelected = banditPasswords[level.level] || (level.level === 0 ? 'bandit0' : '');
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
       {/* Top Banner: Real Live SSH Status & Fast Switch */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="optical-panel rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-3.5">
           <div
-            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border ${
+            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border backdrop-blur-sm ${
               isLiveSshMode
-                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-950/50'
-                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                ? 'bg-emerald-500/15 border-emerald-400/35 text-emerald-300'
+                : 'bg-cyan-500/12 border-cyan-400/30 text-cyan-300'
             }`}
           >
-            {isLiveSshMode ? <Wifi className="h-5 w-5 animate-pulse" /> : <Terminal className="h-5 w-5" />}
+            {isLiveSshMode ? <Wifi className="h-5 w-5" /> : <Terminal className="h-5 w-5" />}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                {isLiveSshMode ? 'LIVE OVERTHEWIRE SSH SESSION' : 'TERMINAL ENGINE: DUAL REAL & SANDBOX MODE'}
+              <span className="font-display text-sm font-semibold text-white tracking-tight">
+                {isLiveSshMode ? 'Live Wargame SSH Session' : 'Cyber Citadel Linux Shell'}
               </span>
-              <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                  isLiveSshMode
-                    ? 'bg-emerald-950 border border-emerald-700 text-emerald-300'
-                    : 'bg-slate-800 border border-slate-700 text-slate-300'
-                }`}
-              >
-                {isLiveSshMode ? `🟢 Connected to ${sshHost}:${sshPort}` : '💻 Offline Sandbox Ready'}
+              <span className="text-[11px] font-mono text-slate-400">
+                · {isLiveSshMode ? `Connected · ${sshHost}:${sshPort}` : 'Offline Citadel Sandbox'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               {isLiveSshMode
-                ? `Logged in as ${sshUser}. Commands execute in real-time on OverTheWire Bandit servers.`
-                : 'Connect to real OverTheWire servers via backend SSH or practice in the local sandbox.'}
+                ? `Logged in as ${sshUser}. Commands execute in real time over the hardened SSH bridge.`
+                : 'Practice in the self-contained virtual Citadel filesystem or connect live via the educational SSH bridge.'}
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <div
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#040710]/70 px-2.5 py-1.5"
+            title={audioEnabled ? 'Retro Audio Feedback: Enabled' : 'Retro Audio Feedback: Muted'}
+          >
+            {audioEnabled ? (
+              <Volume2 className="h-3.5 w-3.5 text-amber-400" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5 text-slate-500" />
+            )}
+            <span className="text-[11px] font-mono text-slate-300">Audio</span>
+            <SoapBubbleToggle
+              checked={audioEnabled}
+              onCheckedChange={() => handleToggleAudio()}
+              aria-label="Toggle terminal retro audio feedback"
+              scale={0.55}
+              color="#f59e0b"
+            />
+          </div>
+
+          <button
+            onClick={() => setShowCheatSheet(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.08] hover:border-indigo-400/40 text-xs font-mono font-semibold text-indigo-300 transition-colors cursor-pointer"
+            title="Open Interactive Master Cheat Sheet"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+            <span>Cheat Sheet</span>
+          </button>
+
           {isLiveSshMode ? (
-            <button
+            <SoapBubbleButton
               onClick={disconnectLiveSsh}
-              className="px-3.5 py-2 rounded-xl border border-rose-800/80 bg-rose-950/40 text-xs font-mono font-bold text-rose-300 hover:bg-rose-900/50 transition-all cursor-pointer"
+              tint="rgb(244 63 94)"
+              opacity={0.9}
+              style={{ fontSize: 12 }}
+              className="!min-h-[34px] !px-4 font-mono font-semibold text-white"
             >
               Disconnect SSH
-            </button>
+            </SoapBubbleButton>
           ) : (
-            <button
+            <SoapBubbleButton
               onClick={() => connectToLiveBandit(selectedLevelIndex, levelPasswordInput)}
               disabled={isConnectingSsh}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-mono font-bold text-white shadow-lg shadow-emerald-950/50 transition-all active:scale-95 cursor-pointer"
+              tint="rgb(16 185 129)"
+              opacity={0.92}
+              style={{ fontSize: 12 }}
+              className="!min-h-[34px] !px-4 font-mono font-semibold text-white"
             >
-              <Wifi className="h-3.5 w-3.5" />
-              <span>{isConnectingSsh ? 'Connecting to Bandit...' : `Live SSH to Level ${selectedLevelIndex}`}</span>
-            </button>
+              <span className="inline-flex items-center gap-1.5">
+                <Wifi className="h-3.5 w-3.5" />
+                <span>{isConnectingSsh ? 'Connecting...' : `Live SSH: L${selectedLevelIndex}`}</span>
+              </span>
+            </SoapBubbleButton>
           )}
 
           <button
-            onClick={() => onOpenAiMentor(`ELI9: Explain the goal of Bandit Level ${level.level} and what command I should use on the remote server.`)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-900/50 transition-all cursor-pointer"
+            onClick={() => onOpenAiMentor(`ELI9: Explain the goal of Citadel Level ${level.level} and what command I should use on the remote server.`)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-xs font-mono font-semibold text-cyan-300 hover:bg-cyan-500/20 transition-colors cursor-pointer"
           >
-            <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-            <span>Ask AI Coach</span>
+            <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
+            <span>AI Coach</span>
           </button>
 
           <button
             onClick={() => setShowQuickRef(!showQuickRef)}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono font-semibold transition-colors cursor-pointer ${
               showQuickRef
-                ? 'border-indigo-500/80 bg-indigo-950/60 text-indigo-300 shadow-md shadow-indigo-950/40'
-                : 'border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                ? 'border-indigo-400/45 bg-indigo-500/15 text-indigo-200'
+                : 'border-white/[0.08] bg-[#040710]/70 text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
             }`}
             title="Toggle Command Quick-Reference side panel"
           >
             <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
-            <span>{showQuickRef ? 'Hide Quick-Ref' : 'Quick Reference'}</span>
+            <span>{showQuickRef ? 'Hide Ref' : 'Quick Ref'}</span>
           </button>
         </div>
       </div>
 
       {/* Flag / Password Unlocked Banner */}
       {unlockedNotice && (
-        <div className="rounded-xl border border-emerald-500/60 bg-emerald-950/40 p-4 text-xs font-mono text-emerald-300 flex items-center justify-between gap-3 animate-fade-in shadow-xl shadow-emerald-950/40">
-          <div className="flex items-center gap-2">
+        <div className="optical-panel rounded-2xl border-emerald-400/40 bg-emerald-500/10 p-4 text-xs font-mono text-emerald-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
             <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-            <span className="font-bold text-white">{unlockedNotice}</span>
+            <span className="font-semibold text-white">{unlockedNotice}</span>
           </div>
           <button
             onClick={() => setUnlockedNotice(null)}
-            className="text-slate-400 hover:text-white"
+            className="text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             Dismiss
           </button>
@@ -1012,16 +1425,16 @@ export function TerminalSimulator({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Pane: Bandit Level Navigator */}
         <div className="lg:w-80 shrink-0 space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div className="optical-panel rounded-2xl p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono text-cyan-400 font-semibold">OVERTHEWIRE BANDIT</span>
-              <span className="text-xs font-mono text-emerald-400 font-bold">
+              <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider">OverTheWire Bandit</span>
+              <span className="text-xs font-mono text-emerald-400 font-semibold tabular-nums">
                 {solvedLevels.length} / {BANDIT_LEVELS.length} Solved
               </span>
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">Linux Wargame Levels</h3>
+            <h3 className="font-display text-sm font-semibold text-white mb-1">Linux Wargame Levels</h3>
             <p className="text-xs text-slate-400 leading-relaxed mb-4">
-              Real servers hosted by OverTheWire. Connect to retrieve each level&apos;s password!
+              Real servers hosted by OverTheWire. Connect to retrieve each level&apos;s password.
             </p>
 
             {/* Level Quick Grid */}
@@ -1035,13 +1448,19 @@ export function TerminalSimulator({
                     onClick={() => {
                       setSelectedLevelIndex(lvl.level);
                       setShowHint(false);
+                      terminalAudio.playKeyClick();
+                      if (!isLiveSshMode) {
+                        setCurrentPath(['home', `bandit${lvl.level}`]);
+                        setCurrentUser(`bandit${lvl.level}`);
+                        setOpenedFile(null);
+                      }
                     }}
-                    className={`py-2 px-1 text-xs font-mono rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${
+                    className={`py-2 px-1 text-xs font-mono rounded-lg border transition-colors flex items-center justify-center gap-1 cursor-pointer tabular-nums ${
                       isSelected
-                        ? 'border-cyan-500 bg-cyan-950/60 text-cyan-300 font-bold shadow-md shadow-cyan-950'
+                        ? 'border-cyan-400/50 bg-cyan-500/18 text-cyan-200 font-semibold'
                         : isSolved
-                        ? 'border-emerald-800/60 bg-emerald-950/30 text-emerald-400 font-semibold'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                        ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300 font-medium'
+                        : 'border-white/[0.07] bg-[#040710]/70 text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
                     }`}
                   >
                     <span>L{lvl.level}</span>
@@ -1053,35 +1472,35 @@ export function TerminalSimulator({
           </div>
 
           {/* Level Details Card */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-white">{level.title}</h4>
+          <div className="optical-panel rounded-2xl p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-display text-sm font-semibold text-white">{level.title}</h4>
               <button
                 onClick={() => onToggleLevel(level.level)}
-                className={`flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded cursor-pointer ${
+                className={`flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-lg border transition-colors cursor-pointer shrink-0 ${
                   isLevelSolved
-                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
+                    : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:bg-white/[0.08]'
                 }`}
               >
                 {isLevelSolved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
-                <span>{isLevelSolved ? 'Solved!' : 'Mark Solved'}</span>
+                <span>{isLevelSolved ? 'Solved' : 'Mark Solved'}</span>
               </button>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">{level.goal}</p>
 
             {/* Saved Password for this level */}
-            <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-950 space-y-1.5 font-mono text-xs">
+            <div className="optical-inset p-3 rounded-xl space-y-1.5 font-mono text-xs">
               <div className="flex items-center justify-between text-slate-400 text-[11px]">
                 <span className="flex items-center gap-1">
                   <Key className="h-3 w-3 text-amber-400" />
-                  <span>Bandit Level {level.level} Password:</span>
+                  <span>Bandit Level {level.level} Password</span>
                 </span>
                 {savedPasswordForSelected && (
                   <button
                     onClick={() => copyToClipboard(savedPasswordForSelected)}
-                    className="text-slate-400 hover:text-white flex items-center gap-1"
+                    className="text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
                   >
                     {copiedFlag === savedPasswordForSelected ? (
                       <Check className="h-3 w-3 text-emerald-400" />
@@ -1102,84 +1521,133 @@ export function TerminalSimulator({
                   }
                 }}
                 placeholder={level.level === 0 ? 'bandit0' : 'Paste retrieved password...'}
-                className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-amber-300 font-mono focus:outline-none focus:border-cyan-500"
+                className="w-full bg-[#040710]/90 border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono focus:outline-none focus:border-cyan-400/50"
               />
             </div>
 
             {/* Commands to research */}
-            <div className="space-y-1 font-mono text-[11px]">
+            <div className="space-y-1.5 font-mono text-[11px]">
               <div className="text-slate-400">Commands to research:</div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {level.usefulCommands.map((cmd) => (
-                  <span key={cmd} className="bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-cyan-300">
+                  <code key={cmd} className="bg-[#040710]/80 border border-white/[0.08] rounded-md px-2 py-0.5 text-cyan-300">
                     {cmd}
-                  </span>
+                  </code>
                 ))}
               </div>
             </div>
 
             {/* Hint Revealer */}
-            <div className="pt-2 border-t border-slate-800/80">
+            <div className="pt-2.5 border-t border-white/[0.08]">
               <button
                 onClick={() => setShowHint(!showHint)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded bg-slate-800/70 text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-xl border border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.07] transition-colors cursor-pointer"
               >
                 {showHint ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-amber-400" />}
                 <span>{showHint ? 'Hide Hint' : 'Reveal Helpful Hint'}</span>
               </button>
 
               {showHint && (
-                <div className="mt-2.5 rounded-lg bg-amber-950/20 border border-amber-900/40 p-2.5 text-xs text-amber-300/90 leading-relaxed font-sans">
+                <div className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-400/25 p-3 text-xs text-amber-200 leading-relaxed font-sans">
                   {level.hint}
                 </div>
               )}
             </div>
 
             {/* Live SSH Connect Button */}
-            <button
+            <SoapBubbleButton
               onClick={() => connectToLiveBandit(level.level, levelPasswordInput)}
               disabled={isConnectingSsh}
-              className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-mono font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white transition-all shadow-md shadow-emerald-950/50 cursor-pointer"
+              tint="rgb(16 185 129)"
+              opacity={0.92}
+              style={{ fontSize: 12 }}
+              className="w-full !min-h-[38px] font-mono font-semibold text-white"
             >
-              <Wifi className="h-3.5 w-3.5" />
-              <span>{isConnectingSsh ? 'Connecting...' : `Connect Live to Level ${level.level}`}</span>
-            </button>
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Wifi className="h-3.5 w-3.5" />
+                <span>{isConnectingSsh ? 'Connecting...' : `Connect Live to Level ${level.level}`}</span>
+              </span>
+            </SoapBubbleButton>
           </div>
         </div>
 
         {/* Right Pane: Interactive Terminal Window */}
-        <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl flex flex-col h-[650px] overflow-hidden font-mono">
+        <div className="flex-1 optical-panel rounded-2xl flex flex-col h-[650px] overflow-hidden font-mono">
           {/* Terminal Window Chrome / Header */}
-          <div className="flex items-center justify-between border-b border-slate-800/80 bg-slate-900/90 px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-rose-500/80" />
-              <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-              <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-              <span className="ml-2 text-xs font-mono text-slate-300 flex items-center gap-1.5">
+          <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#040710]/85 px-4 py-2.5 gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Terminal className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+              <span className="text-xs font-mono text-slate-300 flex items-center gap-1.5 truncate">
                 {isLiveSshMode ? (
                   <>
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="text-emerald-400 font-bold">{sshUser}@bandit.labs.overthewire.org</span>
+                    <Wifi className="h-3 w-3 text-emerald-400 shrink-0" />
+                    <span className="text-emerald-400 font-semibold">{sshUser}@bandit.labs.overthewire.org</span>
                     <span className="text-slate-500">:</span>
-                    <span className="text-cyan-300">{sshCwd}</span>
+                    <span className="text-cyan-300 truncate">{sshCwd}</span>
                   </>
                 ) : (
-                  <span>bash — guest@odyssey-box: ~ (Sandbox)</span>
+                  <span className="truncate">bash — guest@odyssey-box: ~ (Sandbox)</span>
                 )}
               </span>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
               {isExecutingRemote && (
-                <span className="text-[11px] font-mono text-cyan-400 animate-pulse flex items-center gap-1">
+                <span className="text-[11px] font-mono text-cyan-400 flex items-center gap-1 mr-1">
                   <RotateCcw className="h-3 w-3 animate-spin" />
-                  <span>Executing on Bandit...</span>
+                  <span>Executing...</span>
                 </span>
               )}
+              {openedFile && (
+                <button
+                  onClick={() => {
+                    terminalAudio.playKeyClick();
+                    setOpenedFile(null);
+                  }}
+                  className="flex items-center gap-1 transition-colors cursor-pointer px-2 py-1 rounded-lg text-[11px] font-mono bg-cyan-500/15 text-cyan-200 border border-cyan-400/35"
+                  title="Close split-view reader"
+                >
+                  <Columns className="h-3 w-3 text-cyan-400" />
+                  <span className="max-w-[80px] sm:max-w-[120px] truncate">{openedFile.name}</span>
+                  <span className="text-slate-400 hover:text-white ml-0.5">✕</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  terminalAudio.playKeyClick();
+                  setShowFsView(!showFsView);
+                }}
+                className={`flex items-center gap-1 transition-colors cursor-pointer px-2 py-1 rounded-lg text-[11px] font-mono border ${
+                  showFsView
+                    ? 'bg-cyan-500/15 text-cyan-200 border-cyan-400/35 font-semibold'
+                    : 'border-transparent hover:bg-white/[0.05] hover:text-slate-200'
+                }`}
+                title="Toggle Interactive Working Directory Explorer"
+              >
+                <Folder className="h-3 w-3 text-cyan-400" />
+                <span>Files</span>
+              </button>
+              <button
+                onClick={() => {
+                  terminalAudio.playKeyClick();
+                  setShowAsciiHeader(!showAsciiHeader);
+                }}
+                className={`flex items-center gap-1 transition-colors cursor-pointer px-2 py-1 rounded-lg text-[11px] font-mono border ${
+                  showAsciiHeader
+                    ? 'bg-purple-500/15 text-purple-200 border-purple-400/35 font-semibold'
+                    : 'border-transparent hover:bg-white/[0.05] hover:text-slate-200'
+                }`}
+                title="Toggle Customizable ASCII Art Header"
+              >
+                <Sparkles className="h-3 w-3 text-purple-400" />
+                <span>ASCII</span>
+              </button>
               <button
                 onClick={() => setShowQuickRef(!showQuickRef)}
-                className={`flex items-center gap-1 transition-colors cursor-pointer px-2 py-0.5 rounded text-[11px] font-mono ${
-                  showQuickRef ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60' : 'hover:text-slate-200'
+                className={`flex items-center gap-1 transition-colors cursor-pointer px-2 py-1 rounded-lg text-[11px] font-mono border ${
+                  showQuickRef
+                    ? 'bg-indigo-500/15 text-indigo-200 border-indigo-400/35'
+                    : 'border-transparent hover:bg-white/[0.05] hover:text-slate-200'
                 }`}
                 title="Toggle Command Quick-Reference panel"
               >
@@ -1188,21 +1656,21 @@ export function TerminalSimulator({
               </button>
               <button
                 onClick={() => setHistory([])}
-                className="hover:text-slate-200 transition-colors cursor-pointer"
+                className="px-2 py-1 rounded-lg hover:bg-white/[0.05] hover:text-slate-200 transition-colors cursor-pointer text-[11px]"
               >
                 Clear
               </button>
               {isLiveSshMode ? (
                 <button
                   onClick={disconnectLiveSsh}
-                  className="text-rose-400 hover:text-rose-300 cursor-pointer font-bold"
+                  className="px-2 py-1 rounded-lg text-rose-400 hover:text-rose-300 cursor-pointer font-semibold text-[11px]"
                 >
                   Exit SSH
                 </button>
               ) : (
                 <button
                   onClick={() => connectToLiveBandit(selectedLevelIndex)}
-                  className="text-emerald-400 hover:text-emerald-300 cursor-pointer font-bold"
+                  className="px-2 py-1 rounded-lg text-emerald-400 hover:text-emerald-300 cursor-pointer font-semibold text-[11px]"
                 >
                   Live SSH
                 </button>
@@ -1210,105 +1678,432 @@ export function TerminalSimulator({
             </div>
           </div>
 
+          {/* Interactive Working Directory Explorer Bar */}
+          {showFsView && (
+            <div className="border-b border-white/[0.08] bg-[#040710]/75 px-3.5 py-2 flex flex-col gap-1.5 transition-all">
+              {/* Path Breadcrumbs & Controls */}
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 text-[11px]">
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+                    <FolderOpen className="h-3.5 w-3.5 text-cyan-400" />
+                    <span className="hidden sm:inline">DIR:</span>
+                  </span>
+
+                  {/* Root button */}
+                  <button
+                    onClick={() => handleBreadcrumbClick(-1)}
+                    className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                      currentPath.length === 0
+                        ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/35'
+                        : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                    title="Root directory (/)"
+                  >
+                    /
+                  </button>
+
+                  {/* Path segments */}
+                  {currentPath.map((seg, idx) => {
+                    const isLast = idx === currentPath.length - 1;
+                    return (
+                      <React.Fragment key={idx}>
+                        <span className="text-slate-600">/</span>
+                        <button
+                          onClick={() => handleBreadcrumbClick(idx)}
+                          className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer whitespace-nowrap ${
+                            isLast
+                              ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/35'
+                              : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
+                          }`}
+                          title={`Navigate to /${currentPath.slice(0, idx + 1).join('/')}`}
+                        >
+                          {seg}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Up button if not at root */}
+                  {currentPath.length > 0 && (
+                    <button
+                      onClick={() => handleNavigateDir('..')}
+                      className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center gap-0.5 cursor-pointer"
+                      title="Parent Directory (cd ..)"
+                    >
+                      <ArrowUp className="h-2.5 w-2.5" />
+                      <span>..</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Right controls: Item count & Dotfiles toggle */}
+                <div className="flex items-center gap-2 shrink-0 text-[11px] text-slate-400">
+                  <span className="text-slate-500 font-mono text-[10px] tabular-nums">
+                    {directoryItems.length} {directoryItems.length === 1 ? 'item' : 'items'}
+                  </span>
+
+                  <button
+                    onClick={() => setShowDotfiles(!showDotfiles)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors flex items-center gap-1 cursor-pointer ${
+                      showDotfiles
+                        ? 'bg-indigo-500/15 text-indigo-300 border-indigo-400/35'
+                        : 'bg-white/[0.03] text-slate-500 border-white/[0.08] hover:text-slate-300'
+                    }`}
+                    title={showDotfiles ? 'Hide hidden dotfiles (.hidden)' : 'Show hidden dotfiles (.hidden)'}
+                  >
+                    {showDotfiles ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5" />}
+                    <span>{showDotfiles ? 'Dotfiles' : 'No Dot'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Directory Items Strip */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar">
+                {directoryItems.length === 0 ? (
+                  <div className="text-[11px] text-slate-500 italic py-0.5">
+                    (Empty directory — create files via &quot;touch file.txt&quot; or &quot;echo ... &gt; file&quot;)
+                  </div>
+                ) : (
+                  directoryItems.map((item) => {
+                    if (item.type === 'dir') {
+                      return (
+                        <button
+                          key={item.name}
+                          onClick={() => handleNavigateDir(item.name)}
+                          className="group shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/18 text-amber-200 text-[11px] font-mono transition-all cursor-pointer active:scale-95"
+                          title={`Enter directory /${item.name} (cd ${item.name})`}
+                        >
+                          <Folder className="h-3 w-3 text-amber-400 group-hover:scale-110 transition-transform" />
+                          <span className="font-semibold">{item.name}/</span>
+                          {item.itemCount !== undefined && (
+                            <span className="text-[10px] text-amber-300/80 tabular-nums">
+                              ({item.itemCount})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }
+
+                    const isOpened = openedFile?.name === item.name;
+                    const isDashed = item.name.startsWith('-');
+                    const isHidden = item.name.startsWith('.');
+
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => handleOpenFile(item)}
+                        className={`group shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-all cursor-pointer active:scale-95 ${
+                          isOpened
+                            ? 'border-cyan-400/60 bg-cyan-500/18 text-cyan-200 font-semibold'
+                            : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] text-slate-300 hover:text-white'
+                        }`}
+                        title={`Click to open "${item.name}" in split-view reader`}
+                      >
+                        <FileText
+                          className={`h-3 w-3 shrink-0 ${
+                            isOpened
+                              ? 'text-cyan-400'
+                              : isHidden
+                              ? 'text-purple-400'
+                              : isDashed
+                              ? 'text-rose-400'
+                              : 'text-slate-400'
+                          } group-hover:scale-110 transition-transform`}
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <span className={isOpened ? 'font-semibold text-white' : ''}>
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono tabular-nums">
+                            {item.size}B
+                          </span>
+                          {item.isBinary && (
+                            <span className="text-[9px] text-rose-300 font-mono">
+                              · bin
+                            </span>
+                          )}
+                          {isHidden && (
+                            <span className="text-[9px] text-purple-300 font-mono">
+                              · dot
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Detected Flags Quick-Action Banner */}
           {detectedFlags.length > 0 && (
-            <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex items-center justify-between text-xs font-mono text-slate-300">
+            <div className="bg-emerald-500/10 border-b border-emerald-400/25 px-4 py-2 flex items-center justify-between text-xs font-mono text-slate-200">
               <div className="flex items-center gap-2">
-                <span className="text-amber-400 font-bold flex items-center gap-1">
+                <span className="text-amber-300 font-semibold flex items-center gap-1">
                   <Key className="h-3.5 w-3.5" />
                   <span>Found Password:</span>
                 </span>
-                <span className="text-white font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 select-all">
+                <span className="text-white font-mono bg-[#040710]/90 px-2 py-0.5 rounded border border-white/[0.1] select-all">
                   {detectedFlags[detectedFlags.length - 1]}
                 </span>
               </div>
               <button
                 onClick={() => handleSaveAndUnlockNext(detectedFlags[detectedFlags.length - 1])}
-                className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold cursor-pointer transition-colors"
               >
                 Save &amp; Unlock Next Level →
               </button>
             </div>
           )}
 
-          {/* Terminal Output Area */}
-          <div
-            onClick={() => inputRef.current?.focus()}
-            className="flex-1 overflow-y-auto p-4 space-y-1.5 text-xs cursor-text font-mono"
-          >
-            {history.map((line, i) => (
-              <div
-                key={i}
-                className={`whitespace-pre-wrap leading-relaxed ${
-                  line.type === 'input'
-                    ? 'text-cyan-300 font-bold'
-                    : line.isError
-                    ? 'text-rose-400'
-                    : line.isSuccess
-                    ? 'text-emerald-300 font-semibold'
-                    : 'text-slate-300'
-                }`}
-              >
-                {line.text}
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Terminal Input Line */}
-          <div className="border-t border-slate-800/80 bg-slate-900/60 px-4 py-2.5 flex items-center gap-2 text-xs">
-            <span
-              className={`font-bold shrink-0 font-mono ${
-                isLiveSshMode ? 'text-emerald-400' : 'text-cyan-400'
+          {/* Main Terminal + Split-View Reader Body */}
+          <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden bg-[#040710]/85">
+            {/* Left Console Pane (Terminal Output & Prompt) */}
+            <div
+              className={`flex flex-col min-h-0 ${
+                openedFile ? 'flex-1 md:w-1/2' : 'flex-1 w-full'
               }`}
             >
-              {awaitingPasswordFor
-                ? 'Password: '
-                : isLiveSshMode
-                ? `${sshUser}@bandit:${sshCwd}$`
-                : `${currentUser}@odyssey:~$`}
-            </span>
-            <input
-              ref={inputRef}
-              type={awaitingPasswordFor ? 'password' : 'text'}
-              autoFocus
-              value={inputVal}
-              disabled={isExecutingRemote || isConnectingSsh}
-              onChange={(e) => setInputVal(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                awaitingPasswordFor
-                  ? 'Enter password...'
-                  : isLiveSshMode
-                  ? 'Run commands directly on Bandit (e.g. ls -la, cat readme, file ./*)...'
-                  : 'type commands (e.g. ssh bandit0, ls, cat readme, help)...'
-              }
-              className="flex-1 bg-transparent text-slate-100 focus:outline-none font-mono placeholder:text-slate-600"
-            />
-            {historyIdx !== -1 && (
-              <span className="text-[10px] text-cyan-400/90 bg-cyan-950/80 border border-cyan-800/80 rounded px-1.5 py-0.5 select-none shrink-0 font-mono flex items-center gap-1 shadow-sm">
-                <span>↑↓ {historyIdx + 1}/{cmdHistory.length}</span>
-                <span className="text-slate-500 text-[9px] hidden sm:inline">(Esc to cancel)</span>
-              </span>
+              {/* Customizable Dynamic ASCII Art Header */}
+              {showAsciiHeader && (
+                <AsciiTerminalHeader
+                  currentPath={currentPath}
+                  selectedLevelIndex={selectedLevelIndex}
+                  currentUser={currentUser}
+                  isLiveSshMode={isLiveSshMode}
+                  sshUser={sshUser}
+                  sshCwd={sshCwd}
+                />
+              )}
+
+              {/* Terminal Output Area */}
+              <div
+                onClick={() => inputRef.current?.focus()}
+                className="flex-1 overflow-y-auto p-4 space-y-1.5 text-xs cursor-text font-mono"
+              >
+                {history.map((line, i) => (
+                  <div
+                    key={i}
+                    className={`whitespace-pre-wrap leading-relaxed ${
+                      line.type === 'input'
+                        ? 'text-cyan-300 font-semibold'
+                        : line.isError
+                        ? 'text-rose-400'
+                        : line.isSuccess
+                        ? 'text-emerald-300 font-semibold'
+                        : 'text-slate-300'
+                    }`}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Terminal Input Line */}
+              <div className="border-t border-white/[0.08] bg-[#040710]/95 px-4 py-2.5 flex items-center gap-2 text-xs">
+                <span
+                  className={`font-semibold shrink-0 font-mono ${
+                    isLiveSshMode ? 'text-emerald-400' : 'text-cyan-400'
+                  }`}
+                >
+                  {awaitingPasswordFor
+                    ? 'Password: '
+                    : isLiveSshMode
+                    ? `${sshUser}@bandit:${sshCwd}$`
+                    : `${currentUser}@odyssey:~$`}
+                </span>
+                <input
+                  ref={inputRef}
+                  type={awaitingPasswordFor ? 'password' : 'text'}
+                  autoFocus
+                  value={inputVal}
+                  disabled={isExecutingRemote || isConnectingSsh}
+                  onChange={(e) => {
+                    setInputVal(e.target.value);
+                    terminalAudio.playKeyClick();
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    awaitingPasswordFor
+                      ? 'Enter password...'
+                      : isLiveSshMode
+                      ? 'Run commands directly on Bandit (e.g. ls -la, cat readme, file ./*)...'
+                      : 'type commands (e.g. ssh bandit0, ls, cat readme, help)...'
+                  }
+                  className="flex-1 bg-transparent text-slate-100 focus:outline-none font-mono placeholder:text-slate-600"
+                />
+                {historyIdx !== -1 && (
+                  <span className="text-[10px] text-cyan-300 bg-cyan-500/15 border border-cyan-400/35 rounded-md px-1.5 py-0.5 select-none shrink-0 font-mono flex items-center gap-1 tabular-nums">
+                    <span>↑↓ {historyIdx + 1}/{cmdHistory.length}</span>
+                    <span className="text-slate-400 text-[9px] hidden sm:inline">(Esc)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right Split-View File Reader Pane */}
+            {openedFile && (
+              <div className="w-full md:w-1/2 flex flex-col border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#040710]/95 min-h-0 overflow-hidden font-mono">
+                {/* File Reader Header */}
+                <div className="px-3.5 py-2.5 border-b border-white/[0.08] bg-white/[0.02] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-cyan-500/12 text-cyan-300 border border-cyan-400/30 shrink-0">
+                      <FileCode className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold text-white truncate">
+                          {openedFile.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          · {openedFile.permissions || '-rw-r--r--'} · {openedFile.size} B
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate">
+                        {openedFile.path}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Header Action Controls */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* View Mode Toggle: Text vs Hex */}
+                    <button
+                      onClick={() => {
+                        terminalAudio.playKeyClick();
+                        setFileViewMode(fileViewMode === 'text' ? 'hex' : 'text');
+                      }}
+                      className={`px-2 py-1 rounded-lg text-[10px] border transition-colors flex items-center gap-1 cursor-pointer ${
+                        fileViewMode === 'hex'
+                          ? 'bg-amber-500/15 text-amber-200 border-amber-400/35 font-semibold'
+                          : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:text-white'
+                      }`}
+                      title="Toggle between Plain Text and Hex Dump"
+                    >
+                      <Hash className="h-3 w-3" />
+                      <span>{fileViewMode === 'hex' ? 'Hex' : 'Text'}</span>
+                    </button>
+
+                    {/* Run cat in terminal button */}
+                    <button
+                      onClick={() => handleRunCatInTerminal(openedFile.name)}
+                      className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-400/35 text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Run cat command in terminal prompt"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      <span>cat ↵</span>
+                    </button>
+
+                    {/* Copy file content button */}
+                    <button
+                      onClick={() => {
+                        copyToClipboard(openedFile.content);
+                        terminalAudio.playKeyClick();
+                      }}
+                      className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] cursor-pointer transition-colors"
+                      title="Copy file content"
+                    >
+                      {copiedFlag === openedFile.content ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+
+                    {/* Close split-view reader button */}
+                    <button
+                      onClick={() => {
+                        terminalAudio.playKeyClick();
+                        setOpenedFile(null);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                      title="Close split-view reader"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password / Flag Discovery Banner */}
+                {(() => {
+                  const detected = extractFlagFromContent(openedFile.content);
+                  if (!detected) return null;
+                  return (
+                    <div className="bg-amber-500/12 border-b border-amber-400/25 px-3.5 py-2 flex items-center justify-between text-xs font-mono">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <Key className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <span className="text-amber-300 font-semibold shrink-0 text-[11px]">Flag:</span>
+                        <code className="text-white bg-[#040710]/90 px-1.5 py-0.5 rounded border border-amber-400/30 text-[11px] select-all truncate">
+                          {detected}
+                        </code>
+                      </div>
+                      <button
+                        onClick={() => handleSaveAndUnlockNext(detected)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold cursor-pointer transition-colors shrink-0 ml-2"
+                      >
+                        Save &amp; Unlock →
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* File Content Body */}
+                <div className="flex-1 overflow-y-auto p-3.5 text-xs text-slate-200 select-text bg-[#040710]">
+                  {fileViewMode === 'hex' ? (
+                    <pre className="text-[11px] text-amber-300/90 whitespace-pre font-mono leading-relaxed select-all">
+                      {generateHexDump(openedFile.content)}
+                    </pre>
+                  ) : openedFile.content.length === 0 ? (
+                    <div className="text-slate-500 italic py-8 text-center text-xs">
+                      (Empty file — 0 bytes)
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {openedFile.content.split('\n').map((line, idx) => (
+                        <div key={idx} className="flex hover:bg-white/[0.04] -mx-1.5 px-1.5 rounded">
+                          <span className="w-7 shrink-0 text-slate-600 select-none text-[11px] text-right pr-2.5 font-mono tabular-nums">
+                            {idx + 1}
+                          </span>
+                          <span className="flex-1 whitespace-pre-wrap break-all text-cyan-200/90 font-mono leading-relaxed text-xs">
+                            {line || ' '}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* File Reader Footer */}
+                <div className="px-3.5 py-1.5 border-t border-white/[0.08] bg-[#040710]/90 text-[10px] text-slate-500 font-mono flex items-center justify-between tabular-nums">
+                  <span>
+                    {openedFile.content.split('\n').length} {openedFile.content.split('\n').length === 1 ? 'line' : 'lines'} · {openedFile.size} bytes
+                  </span>
+                  <span className="text-cyan-400">
+                    {fileViewMode === 'hex' ? 'Hex Dump View' : 'Plain Text View'}
+                  </span>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
         {/* Rightmost Side Panel: Command Quick-Reference */}
         {showQuickRef && (
-          <aside className="w-full lg:w-80 shrink-0 flex flex-col rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl h-[650px] overflow-hidden font-mono">
+          <aside className="w-full lg:w-80 shrink-0 flex flex-col optical-panel rounded-2xl h-[650px] overflow-hidden font-mono">
             {/* Quick-Ref Panel Header */}
-            <div className="p-3.5 border-b border-slate-800 bg-slate-900/90 space-y-2">
+            <div className="p-3.5 border-b border-white/[0.08] bg-[#040710]/70 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-indigo-400" />
-                  <h3 className="text-xs font-bold text-white tracking-wide uppercase">
+                  <h3 className="font-display text-xs font-semibold text-white tracking-wide uppercase">
                     Command Quick-Reference
                   </h3>
                 </div>
                 <button
                   onClick={() => setShowQuickRef(false)}
-                  className="text-slate-400 hover:text-white text-xs p-1 rounded hover:bg-slate-800 transition-colors"
+                  className="text-slate-400 hover:text-white text-xs p-1 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
                   title="Close side panel"
                 >
                   ✕
@@ -1316,57 +2111,45 @@ export function TerminalSimulator({
               </div>
 
               {/* Dynamic Level Status Indicator */}
-              <div className="flex items-center justify-between text-[11px] bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+              <div className="optical-inset flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl">
                 <span className="text-slate-400">Targeting:</span>
-                <span className="text-amber-400 font-bold flex items-center gap-1">
+                <span className="text-amber-300 font-semibold flex items-center gap-1 tabular-nums">
                   <span>Bandit Level {level.level}</span>
-                  <span className="text-slate-500 font-normal">({level.usefulCommands.length} recommended)</span>
+                  <span className="text-slate-500 font-normal">({level.usefulCommands.length} cmds)</span>
                 </span>
               </div>
 
               {/* Filter Tabs: Relevant to Level vs All Commands */}
-              <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/80 text-[11px]">
+              <div className="optical-subnav grid grid-cols-2 gap-1 p-1 rounded-xl text-[11px]">
                 <button
                   onClick={() => setQuickRefFilter('relevant')}
-                  className={`py-1 rounded font-bold transition-all text-center cursor-pointer ${
+                  className={`py-1.5 rounded-lg font-semibold transition-colors text-center cursor-pointer ${
                     quickRefFilter === 'relevant'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-400/35'
+                      : 'text-slate-400 hover:text-slate-200 border border-transparent'
                   }`}
                 >
-                  ⭐ Level {level.level} Only
+                  Level {level.level} Only
                 </button>
                 <button
                   onClick={() => setQuickRefFilter('all')}
-                  className={`py-1 rounded font-bold transition-all text-center cursor-pointer ${
+                  className={`py-1.5 rounded-lg font-semibold transition-all text-center cursor-pointer tabular-nums ${
                     quickRefFilter === 'all'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-400/35'
+                      : 'text-slate-400 hover:text-slate-200 border border-transparent'
                   }`}
                 >
-                  All Commands ({BANDIT_QUICK_COMMANDS.length})
+                  All ({BANDIT_QUICK_COMMANDS.length})
                 </button>
               </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
-                <input
-                  type="text"
-                  value={quickRefSearch}
-                  onChange={(e) => setQuickRefSearch(e.target.value)}
-                  placeholder="Filter by name, syntax, or use..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
-                />
-                {quickRefSearch && (
-                  <button
-                    onClick={() => setQuickRefSearch('')}
-                    className="absolute right-2 top-1.5 text-slate-500 hover:text-slate-300 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              {/* Soap Bubble Search Bar */}
+              <SoapBubbleSearch
+                value={quickRefSearch}
+                onChange={(e) => setQuickRefSearch(e.target.value)}
+                placeholder="Filter commands, syntax..."
+                style={{ fontSize: 12 }}
+              />
             </div>
 
             {/* Quick-Ref Scrollable List */}
@@ -1374,7 +2157,6 @@ export function TerminalSimulator({
               {(() => {
                 const searchLower = quickRefSearch.toLowerCase().trim();
                 const filtered = BANDIT_QUICK_COMMANDS.filter((cmd) => {
-                  // Level relevance check
                   const isLevelMatched =
                     cmd.relevantLevels.includes(level.level) ||
                     level.usefulCommands.some((u) => u.toLowerCase() === cmd.name.toLowerCase().split(' ')[0]);
@@ -1383,7 +2165,6 @@ export function TerminalSimulator({
                     return false;
                   }
 
-                  // Search match
                   if (searchLower) {
                     const matchName = cmd.name.toLowerCase().includes(searchLower);
                     const matchSyntax = cmd.syntax.toLowerCase().includes(searchLower);
@@ -1406,7 +2187,7 @@ export function TerminalSimulator({
                           setQuickRefFilter('all');
                           setQuickRefSearch('');
                         }}
-                        className="text-indigo-400 hover:underline text-[11px]"
+                        className="text-indigo-400 hover:underline text-[11px] cursor-pointer"
                       >
                         Show All Commands
                       </button>
@@ -1423,29 +2204,26 @@ export function TerminalSimulator({
                   return (
                     <div
                       key={cmd.name}
-                      className={`rounded-xl border p-2.5 transition-all text-xs ${
-                        isDirectlyRelevant
-                          ? 'border-indigo-500/50 bg-indigo-950/20 shadow-sm shadow-indigo-950/40'
-                          : 'border-slate-800/80 bg-slate-900/40 hover:border-slate-700'
+                      className={`optical-card rounded-xl p-2.5 transition-all text-xs ${
+                        isDirectlyRelevant ? 'border-indigo-400/35 bg-indigo-500/8' : ''
                       }`}
                     >
-                      {/* Top Row: Command Name + Category Badge + Relevance Badge */}
                       <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <code className="text-xs font-bold text-white bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <code className="text-xs font-semibold text-white bg-[#040710]/80 px-2 py-0.5 rounded-md border border-white/[0.08] truncate">
                             {cmd.name}
                           </code>
                           {isDirectlyRelevant && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-0.5">
-                              ⭐ Level {level.level}
+                            <span className="text-[10px] font-mono text-amber-300 shrink-0">
+                              · L{level.level}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleCopyCommand(cmd.name, cmd.syntax)}
-                            className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1 rounded-md hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
                             title="Copy syntax"
                           >
                             {copiedCmd === cmd.name ? (
@@ -1456,7 +2234,7 @@ export function TerminalSimulator({
                           </button>
                           <button
                             onClick={() => handleInsertCommand(cmd.usageExample || cmd.syntax)}
-                            className="px-1.5 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 text-[10px] font-bold cursor-pointer transition-colors"
+                            className="px-2 py-0.5 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 text-[10px] font-semibold cursor-pointer transition-colors"
                             title="Insert command into terminal input"
                           >
                             Insert ↵
@@ -1465,7 +2243,7 @@ export function TerminalSimulator({
                       </div>
 
                       {/* Syntax Line */}
-                      <div className="bg-slate-950/90 rounded px-2 py-1 font-mono text-[11px] text-cyan-300 border border-slate-800/60 overflow-x-auto select-all mb-1.5">
+                      <div className="optical-inset rounded-lg px-2 py-1 font-mono text-[11px] text-cyan-300 overflow-x-auto select-all mb-1.5">
                         {cmd.syntax}
                       </div>
 
@@ -1485,16 +2263,16 @@ export function TerminalSimulator({
                         </button>
 
                         {isExpanded && (
-                          <div className="mt-2 space-y-2 pt-2 border-t border-slate-800/80">
+                          <div className="mt-2 space-y-2 pt-2 border-t border-white/[0.08]">
                             {cmd.proTip && (
-                              <div className="bg-amber-950/30 border border-amber-900/40 rounded p-2 text-[11px] text-amber-200/90 font-sans">
-                                <span className="font-bold text-amber-400">💡 Pro-Tip:</span> {cmd.proTip}
+                              <div className="bg-amber-500/10 border border-amber-400/25 rounded-lg p-2 text-[11px] text-amber-200 font-sans">
+                                <span className="font-semibold text-amber-300">Pro-Tip:</span> {cmd.proTip}
                               </div>
                             )}
 
                             <div>
                               <div className="text-[10px] text-slate-400 mb-1">Example Usage:</div>
-                              <pre className="bg-slate-950 p-2 rounded text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre border border-slate-800">
+                              <pre className="optical-inset p-2 rounded-lg text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre">
                                 {cmd.usageExample}
                               </pre>
                             </div>
@@ -1508,13 +2286,34 @@ export function TerminalSimulator({
             </div>
 
             {/* Quick-Ref Footer */}
-            <div className="p-2.5 border-t border-slate-800 bg-slate-900/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="p-2.5 border-t border-white/[0.08] bg-[#040710]/70 text-[11px] text-slate-400 flex items-center justify-between">
               <span>Click &quot;Insert ↵&quot; to test command</span>
-              <span className="font-bold text-cyan-400">OverTheWire Bandit</span>
+              <span className="font-semibold text-cyan-400">Cyber Citadel Shell</span>
             </div>
           </aside>
         )}
       </div>
+
+      {/* Educational Fair-Use & Attribution Card */}
+      <div className="optical-inset rounded-2xl p-4 text-xs font-mono text-slate-400 flex items-start gap-3">
+        <Shield className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+        <div className="space-y-1 leading-relaxed">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-slate-200">Educational Wargame &amp; Ethical Security Practice Notice</span>
+            <span className="text-[10px] text-slate-500">· Open-Source Learning Platform</span>
+          </div>
+          <p className="text-[11px] text-slate-400 font-sans">
+            CS Odyssey provides an original, 100% self-contained offline Linux wargame simulation (&quot;Cyber Citadel&quot;) designed for safe systems learning. The integrated optional SSH bridge enables authorized connections to public educational wargames such as OverTheWire Bandit (<code className="text-cyan-300">bandit.labs.overthewire.org:2220</code>). OverTheWire and Bandit are independent community projects hosted at <a href="https://overthewire.org" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline inline-flex items-center gap-0.5">overthewire.org <ExternalLink className="h-2.5 w-2.5" /></a>. CS Odyssey is an independent educational tool and is not affiliated with, endorsed by, or sponsored by OverTheWire.
+          </p>
+        </div>
+      </div>
+
+      {/* Master Interactive Cheat Sheet Modal */}
+      <CheatSheetModal
+        isOpen={showCheatSheet}
+        onClose={() => setShowCheatSheet(false)}
+        onInsertCommand={(cmd) => handleInsertCommand(cmd)}
+      />
     </div>
   );
 }

@@ -1,117 +1,104 @@
 'use client';
 
 import React from 'react';
-import { Terminal, Sparkles, BookOpen, Layers, Laptop, ShieldCheck } from 'lucide-react';
+import { Terminal, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
+import { SoapBubbleButton } from '@/components/soap-bubble';
+
+export type PrimaryWorkspace = 'overview' | 'curriculum' | 'lab' | 'shell' | 'reference';
 
 interface NavbarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeWorkspace: PrimaryWorkspace;
+  setActiveWorkspace: (workspace: PrimaryWorkspace) => void;
   openAiMentor: () => void;
-  openQuickQuiz: () => void;
-  stats: {
-    levelNumber: number;
-    heroTitle: string;
-    topicPercent: number;
-    currentStreak: number;
-  };
 }
 
-export function Navbar({ activeTab, setActiveTab, openAiMentor, openQuickQuiz, stats }: NavbarProps) {
-  const navItems = [
-    { id: 'roadmap', label: '12 Stages' },
-    { id: 'progress', label: '🎯 Progress & Goals' },
-    { id: 'labs', label: '💻 Labs & Playground' },
-    { id: 'hero', label: '🏆 Hero Advanced' },
-    { id: 'foundations', label: '⚡ Binary & Math' },
-    { id: 'git', label: '🌿 Git Sandbox' },
-    { id: 'bandit', label: 'Bandit & Shell' },
-    { id: 'projects', label: '14 Projects' },
-    { id: 'vault', label: 'Command Vault' },
-    { id: 'directory', label: 'Resources' },
-    { id: 'glossary', label: 'Glossary' },
-    { id: 'notebook', label: 'Notes' },
-  ];
+const WORKSPACE_TABS: Array<{ id: PrimaryWorkspace; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'curriculum', label: 'Curriculum' },
+  { id: 'lab', label: 'Systems Lab' },
+  { id: 'shell', label: 'Wargame Shell' },
+  { id: 'reference', label: 'Reference' },
+];
 
+export function Navbar({ activeWorkspace, setActiveWorkspace, openAiMentor }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
-        {/* Zone 1: Single-element brand wordmark */}
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#03050b]/80 backdrop-blur-2xl shadow-[0_8px_30px_-18px_rgba(0,0,0,0.9)]">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+        {/* Zone 1: Minimal Optical Brand Wordmark */}
         <button
-          onClick={() => setActiveTab('roadmap')}
-          className="flex items-center gap-2 text-left transition-opacity hover:opacity-90"
+          onClick={() => setActiveWorkspace('overview')}
+          className="flex items-center gap-2.5 text-left transition-opacity hover:opacity-90 cursor-pointer shrink-0"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Terminal className="h-5 w-5" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-sky-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
+            <Terminal className="h-3.5 w-3.5" />
           </div>
-          <div>
-            <div className="text-base font-bold tracking-tight text-white whitespace-nowrap">
-              CS Odyssey
-            </div>
-            <div className="text-[11px] text-slate-400 font-mono">
-              Grade 9 · 6-Month Hero
-            </div>
-          </div>
+          <span className="font-display text-sm font-semibold tracking-tight text-slate-100 whitespace-nowrap">
+            CS Odyssey
+          </span>
         </button>
 
-        {/* Zone 2: Navigation Links (Clean unboxed text links) */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+        {/* Zone 2: Primary Workspace Tabs (5 clean unboxed links) */}
+        <nav className="hidden md:flex items-center gap-7 text-sm font-medium h-full">
+          {WORKSPACE_TABS.map((item) => {
+            const isActive = activeWorkspace === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`whitespace-nowrap transition-colors py-1 relative ${
+                onClick={() => setActiveWorkspace(item.id)}
+                className={`relative h-full flex items-center whitespace-nowrap transition-colors cursor-pointer ${
                   isActive
-                    ? 'text-cyan-400 font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 rounded-full" />
+                  <motion.span
+                    layoutId="nav-active-underline"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-indigo-400 to-cyan-300 shadow-[0_0_10px_rgba(56,189,248,0.65)]"
+                  />
                 )}
               </button>
             );
           })}
         </nav>
 
-        {/* Zone 3: 1 Primary Action (AI Mentor & Quick Quiz) & Level info */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            onClick={openQuickQuiz}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-900/50 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-            <span>Quick Quiz</span>
-          </button>
-
-          <button
+        {/* Zone 3: Single Primary Header Action */}
+        <div className="flex items-center shrink-0">
+          <SoapBubbleButton
             onClick={openAiMentor}
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:from-cyan-500 hover:to-indigo-500 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+            tint="rgb(56 189 248)"
+            opacity={0.92}
+            style={{ fontSize: 12 }}
+            className="!min-h-[32px] !px-3.5 text-xs font-medium text-sky-100 whitespace-nowrap"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">AI Tutor</span>
-          </button>
+            <Sparkles className="h-3.5 w-3.5 text-sky-300" />
+            <span>AI Mentor</span>
+          </SoapBubbleButton>
         </div>
       </div>
 
-      {/* Mobile sub-navigation bar */}
-      <div className="flex lg:hidden overflow-x-auto border-t border-slate-800/80 px-4 py-2 gap-3 text-xs font-medium no-scrollbar bg-slate-950">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`px-2.5 py-1 rounded whitespace-nowrap transition-colors ${
-              activeTab === item.id
-                ? 'bg-cyan-500/20 text-cyan-300 font-semibold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {/* Responsive compact navigation strip for smaller viewports */}
+      <nav className="flex md:hidden overflow-x-auto border-t border-white/[0.08] px-4 gap-5 text-xs font-medium no-scrollbar bg-[#03050b]/90">
+        {WORKSPACE_TABS.map((item) => {
+          const isActive = activeWorkspace === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveWorkspace(item.id)}
+              className={`py-2.5 whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
+                isActive
+                  ? 'border-sky-400 text-white font-semibold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }

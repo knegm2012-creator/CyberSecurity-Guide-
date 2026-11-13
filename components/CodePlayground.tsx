@@ -25,6 +25,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { SavedCodeSnippet } from '@/hooks/use-odyssey-store';
+import { SoapBubbleButton } from '@/components/soap-bubble';
 
 export interface CodePlaygroundProps {
   initialLanguage?: 'python' | 'c';
@@ -318,14 +319,6 @@ export function CodePlayground({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [prevInitialCode, setPrevInitialCode] = useState(initialCode);
-  if (initialCode !== prevInitialCode) {
-    setPrevInitialCode(initialCode);
-    if (initialCode) {
-      setCode(initialCode);
-    }
-  }
-
   // Line count for editor line numbers
   const lineCount = code.split('\n').length;
   const lineNumbers = Array.from({ length: Math.max(lineCount, 12) }, (_, i) => i + 1);
@@ -455,29 +448,28 @@ export function CodePlayground({
   return (
     <div className="space-y-4">
       {/* 1. Header Toolbar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 backdrop-blur-sm">
+      <div className="optical-panel rounded-2xl p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 border border-sky-400/30 text-sky-300 shrink-0 shadow-[0_0_20px_-6px_rgba(56,189,248,0.45)]">
               <Code2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white">CS Odyssey Embedded Playground</h3>
-                <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-mono font-semibold text-emerald-400">
-                  REAL GCC &amp; PYTHON 3.10
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="font-display text-sm font-semibold text-white">Systems Code Playground</h3>
+                <span className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-300">
+                  GCC C11 / Python 3
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Lightweight, low-latency execution environment. Write, compile, and run real C and Python code!
+              <p className="text-xs text-slate-400 mt-0.5">
+                Sandboxed server execution with 5s timeout, strict isolation, and stdin streaming.
               </p>
             </div>
           </div>
 
           {/* Language Selector + Run Button */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Language Switcher */}
-            <div className="flex rounded-xl bg-slate-950 border border-slate-800 p-1 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium">
               <button
                 onClick={() => {
                   setLanguage('python');
@@ -487,8 +479,8 @@ export function CodePlayground({
                 }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-mono ${
                   language === 'python'
-                    ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent'
                 }`}
               >
                 Python 3
@@ -502,61 +494,61 @@ export function CodePlayground({
                 }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-mono ${
                   language === 'c'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent'
                 }`}
               >
                 C (GCC C11)
               </button>
             </div>
 
-            {/* Run Button */}
-            <button
+            <SoapBubbleButton
               onClick={runCode}
               disabled={isRunning}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white px-4 py-2 text-xs font-bold font-mono transition-all shadow-lg shadow-emerald-950/40 active:scale-95 cursor-pointer"
+              tint="rgb(16 185 129)"
+              opacity={0.92}
+              style={{ fontSize: 12 }}
+              className="!min-h-[34px] !px-4 font-semibold font-mono text-white disabled:opacity-50"
             >
-              <Play className={`h-4 w-4 fill-white ${isRunning ? 'animate-spin' : ''}`} />
-              <span>{isRunning ? 'Running...' : 'Run Code (Ctrl+↵)'}</span>
-            </button>
+              <Play className={`h-3.5 w-3.5 fill-white ${isRunning ? 'animate-spin' : ''}`} />
+              <span>{isRunning ? 'Running...' : 'Run Code (Ctrl+Enter)'}</span>
+            </SoapBubbleButton>
           </div>
         </div>
 
         {/* Secondary Actions Bar */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3 text-xs">
-          {/* Template dropdown pills */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-3 text-xs">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-slate-400 font-mono text-[11px] mr-1 flex items-center gap-1">
-              <FileCode className="h-3.5 w-3.5 text-cyan-400" />
+              <FileCode className="h-3.5 w-3.5 text-sky-400" />
               Templates:
             </span>
             {STARTER_TEMPLATES.filter((t) => t.language === language).map((t) => (
               <button
                 key={t.id}
                 onClick={() => handleLoadTemplate(t)}
-                className="rounded-lg border border-slate-800 bg-slate-950/80 hover:border-slate-700 px-2.5 py-1 text-[11px] text-slate-300 hover:text-white transition-all cursor-pointer font-mono"
+                className="optical-inset hover:border-sky-400/35 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 hover:text-white transition-colors cursor-pointer font-mono"
               >
                 {t.name.split('. ')[1] || t.name}
               </button>
             ))}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setShowStdin(!showStdin)}
-              className={`rounded-lg border px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1 font-mono ${
+              className={`rounded-lg border px-2.5 py-1 text-[11px] transition-colors cursor-pointer flex items-center gap-1 font-mono ${
                 showStdin || stdin.trim()
-                  ? 'border-cyan-500/50 bg-cyan-950/30 text-cyan-300'
-                  : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                  ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                  : 'optical-inset text-slate-400 hover:text-slate-100'
               }`}
             >
-              <span>Stdin {stdin.trim() ? '●' : ''}</span>
+              <span>Stdin {stdin.trim() ? '*' : ''}</span>
             </button>
 
             <button
               onClick={handleCopyCode}
-              className="rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1"
+              className="optical-card rounded-lg text-slate-300 px-2.5 py-1 text-[11px] cursor-pointer flex items-center gap-1"
               title="Copy code to clipboard"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
@@ -565,17 +557,17 @@ export function CodePlayground({
 
             <button
               onClick={handleDownloadCode}
-              className="rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1"
+              className="optical-card rounded-lg text-slate-300 px-2.5 py-1 text-[11px] cursor-pointer flex items-center gap-1"
               title="Download file"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Save File</span>
+              <span>Export</span>
             </button>
 
             {onSaveSnippet && (
               <button
                 onClick={() => setShowSaveModal(true)}
-                className="rounded-lg border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-300 px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1 font-semibold"
+                className="rounded-lg border border-emerald-400/35 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 px-2.5 py-1 text-[11px] transition-colors cursor-pointer flex items-center gap-1 font-medium"
               >
                 <Save className="h-3.5 w-3.5" />
                 <span>Save Snippet</span>
@@ -585,10 +577,10 @@ export function CodePlayground({
             {savedSnippets.length > 0 && (
               <button
                 onClick={() => setShowLibraryModal(true)}
-                className="rounded-lg border border-purple-500/40 bg-purple-950/30 hover:bg-purple-900/40 text-purple-300 px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1"
+                className="optical-card rounded-lg text-slate-200 px-2.5 py-1 text-[11px] cursor-pointer flex items-center gap-1"
               >
-                <FolderOpen className="h-3.5 w-3.5" />
-                <span>My Snippets ({savedSnippets.length})</span>
+                <FolderOpen className="h-3.5 w-3.5 text-sky-400" />
+                <span>Library ({savedSnippets.length})</span>
               </button>
             )}
 
@@ -596,12 +588,12 @@ export function CodePlayground({
               <button
                 onClick={() =>
                   onOpenAiMentor(
-                    `Explain this ${language === 'python' ? 'Python' : 'C'} code step by step for a high school student, and analyze any edge cases or performance bottlenecks:\n\`\`\`${language}\n${code}\n\`\`\``
+                    `Explain this ${language === 'python' ? 'Python' : 'C'} code step by step for a student, and analyze any edge cases or performance bottlenecks:\n\`\`\`${language}\n${code}\n\`\`\``
                   )
                 }
-                className="rounded-lg border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 px-2.5 py-1 text-[11px] transition-all cursor-pointer flex items-center gap-1 font-semibold"
+                className="rounded-lg border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 px-2.5 py-1 text-[11px] transition-colors cursor-pointer flex items-center gap-1 font-medium"
               >
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
                 <span>Explain Code</span>
               </button>
             )}
@@ -610,12 +602,12 @@ export function CodePlayground({
 
         {/* Optional Stdin Drawer */}
         {showStdin && (
-          <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1.5 animate-in fade-in duration-200">
+          <div className="mt-3 optical-inset rounded-xl p-3 space-y-1.5">
             <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
               <span>Standard Input (stdin for input() or scanf):</span>
               <button
                 onClick={() => setStdin('')}
-                className="text-slate-500 hover:text-slate-300 text-[10px]"
+                className="text-slate-500 hover:text-slate-300 text-[10px] cursor-pointer"
               >
                 Clear Stdin
               </button>
@@ -625,7 +617,7 @@ export function CodePlayground({
               onChange={(e) => setStdin(e.target.value)}
               placeholder="Enter lines of input here that your program will read..."
               rows={2}
-              className="w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
+              className="w-full rounded-lg border border-white/[0.08] bg-black/45 px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-400/60"
             />
           </div>
         )}
@@ -634,31 +626,27 @@ export function CodePlayground({
       {/* 2. Main Editor & Console Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: Code Editor (7 cols) */}
-        <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-950 flex flex-col h-[480px] shadow-2xl overflow-hidden">
-          {/* File Tab Header */}
-          <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 py-2 select-none shrink-0">
+        <div className="lg:col-span-7 optical-panel rounded-2xl flex flex-col h-[500px] overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.03] px-4 py-2.5 select-none shrink-0">
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              <span className="ml-2 font-mono text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <FileCode className="h-3.5 w-3.5 text-cyan-400" />
-                <span>main.{language === 'python' ? 'py' : 'c'}</span>
+              <FileCode className="h-3.5 w-3.5 text-sky-400" />
+              <span className="font-mono text-xs font-semibold text-slate-200">
+                main.{language === 'python' ? 'py' : 'c'}
               </span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px] text-slate-400">
-              <span>{lineCount} lines</span>
+              <span className="tabular-nums">{lineCount} lines</span>
               <span>UTF-8</span>
-              <span className="text-cyan-400 uppercase">{language}</span>
+              <span className="text-sky-400 uppercase">{language}</span>
             </div>
           </div>
 
           {/* Editor Body with Line Numbers */}
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex overflow-hidden relative bg-[#040710]/70">
             {/* Gutter / Line Numbers */}
-            <div className="w-12 bg-slate-900/40 border-r border-slate-800/80 py-3 text-right pr-2.5 select-none font-mono text-[11px] text-slate-600 overflow-hidden shrink-0">
+            <div className="w-12 bg-white/[0.02] border-r border-white/[0.06] py-3 text-right pr-2.5 select-none font-mono text-[11px] text-slate-600 overflow-hidden shrink-0">
               {lineNumbers.map((num) => (
-                <div key={num} className="leading-5 h-5">
+                <div key={num} className="leading-5 h-5 tabular-nums">
                   {num}
                 </div>
               ))}
@@ -681,16 +669,16 @@ export function CodePlayground({
         </div>
 
         {/* Right: Console Output & Terminal (5 cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-slate-800 bg-slate-950 flex flex-col h-[480px] shadow-2xl overflow-hidden">
+        <div className="lg:col-span-5 optical-panel rounded-2xl flex flex-col h-[500px] overflow-hidden">
           {/* Console Header with Tabs */}
-          <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-3 py-1.5 select-none shrink-0">
+          <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.03] px-3 py-2 select-none shrink-0">
             <div className="flex items-center gap-1 text-xs font-mono">
               <button
                 onClick={() => setActiveOutputTab('output')}
                 className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeOutputTab === 'output'
-                    ? 'bg-slate-800 text-emerald-400'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-300'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent'
                 }`}
               >
                 <Terminal className="h-3.5 w-3.5" />
@@ -700,10 +688,10 @@ export function CodePlayground({
                 onClick={() => setActiveOutputTab('errors')}
                 className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeOutputTab === 'errors'
-                    ? 'bg-slate-800 text-rose-400'
+                    ? 'bg-rose-500/15 border border-rose-400/30 text-rose-300'
                     : stderr
-                    ? 'text-rose-400/80'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'text-rose-400/80 border border-transparent'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent'
                 }`}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -714,15 +702,15 @@ export function CodePlayground({
             {/* Metrics */}
             <div className="flex items-center gap-2 font-mono text-[10px]">
               {executionTime !== null && (
-                <span className="flex items-center gap-1 text-slate-400">
+                <span className="flex items-center gap-1 text-slate-400 tabular-nums">
                   <Clock className="h-3 w-3 text-cyan-400" />
                   <span>{executionTime}ms</span>
                 </span>
               )}
               {exitCode !== null && (
                 <span
-                  className={`px-1.5 py-0.5 rounded ${
-                    exitCode === 0 ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'
+                  className={`px-2 py-0.5 rounded-md tabular-nums ${
+                    exitCode === 0 ? 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-300' : 'bg-rose-500/15 border border-rose-400/30 text-rose-300'
                   }`}
                 >
                   exit: {exitCode}
@@ -732,7 +720,7 @@ export function CodePlayground({
           </div>
 
           {/* Console Content Stream */}
-          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-slate-200 bg-slate-950">
+          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-slate-200 bg-[#040710]/80">
             {activeOutputTab === 'output' && (
               <pre className="whitespace-pre-wrap leading-relaxed text-slate-200 font-mono">
                 {output}
@@ -742,7 +730,7 @@ export function CodePlayground({
             {activeOutputTab === 'errors' && (
               <div className="space-y-2">
                 {stderr ? (
-                  <pre className="whitespace-pre-wrap leading-relaxed text-rose-300 font-mono text-[11px] bg-rose-950/20 border border-rose-900/50 p-3 rounded-xl">
+                  <pre className="whitespace-pre-wrap leading-relaxed text-rose-300 font-mono text-[11px] bg-rose-950/25 border border-rose-400/30 p-3 rounded-xl">
                     {stderr}
                   </pre>
                 ) : (
@@ -755,9 +743,9 @@ export function CodePlayground({
                         `I am writing ${language === 'python' ? 'Python' : 'C'} code and got this error:\n\`\`\`\n${stderr}\n\`\`\`\nHere is my source code:\n\`\`\`${language}\n${code}\n\`\`\`\nExplain what went wrong in plain English and give me the fixed code!`
                       )
                     }
-                    className="w-full mt-2 py-2 rounded-xl border border-indigo-500/40 bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className="w-full mt-2 py-2 rounded-xl border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
-                    <Sparkles className="h-4 w-4 text-indigo-400" />
+                    <Sparkles className="h-4 w-4 text-indigo-300" />
                     <span>Ask AI Mentor to Fix This Error</span>
                   </button>
                 )}
@@ -766,7 +754,7 @@ export function CodePlayground({
           </div>
 
           {/* Console Footer Status */}
-          <div className="border-t border-slate-900 bg-slate-900/40 px-3 py-2 text-[10px] font-mono text-slate-500 flex items-center justify-between shrink-0">
+          <div className="border-t border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-[10px] font-mono text-slate-500 flex items-center justify-between shrink-0">
             <span>Isolation: Linux tmp container · Timeout: 5.0s</span>
             <button
               onClick={() => {
@@ -775,7 +763,7 @@ export function CodePlayground({
                 setExitCode(null);
                 setExecutionTime(null);
               }}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-white cursor-pointer"
             >
               Clear Console
             </button>
@@ -785,18 +773,18 @@ export function CodePlayground({
 
       {/* MODAL 1: Save Snippet */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+          <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
                 <Save className="h-4 w-4 text-emerald-400" />
                 Save Snippet to Local Library
               </h3>
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -808,7 +796,7 @@ export function CodePlayground({
                   value={snippetTitle}
                   onChange={(e) => setSnippetTitle(e.target.value)}
                   placeholder="e.g. Binary Search in C, Prime Sieve"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full rounded-xl border border-white/[0.1] bg-black/45 px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400/60 font-mono"
                   autoFocus
                 />
               </div>
@@ -818,7 +806,7 @@ export function CodePlayground({
                 <select
                   value={snippetTag}
                   onChange={(e) => setSnippetTag(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full rounded-xl border border-white/[0.1] bg-[#070b14] px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400/60 font-mono"
                 >
                   <option value="Basics">Basics</option>
                   <option value="Algorithms">Algorithms</option>
@@ -829,19 +817,22 @@ export function CodePlayground({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white"
+                className="optical-card px-3.5 py-1.5 rounded-xl text-xs text-slate-300 cursor-pointer"
               >
                 Cancel
               </button>
-              <button
+              <SoapBubbleButton
                 onClick={handleSaveSnippet}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer shadow-md"
+                tint="rgb(16 185 129)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="!min-h-[34px] !px-4 font-bold text-white"
               >
                 Save Snippet
-              </button>
+              </SoapBubbleButton>
             </div>
           </div>
         </div>
@@ -849,18 +840,18 @@ export function CodePlayground({
 
       {/* MODAL 2: Snippets Library */}
       {showLibraryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+          <div className="optical-panel w-full max-w-xl rounded-2xl p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between shrink-0">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FolderOpen className="h-4 w-4 text-purple-400" />
+              <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-sky-400" />
                 My Saved Snippets Library ({savedSnippets.length})
               </h3>
               <button
                 onClick={() => setShowLibraryModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
+                className="text-slate-400 hover:text-white text-xs font-mono cursor-pointer"
               >
-                ✕ Close
+                Close
               </button>
             </div>
 
@@ -868,12 +859,12 @@ export function CodePlayground({
               {savedSnippets.map((snip) => (
                 <div
                   key={snip.id}
-                  className="rounded-xl border border-slate-800 bg-slate-950 p-3 flex items-center justify-between gap-3 text-xs"
+                  className="optical-inset rounded-xl p-3 flex items-center justify-between gap-3 text-xs"
                 >
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-white font-mono">{snip.title}</span>
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-cyan-400 uppercase">
+                      <span className="px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-[10px] font-mono text-cyan-300 uppercase">
                         {snip.language}
                       </span>
                     </div>
@@ -883,21 +874,24 @@ export function CodePlayground({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
+                    <SoapBubbleButton
                       onClick={() => {
                         setLanguage(snip.language);
                         setCode(snip.code);
                         setShowLibraryModal(false);
                         setOutput(`Loaded saved snippet "${snip.title}"`);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all cursor-pointer"
+                      tint="rgb(14 165 233)"
+                      opacity={0.9}
+                      style={{ fontSize: 12 }}
+                      className="!min-h-[30px] !px-3 font-semibold text-white"
                     >
                       Load
-                    </button>
+                    </SoapBubbleButton>
                     {onDeleteSnippet && (
                       <button
                         onClick={() => onDeleteSnippet(snip.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
                         title="Delete snippet"
                       >
                         <Trash2 className="h-4 w-4" />

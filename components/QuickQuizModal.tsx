@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, CheckCircle2, XCircle, Trophy, RefreshCw, ArrowRight, HelpCircle } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, XCircle, Trophy, RefreshCw } from 'lucide-react';
+import { SoapBubbleButton } from '@/components/soap-bubble';
 import { STAGES_DATA, StageData } from '@/lib/curriculum-data';
 
 interface QuickQuizModalProps {
@@ -19,27 +20,24 @@ interface QuizItem {
   explanation: string;
 }
 
-export function QuickQuizModal({
-  isOpen,
+function QuickQuizBody({
   onClose,
-  currentStageId,
+  initialStageId,
   onAwardXp,
   onOpenAiMentor,
-}: QuickQuizModalProps) {
-  const [prevStageId, setPrevStageId] = useState(currentStageId);
-  const [selectedStageId, setSelectedStageId] = useState(currentStageId || 'stage-0');
+}: {
+  onClose: () => void;
+  initialStageId: string;
+  onAwardXp?: (xp: number) => void;
+  onOpenAiMentor?: (prompt: string) => void;
+}) {
+  const [selectedStageId, setSelectedStageId] = useState(initialStageId || 'stage-0');
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<QuizItem[]>([]);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [xpAwarded, setXpAwarded] = useState(false);
-
-  // Sync selectedStageId when currentStageId changes
-  if (currentStageId !== prevStageId) {
-    setPrevStageId(currentStageId);
-    setSelectedStageId(currentStageId || 'stage-0');
-  }
 
   const activeStage = STAGES_DATA.find((s) => s.id === selectedStageId) || STAGES_DATA[0];
 
@@ -68,18 +66,16 @@ export function QuickQuizModal({
       } else if (Array.isArray(data.quiz) && data.quiz.length > 0) {
         setQuestions(data.quiz);
       } else {
-        setErrorMsg('Could not parse quiz questions. Please try generating again.');
+        setErrorMsg('Could not parse quiz questions. Please try again.');
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to communicate with Gemini AI.');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load quiz.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Automatically fetch quiz when modal opens or stage changes
   useEffect(() => {
-    if (!isOpen) return;
     let ignore = false;
     const stage = STAGES_DATA.find((s) => s.id === selectedStageId) || STAGES_DATA[0];
 
@@ -110,12 +106,12 @@ export function QuickQuizModal({
           } else if (Array.isArray(data.quiz) && data.quiz.length > 0) {
             setQuestions(data.quiz);
           } else {
-            setErrorMsg('Could not parse quiz questions. Please try generating again.');
+            setErrorMsg('Could not parse quiz questions. Please try again.');
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!ignore) {
-          setErrorMsg(err?.message || 'Failed to communicate with Gemini AI.');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load quiz.');
         }
       } finally {
         if (!ignore) {
@@ -127,9 +123,7 @@ export function QuickQuizModal({
     return () => {
       ignore = true;
     };
-  }, [isOpen, selectedStageId]);
-
-  if (!isOpen) return null;
+  }, [selectedStageId]);
 
   const handleSelectOption = (qIdx: number, optIdx: number) => {
     if (submitted) return;
@@ -148,7 +142,6 @@ export function QuickQuizModal({
       }
     });
 
-    // Award +100 XP if passed (>= 3 out of 5)
     if (correctCount >= 3 && !xpAwarded && onAwardXp) {
       onAwardXp(100);
       setXpAwarded(true);
@@ -164,42 +157,36 @@ export function QuickQuizModal({
   const allAnswered = questions.length > 0 && Object.keys(userAnswers).length === questions.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl space-y-6 my-8">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="optical-panel w-full max-w-2xl rounded-2xl border-white/[0.12] p-6 shadow-2xl space-y-5 my-8">
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              <Trophy className="h-5 w-5" />
-            </div>
+            <Trophy className="h-4 w-4 text-amber-400" />
             <div>
-              <div className="flex items-center gap-2 text-[11px] font-mono text-cyan-400">
-                <span>QUICK QUIZ</span>
-                <span>·</span>
-                <span>GEMINI 3.8 FLASH</span>
+              <div className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider">
+                Concept Check · Stage {activeStage.number}
               </div>
-              <h3 className="text-base font-bold text-white">
-                Stage {activeStage.number}: {activeStage.title.split(':')[0]}
+              <h3 className="font-display text-base font-semibold text-white">
+                {activeStage.title.split(':')[0]}
               </h3>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Stage Switcher */}
-        <div className="flex items-center justify-between gap-3 text-xs bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-          <span className="text-slate-400 font-mono">Select Stage:</span>
+        <div className="optical-inset flex items-center justify-between gap-2.5 text-xs p-2.5 rounded-xl">
           <select
             value={selectedStageId}
             onChange={(e) => setSelectedStageId(e.target.value)}
             disabled={loading}
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+            className="flex-1 rounded-lg border border-white/[0.08] bg-[#040710]/90 px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400/50 font-mono"
           >
             {STAGES_DATA.map((s) => (
               <option key={s.id} value={s.id}>
@@ -210,68 +197,57 @@ export function QuickQuizModal({
           <button
             disabled={loading}
             onClick={() => fetchQuizForStage(activeStage)}
-            className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-            title="Generate a brand new set of 5 questions"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">New Questions</span>
+            <span className="hidden sm:inline">Regenerate</span>
           </button>
         </div>
 
-        {/* Error Notification */}
         {errorMsg && (
-          <div className="rounded-xl border border-rose-900/60 bg-rose-950/20 p-4 text-xs text-rose-300 flex items-start gap-2">
-            <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Quiz Generation Notice:</p>
-              <p className="mt-0.5">{errorMsg}</p>
-            </div>
+          <div className="rounded-xl border border-rose-400/35 bg-rose-500/10 p-3.5 text-xs text-rose-200 flex items-start gap-2">
+            <XCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+            <div>{errorMsg}</div>
           </div>
         )}
 
-        {/* Loading Spinner */}
         {loading && (
-          <div className="py-16 text-center space-y-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-cyan-400 mx-auto" />
-            <div className="text-sm font-bold text-white">AI Tutor is crafting your 5 questions...</div>
-            <p className="text-xs text-slate-400 font-mono">Analyzing {activeStage.title} topics & concepts</p>
+          <div className="py-12 text-center space-y-2.5">
+            <RefreshCw className="h-6 w-6 animate-spin text-cyan-400 mx-auto" />
+            <div className="text-sm font-semibold text-white">Preparing 5 comprehension questions...</div>
           </div>
         )}
 
-        {/* Questions Body */}
         {!loading && questions.length > 0 && (
-          <div className="space-y-6 max-h-[480px] overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
             {questions.map((q, qIdx) => {
               const selectedOpt = userAnswers[qIdx];
 
               return (
                 <div
                   key={qIdx}
-                  className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3"
+                  className="optical-card rounded-xl p-4 space-y-3"
                 >
-                  <div className="text-xs font-bold text-white flex items-start gap-2">
-                    <span className="font-mono text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded text-[11px] shrink-0">
-                      Q{qIdx + 1}
-                    </span>
+                  <div className="text-xs font-semibold text-white flex items-start gap-2">
+                    <span className="font-mono text-cyan-400 shrink-0 tabular-nums">Q{qIdx + 1}.</span>
                     <span className="leading-relaxed">{q.question}</span>
                   </div>
 
-                  {/* Options */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {q.options.map((opt, optIdx) => {
                       const isSelected = selectedOpt === optIdx;
                       const isCorrect = q.correctIndex === optIdx;
 
-                      let style = 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700';
+                      let style = 'border-white/[0.08] bg-[#040710]/80 text-slate-300 hover:border-white/[0.18]';
 
                       if (submitted) {
                         if (isCorrect) {
-                          style = 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-bold';
+                          style = 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200 font-semibold';
                         } else if (isSelected && !isCorrect) {
-                          style = 'border-rose-600 bg-rose-950/40 text-rose-300 line-through';
+                          style = 'border-rose-400/50 bg-rose-500/15 text-rose-200 line-through';
                         }
                       } else if (isSelected) {
-                        style = 'border-cyan-500 bg-cyan-950/60 text-cyan-300 font-bold';
+                        style = 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100 font-semibold';
                       }
 
                       return (
@@ -279,39 +255,36 @@ export function QuickQuizModal({
                           key={optIdx}
                           disabled={submitted}
                           onClick={() => handleSelectOption(qIdx, optIdx)}
-                          className={`w-full text-left p-3 rounded-lg border text-xs transition-all flex items-center justify-between cursor-pointer ${style}`}
+                          className={`w-full text-left p-2.5 rounded-xl border text-xs transition-colors flex items-center justify-between cursor-pointer ${style}`}
                         >
                           <span className="line-clamp-2">{opt}</span>
                           {submitted && isCorrect && (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 ml-2" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 ml-2" />
                           )}
                         </button>
                       );
                     })}
                   </div>
 
-                  {/* Explanation after submission */}
                   {submitted && (
-                    <div className="mt-2 rounded-lg bg-slate-950 p-3 text-xs text-slate-300 border border-slate-800/80 font-sans leading-relaxed space-y-2">
+                    <div className="optical-inset rounded-xl p-3 text-xs text-slate-300 leading-relaxed space-y-1.5">
                       <div>
-                        <strong className="text-cyan-400 font-mono">Why: </strong>
+                        <span className="text-cyan-400 font-mono font-semibold">Why: </span>
                         {q.explanation}
                       </div>
                       {onOpenAiMentor && (
-                        <div className="pt-1 flex justify-end">
-                          <button
-                            onClick={() => {
-                              onClose();
-                              onOpenAiMentor(
-                                `ELI9: Explain this Computer Science quiz question for a 9th grader: "${q.question}". The correct answer is "${q.options[q.correctIndex]}". Why is this correct, and what real-world analogy helps me remember it?`
-                              );
-                            }}
-                            className="inline-flex items-center gap-1.5 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer bg-cyan-950/40 hover:bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-800/50"
-                          >
-                            <Sparkles className="h-3 w-3 text-cyan-400" />
-                            <span>Explain this concept in AI Mentor</span>
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenAiMentor(
+                              `Explain this question clearly: "${q.question}". Correct answer: "${q.options[q.correctIndex]}". Why does it work this way?`
+                            );
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 hover:underline cursor-pointer"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          <span>Ask Mentor to elaborate</span>
+                        </button>
                       )}
                     </div>
                   )}
@@ -319,48 +292,47 @@ export function QuickQuizModal({
               );
             })}
 
-            {/* Bottom Controls / Result Bar */}
             {!submitted ? (
               <div className="pt-2 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">
-                  {Object.keys(userAnswers).length} of {questions.length} answered
+                <span className="text-xs text-slate-400 font-mono tabular-nums">
+                  {Object.keys(userAnswers).length} / {questions.length} answered
                 </span>
-                <button
+                <SoapBubbleButton
                   disabled={!allAnswered}
                   onClick={handleSubmitQuiz}
-                  className="rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white hover:from-cyan-500 hover:to-indigo-500 transition-all disabled:opacity-40 cursor-pointer shadow-lg"
+                  tint="rgb(56 189 248)"
+                  opacity={0.92}
+                  style={{ fontSize: 12 }}
+                  className="!min-h-[36px] !px-5 font-semibold text-white"
                 >
-                  Submit & Score Quiz
-                </button>
+                  Score Quiz
+                </SoapBubbleButton>
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="optical-inset rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <div className="text-xs font-mono text-slate-400">Score for Stage {activeStage.number}:</div>
-                  <div className="text-2xl font-bold font-mono text-white mt-0.5">
+                  <div className="text-xs font-mono text-slate-400">Result</div>
+                  <div className="text-xl font-bold font-mono text-white tabular-nums">
                     {score} / {questions.length} ({percentage}%)
                   </div>
-                  {percentage >= 60 ? (
-                    <div className="text-xs text-emerald-400 font-semibold mt-1">
-                      Awesome job! You passed the stage comprehension check! +100 XP awarded.
-                    </div>
-                  ) : (
-                    <div className="text-xs text-amber-400 mt-1">
-                      Good effort! Review the explanations above and try a fresh set to master the stage.
-                    </div>
-                  )}
+                  <div className={`text-xs mt-0.5 ${percentage >= 60 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {percentage >= 60 ? 'Passed (+100 XP logged).' : 'Review the explanations above and retry.'}
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <button
+                  <SoapBubbleButton
                     onClick={() => fetchQuizForStage(activeStage)}
-                    className="rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors cursor-pointer"
+                    tint="rgb(56 189 248)"
+                    opacity={0.92}
+                    style={{ fontSize: 12 }}
+                    className="!min-h-[34px] !px-4 font-semibold text-white"
                   >
-                    Try 5 More Questions
-                  </button>
+                    Try Again
+                  </SoapBubbleButton>
                   <button
                     onClick={onClose}
-                    className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 cursor-pointer"
+                    className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/[0.08] cursor-pointer"
                   >
                     Done
                   </button>
@@ -371,5 +343,24 @@ export function QuickQuizModal({
         )}
       </div>
     </div>
+  );
+}
+
+export function QuickQuizModal({
+  isOpen,
+  onClose,
+  currentStageId,
+  onAwardXp,
+  onOpenAiMentor,
+}: QuickQuizModalProps) {
+  if (!isOpen) return null;
+  return (
+    <QuickQuizBody
+      key={currentStageId}
+      onClose={onClose}
+      initialStageId={currentStageId}
+      onAwardXp={onAwardXp}
+      onOpenAiMentor={onOpenAiMentor}
+    />
   );
 }

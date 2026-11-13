@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, RotateCw, ArrowLeft, ArrowRight, BookOpen, Sparkles, Check } from 'lucide-react';
-import { GLOSSARY_TERMS, GlossaryTerm } from '@/lib/curriculum-data';
+import { RotateCw, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { SoapBubbleButton, SoapBubbleSearch } from '@/components/soap-bubble';
+import { GLOSSARY_TERMS } from '@/lib/curriculum-data';
 
 interface GlossaryFlashcardsProps {
   onOpenAiMentor: (context?: string) => void;
@@ -40,35 +42,41 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1">
-            <span>TECHNICAL ENGLISH VOCABULARY</span>
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-400 mb-1">
+            <span>Technical English Vocabulary</span>
             <span>·</span>
-            <span>{GLOSSARY_TERMS.length} ESSENTIAL TERMS</span>
+            <span className="tabular-nums">{GLOSSARY_TERMS.length} Essential Terms</span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Active Recall Glossary & Flashcards</h2>
+          <h2 className="font-display text-xl font-bold text-white tracking-tight [text-wrap:balance]">
+            Active Recall Glossary &amp; Flashcards
+          </h2>
           <p className="text-xs text-slate-400 mt-1">
-            &quot;Maintain a vocabulary notebook. You should be able to explain each term in simple English without hesitation.&quot;
+            Explain each concept in plain English without looking at notes.
           </p>
         </div>
 
         {/* Mode Selector */}
-        <div className="flex rounded-lg bg-slate-900 border border-slate-800 p-1 text-xs font-semibold">
+        <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium self-start">
           <button
             onClick={() => setMode('flashcards')}
-            className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-              mode === 'flashcards' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              mode === 'flashcards'
+                ? 'bg-cyan-500/18 text-cyan-200 border border-cyan-400/35 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
             Flashcard Quiz
           </button>
           <button
             onClick={() => setMode('dictionary')}
-            className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-              mode === 'dictionary' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              mode === 'dictionary'
+                ? 'bg-cyan-500/18 text-cyan-200 border border-cyan-400/35 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
             A-Z Dictionary
@@ -80,42 +88,63 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
       {mode === 'flashcards' && (
         <div className="max-w-xl mx-auto space-y-6">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>
+            <span className="tabular-nums">
               Card {currentIdx + 1} of {filtered.length}
             </span>
             <span className="text-cyan-400 font-semibold">{card.category}</span>
           </div>
 
           {/* Flip Card Container */}
-          <div
+          <motion.div
             onClick={() => setIsFlipped(!isFlipped)}
-            className="h-72 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 flex flex-col items-center justify-center text-center shadow-2xl transition-all cursor-pointer relative overflow-hidden group select-none hover:border-cyan-500/50"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            className="optical-panel h-72 rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer relative overflow-hidden group select-none hover:border-cyan-400/45"
           >
-            <div className="absolute top-4 right-4 text-[11px] font-mono text-slate-500 flex items-center gap-1 group-hover:text-cyan-400 transition-colors">
+            <div className="absolute top-4 right-4 text-[11px] font-mono text-slate-400 flex items-center gap-1 group-hover:text-cyan-300 transition-colors">
               <RotateCw className="h-3 w-3" />
               <span>Click to flip</span>
             </div>
 
-            {!isFlipped ? (
-              <div className="space-y-3">
-                <span className="text-xs font-mono text-cyan-400 tracking-widest uppercase">TERM</span>
-                <h3 className="text-3xl font-extrabold text-white">{card.term}</h3>
-                <p className="text-xs text-slate-400">What does this mean in simple plain English?</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <span className="text-xs font-mono text-emerald-400 tracking-widest uppercase">DEFINITION</span>
-                <p className="text-base text-slate-200 leading-relaxed font-sans">{card.simpleEnglish}</p>
-                <div className="pt-2 text-xs font-mono text-slate-400">Category: {card.category}</div>
-              </div>
-            )}
-          </div>
+            <AnimatePresence mode="wait">
+              {!isFlipped ? (
+                <motion.div
+                  key="front"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  className="space-y-3"
+                >
+                  <span className="text-xs font-mono text-cyan-400 tracking-widest uppercase">TERM</span>
+                  <h3 className="font-display text-3xl font-bold text-white tracking-tight [text-wrap:balance]">
+                    {card.term}
+                  </h3>
+                  <p className="text-xs text-slate-400">What does this mean in plain English?</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="back"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  className="space-y-3"
+                >
+                  <span className="text-xs font-mono text-emerald-400 tracking-widest uppercase">DEFINITION</span>
+                  <p className="text-base text-slate-200 leading-relaxed font-sans">{card.simpleEnglish}</p>
+                  <div className="pt-2 text-xs font-mono text-slate-400">Category · {card.category}</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Flashcard Controls */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <button
               onClick={handlePrev}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-800 bg-slate-900 text-xs font-semibold text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/[0.1] bg-[#040710]/80 text-xs font-medium text-slate-300 hover:bg-white/[0.08] cursor-pointer transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Previous</span>
@@ -123,21 +152,26 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
 
             <button
               onClick={() =>
-                onOpenAiMentor(`ELI9: Explain the term "${card.term}" with a fun real-world analogy and show me how it applies in cybersecurity!`)
+                onOpenAiMentor(`ELI9: Explain the term "${card.term}" with a real-world analogy and show how it applies in cybersecurity.`)
               }
-              className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 cursor-pointer font-semibold"
+              className="flex items-center gap-1.5 text-xs text-cyan-300 hover:text-cyan-200 cursor-pointer font-medium"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Ask AI Mentor</span>
             </button>
 
-            <button
+            <SoapBubbleButton
               onClick={handleNext}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-600 text-xs font-semibold text-white hover:bg-cyan-500 cursor-pointer"
+              tint="rgb(56 189 248)"
+              opacity={0.92}
+              style={{ fontSize: 12 }}
+              className="!min-h-[36px] !px-4 font-semibold text-white"
             >
-              <span>Next Card</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+              <span className="inline-flex items-center gap-1.5">
+                <span>Next Card</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </SoapBubbleButton>
           </div>
         </div>
       )}
@@ -145,25 +179,25 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
       {/* DICTIONARY MODE */}
       {mode === 'dictionary' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-              <input
-                type="text"
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <div className="flex-1">
+              <SoapBubbleSearch
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search glossary terms or definitions..."
-                className="w-full rounded-xl border border-slate-800 bg-slate-900/90 pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                style={{ fontSize: 12 }}
               />
             </div>
 
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="optical-subnav flex gap-1 p-1 rounded-xl overflow-x-auto no-scrollbar">
               {categories.map((c) => (
                 <button
                   key={c}
                   onClick={() => setSelectedCategory(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                    selectedCategory === c ? 'bg-cyan-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+                    selectedCategory === c
+                      ? 'bg-cyan-500/18 border-cyan-400/35 text-cyan-200 font-semibold'
+                      : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {c}
@@ -172,13 +206,13 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filtered.map((item, idx) => (
-              <div key={idx} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-white">{item.term}</h4>
-                  <span className="text-[10px] font-mono text-cyan-400 border border-cyan-900/60 px-1.5 py-0.5 rounded">
-                    {item.category}
+              <div key={idx} className="optical-card rounded-2xl p-4 sm:p-5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-display text-sm font-semibold text-white">{item.term}</h4>
+                  <span className="text-[11px] font-mono text-cyan-400 shrink-0">
+                    · {item.category}
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed font-sans">{item.simpleEnglish}</p>

@@ -24,6 +24,7 @@ import {
   KeyRound,
   Network
 } from 'lucide-react';
+import { SoapBubbleButton, SoapBubbleSlider, SoapBubbleToggle } from '@/components/soap-bubble';
 
 interface FoundationsStudioProps {
   onOpenAiMentor: (prompt?: string) => void;
@@ -33,10 +34,19 @@ interface FoundationsStudioProps {
 type GateType = 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'NOR' | 'XNOR';
 type BitWidth = 8 | 16;
 
+type FoundationsTab =
+  | 'converter'
+  | 'bitwise'
+  | 'shifts'
+  | 'applications'
+  | 'twoscomp'
+  | 'powers'
+  | 'logic'
+  | 'hardware'
+  | 'checklist';
+
 export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStudioProps) {
-  const [activeTab, setActiveTab] = useState<
-    'converter' | 'bitwise' | 'shifts' | 'applications' | 'twoscomp' | 'powers' | 'logic' | 'hardware' | 'checklist'
-  >('converter');
+  const [activeTab, setActiveTab] = useState<FoundationsTab>('converter');
 
   // =========================================================================
   // 1. BASE CONVERTER & MULTI-RADIX WIDGET STATE
@@ -597,82 +607,85 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1">
-            <Calculator className="h-3.5 w-3.5" />
-            <span>STAGE 0 & 1 BEDROCK FOUNDATIONS</span>
-            <span>·</span>
-            <span>BINARY, HEX, ALGEBRA & BITWISE SUITE</span>
+      <div className="optical-panel rounded-2xl p-6 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-white/[0.08] pb-5">
+          <div>
+            <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-400 mb-1">
+              Bedrock Foundations · Binary, Hex, Algebra &amp; Logic Gates
+            </div>
+            <h3 className="font-display text-xl font-bold text-white tracking-tight [text-wrap:balance]">
+              Foundations Studio
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+              Master electrical switches, binary bits, hex nibbles, bitwise shifts, and Boolean logic interactively.
+            </p>
           </div>
-          <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            The CS Odyssey Foundations Studio
-          </h3>
-          <p className="text-xs text-slate-300 mt-1 max-w-3xl">
-            &quot;Master electrical switches, binary bits, hex nibbles, bitwise shifts, and Boolean logic before writing software in VS Code.&quot;
-          </p>
+
+          <SoapBubbleButton
+            onClick={() =>
+              onOpenAiMentor(
+                'ELI9: Explain how electricity in silicon creates 0s and 1s, how bitwise shifts work in computer hardware, and why hexadecimal matters for systems programming.'
+              )
+            }
+            tint="rgb(14 165 233)"
+            opacity={0.9}
+            style={{ fontSize: 12 }}
+            className="!min-h-[34px] !px-4 font-medium text-white shrink-0"
+          >
+            <Sparkles className="h-4 w-4 text-sky-100" />
+            <span>Ask AI Tutor: Fundamentals</span>
+          </SoapBubbleButton>
         </div>
 
-        {/* AI Quick Tutor Action */}
-        <button
-          onClick={() =>
-            onOpenAiMentor(
-              'ELI9: Explain to an ambitious 9th grader how electricity in silicon creates 0s and 1s, how bitwise shifts work in computer hardware, and why every hacker needs to master hexadecimal!'
-            )
-          }
-          className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-3.5 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-900/50 transition-all cursor-pointer shadow-lg shadow-cyan-950/40 shrink-0"
-        >
-          <Sparkles className="h-4 w-4 text-cyan-400" />
-          <span>Ask AI Tutor: Fundamentals</span>
-        </button>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-800 gap-1.5 text-xs font-medium overflow-x-auto no-scrollbar">
-        {[
-          { id: 'converter', label: '1. Base Converter (Bin/Hex/Dec/Oct)', icon: ArrowLeftRight },
-          { id: 'bitwise', label: '2. Bitwise Ops & Masks (AND/OR/XOR)', icon: Sliders },
-          { id: 'shifts', label: '3. Real-Time Bit Shifts (<< >> ROL)', icon: RotateCcw },
-          { id: 'applications', label: '4. Systems Bitmasks (chmod & TCP)', icon: KeyRound },
-          { id: 'twoscomp', label: "5. Two's Complement & Negation", icon: Layers },
-          { id: 'powers', label: '6. Powers of 2 & Algebra Drill', icon: Calculator },
-          { id: 'logic', label: '7. Boolean Logic & Circuits', icon: Zap },
-          { id: 'hardware', label: '8. CPU & Memory Architecture', icon: Cpu },
-          { id: 'checklist', label: '9. Minimum Math Checklist', icon: CheckCircle2 }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 border-b-2 font-mono transition-all cursor-pointer whitespace-nowrap ${
-                isActive
-                  ? 'border-cyan-400 text-cyan-300 bg-cyan-950/20 font-bold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+        {/* Navigation Sub-Tabs */}
+        <div className="optical-subnav rounded-xl p-1 flex gap-1 text-xs font-medium overflow-x-auto no-scrollbar">
+          {(
+            [
+              { id: 'converter', label: '1. Base Converter', icon: ArrowLeftRight },
+              { id: 'bitwise', label: '2. Bitwise Ops', icon: Sliders },
+              { id: 'shifts', label: '3. Bit Shifts', icon: RotateCcw },
+              { id: 'applications', label: '4. chmod & TCP Masks', icon: KeyRound },
+              { id: 'twoscomp', label: "5. Two's Complement", icon: Layers },
+              { id: 'powers', label: '6. Powers of 2 Drill', icon: Calculator },
+              { id: 'logic', label: '7. Logic Gates', icon: Zap },
+              { id: 'hardware', label: '8. CPU & Cache', icon: Cpu },
+              { id: 'checklist', label: '9. Math Checklist', icon: CheckCircle2 }
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent hover:bg-white/[0.04]'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ======================================================== */}
       {/* MODULE 1: INTERACTIVE BASE CONVERSION & MULTI-RADIX WIDGET */}
       {/* ======================================================== */}
       {activeTab === 'converter' && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
           {/* Main Interactive Register Card */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-5">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-cyan-400 font-bold">
                     {bitWidth}-BIT INTERACTIVE HARDWARE REGISTER
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/30 text-cyan-200">
                     Live Digital Circuit
                   </span>
                 </div>
@@ -683,19 +696,19 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               {/* Bit Width Selector & Presets */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs font-mono">
+                <div className="optical-subnav flex items-center p-1 rounded-xl text-xs font-mono">
                   <button
                     onClick={() => handleBitWidthChange(8)}
-                    className={`px-2.5 py-1 rounded cursor-pointer transition-colors ${
-                      bitWidth === 8 ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+                      bitWidth === 8 ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/40 font-bold' : 'text-slate-400 hover:text-white border border-transparent'
                     }`}
                   >
                     8-Bit (Byte)
                   </button>
                   <button
                     onClick={() => handleBitWidthChange(16)}
-                    className={`px-2.5 py-1 rounded cursor-pointer transition-colors ${
-                      bitWidth === 16 ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+                      bitWidth === 16 ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/40 font-bold' : 'text-slate-400 hover:text-white border border-transparent'
                     }`}
                   >
                     16-Bit (Word)
@@ -717,7 +730,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     <button
                       key={p.label}
                       onClick={() => syncAllFromNumber(p.val)}
-                      className="px-2 py-1 rounded bg-slate-900 border border-slate-800 hover:border-slate-700 text-[11px] font-mono text-slate-300 hover:text-white transition-colors cursor-pointer"
+                      className="optical-inset hover:border-cyan-400/40 px-2 py-1 rounded-lg text-[11px] font-mono text-slate-300 hover:text-white transition-colors cursor-pointer"
                     >
                       {p.label}
                     </button>
@@ -728,7 +741,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
             {/* Overflow warning banner if triggered */}
             {overflowTriggered && (
-              <div className="rounded-xl border border-rose-900/80 bg-rose-950/30 p-4 text-xs text-rose-300 flex items-start gap-3 animate-fade-in">
+              <div className="rounded-xl border border-rose-400/40 bg-rose-950/35 p-4 text-xs text-rose-200 flex items-start gap-3">
                 <ShieldAlert className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-sm text-rose-200">
@@ -759,7 +772,6 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 {registerBits.map((bit, idx) => {
                   const bitIndex = registerBits.length - 1 - idx;
                   const weight = Math.pow(2, bitIndex);
-                  const isHighNibble = idx < 4;
 
                   return (
                     <button
@@ -767,21 +779,21 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                       onClick={() => toggleSingleBit(idx)}
                       className={`group flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-xl border text-center transition-all cursor-pointer relative ${
                         bit === 1
-                          ? 'border-cyan-500 bg-cyan-950/60 text-cyan-300 shadow-md shadow-cyan-950/60 scale-[1.02]'
-                          : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:bg-slate-900'
+                          ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200 shadow-[0_0_20px_-6px_rgba(34,211,238,0.5),inset_0_1px_0_rgba(255,255,255,0.18)] scale-[1.02]'
+                          : 'optical-inset text-slate-400 hover:border-white/[0.15]'
                       }`}
                     >
                       <span className="text-[10px] font-mono text-slate-400 mb-0.5">
                         2^{bitIndex}
                       </span>
                       <span
-                        className={`text-xl sm:text-2xl font-black font-mono tracking-wider ${
-                          bit === 1 ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : 'text-slate-500'
+                        className={`text-xl sm:text-2xl font-black font-mono tracking-wider tabular-nums ${
+                          bit === 1 ? 'text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]' : 'text-slate-500'
                         }`}
                       >
                         {bit}
                       </span>
-                      <span className="text-[10px] font-mono font-bold mt-0.5 text-slate-300 truncate max-w-full">
+                      <span className="text-[10px] font-mono font-bold mt-0.5 text-slate-300 truncate max-w-full tabular-nums">
                         {weight.toLocaleString()}
                       </span>
                       <span className="text-[9px] font-mono text-slate-400">
@@ -794,7 +806,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Nibble Breakdown Guide */}
-            <div className="rounded-lg bg-slate-900/60 border border-slate-800 p-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="optical-inset rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
               <div className="flex items-center gap-2">
                 <span className="text-slate-400">4-Bit Nibbles to Hex:</span>
                 <span className="text-amber-400 font-bold">
@@ -822,12 +834,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             {/* Live Synchronized Inputs in All Bases */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               {/* Decimal Input */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-1.5 focus-within:border-cyan-500 transition-colors">
+              <div className="optical-card rounded-xl p-4 space-y-1.5 focus-within:border-cyan-400/60 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono font-bold text-slate-300">DECIMAL (BASE-10)</span>
                   <button
                     onClick={() => copyToClipboard(convInputDec, 'dec')}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     {copiedKey === 'dec' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
@@ -837,21 +849,21 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   value={convInputDec}
                   onChange={(e) => handleDecChange(e.target.value)}
                   placeholder="e.g. 42"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-black/45 border border-white/[0.1] rounded-lg px-3 py-2 text-lg font-mono font-bold text-white tabular-nums focus:outline-none focus:border-cyan-400/60"
                 />
                 <div className="text-[11px] font-mono text-slate-400 flex justify-between">
                   <span>Signed 2&apos;s Comp:</span>
-                  <span className="text-indigo-400 font-bold">{signedDec}</span>
+                  <span className="text-indigo-300 font-bold tabular-nums">{signedDec}</span>
                 </div>
               </div>
 
               {/* Hexadecimal Input */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-1.5 focus-within:border-cyan-500 transition-colors">
+              <div className="optical-card rounded-xl p-4 space-y-1.5 focus-within:border-cyan-400/60 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono font-bold text-cyan-400">HEXADECIMAL (BASE-16)</span>
                   <button
                     onClick={() => copyToClipboard(`0x${hexString}`, 'hex')}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     {copiedKey === 'hex' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
@@ -863,7 +875,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     value={convInputHex}
                     onChange={(e) => handleHexChange(e.target.value)}
                     placeholder="2A"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-lg font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500 uppercase"
+                    className="w-full bg-black/45 border border-white/[0.1] rounded-lg pl-8 pr-3 py-2 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400/60 uppercase"
                   />
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 flex justify-between">
@@ -873,12 +885,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Binary Input */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-1.5 focus-within:border-cyan-500 transition-colors">
+              <div className="optical-card rounded-xl p-4 space-y-1.5 focus-within:border-cyan-400/60 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono font-bold text-emerald-400">BINARY (BASE-2)</span>
                   <button
                     onClick={() => copyToClipboard(registerBits.join(''), 'bin')}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     {copiedKey === 'bin' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
@@ -888,7 +900,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   value={convInputBin}
                   onChange={(e) => handleBinChange(e.target.value)}
                   placeholder="00101010"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-lg font-mono font-bold text-emerald-400 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-black/45 border border-white/[0.1] rounded-lg px-3 py-2 text-lg font-mono font-bold text-emerald-300 focus:outline-none focus:border-cyan-400/60"
                 />
                 <div className="text-[11px] font-mono text-slate-400 flex justify-between">
                   <span>Total Bits:</span>
@@ -897,12 +909,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Octal & ASCII Input */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-1.5 focus-within:border-cyan-500 transition-colors">
+              <div className="optical-card rounded-xl p-4 space-y-1.5 focus-within:border-cyan-400/60 transition-colors">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold text-amber-400">OCTAL (BASE-8) & ASCII</span>
+                  <span className="text-[11px] font-mono font-bold text-amber-400">OCTAL (BASE-8) &amp; ASCII</span>
                   <button
                     onClick={() => copyToClipboard(`0o${octalString}`, 'oct')}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     {copiedKey === 'oct' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
@@ -914,7 +926,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     value={convInputOct}
                     onChange={(e) => handleOctChange(e.target.value)}
                     placeholder="52"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-lg font-mono font-bold text-amber-400 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-black/45 border border-white/[0.1] rounded-lg pl-8 pr-3 py-2 text-lg font-mono font-bold text-amber-300 focus:outline-none focus:border-cyan-400/60"
                   />
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 flex justify-between">
@@ -927,7 +939,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Mathematical Place Value Breakdown Formula */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+            <div className="optical-inset rounded-xl p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-cyan-400">
                   Mathematical Place-Value Expansion Formula:
@@ -940,13 +952,13 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     const power = registerBits.length - 1 - i;
                     const weight = Math.pow(2, power);
                     return (
-                      <span key={i} className={b === 1 ? 'text-cyan-400 font-bold' : 'text-slate-500'}>
+                      <span key={i} className={b === 1 ? 'text-cyan-300 font-bold' : 'text-slate-500'}>
                         ({b} × {weight}){i < registerBits.length - 1 ? ' + ' : ''}
                       </span>
                     );
                   })}{' '}
                 ={' '}
-                <span className="text-white font-extrabold text-sm ml-1 underline decoration-cyan-500">
+                <span className="text-white font-extrabold text-sm ml-1 underline decoration-cyan-400 tabular-nums">
                   {unsignedDec}
                 </span>
               </div>
@@ -959,8 +971,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 2: BITWISE OPERATIONS & BITMASK STUDIO */}
       {/* ======================================================== */}
       {activeTab === 'bitwise' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-5">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div>
               <span className="text-xs font-mono text-cyan-400 font-bold">
                 DUAL-REGISTER BITWISE COMPUTATION ENGINE
@@ -978,8 +990,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   onClick={() => setBitwiseOp(op)}
                   className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border ${
                     bitwiseOp === op
-                      ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300 shadow-md shadow-cyan-950'
-                      : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700'
+                      ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]'
+                      : 'optical-inset text-slate-400 hover:text-white hover:border-white/[0.14]'
                   }`}
                 >
                   {op} ({op === 'AND' ? '&' : op === 'OR' ? '|' : op === 'XOR' ? '^' : op === 'NOT' ? '~' : op})
@@ -988,10 +1000,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Register A */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
+            <div className="optical-inset rounded-xl p-4 space-y-2">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="font-bold text-cyan-400">REGISTER A (Operand 1):</span>
-                <span className="text-slate-400">
+                <span className="text-slate-400 tabular-nums">
                   Decimal: <strong className="text-white">{decA}</strong> · Hex:{' '}
                   <strong className="text-cyan-300">0x{decA.toString(16).toUpperCase().padStart(2, '0')}</strong>
                 </span>
@@ -1001,10 +1013,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   <button
                     key={idx}
                     onClick={() => toggleBitA(idx)}
-                    className={`py-2 rounded-lg font-mono font-bold text-sm cursor-pointer border transition-all ${
+                    className={`py-2 rounded-xl font-mono font-bold text-sm cursor-pointer border transition-all tabular-nums ${
                       bit === 1
-                        ? 'border-cyan-500 bg-cyan-950/50 text-cyan-300 shadow'
-                        : 'border-slate-800 bg-slate-950 text-slate-600 hover:border-slate-700'
+                        ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]'
+                        : 'border-white/[0.06] bg-black/40 text-slate-500 hover:border-white/[0.16] hover:text-slate-300'
                     }`}
                   >
                     {bit}
@@ -1015,40 +1027,40 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
             {/* Register B (or Mask) */}
             {bitwiseOp !== 'NOT' && (
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono">
+              <div className="optical-inset rounded-xl p-4 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-amber-400">REGISTER B (Operand 2 / Bitmask):</span>
-                    <span className="text-slate-400">
+                    <span className="text-slate-400 tabular-nums">
                       Decimal: <strong className="text-white">{decB}</strong> · Hex:{' '}
                       <strong className="text-amber-300">0x{decB.toString(16).toUpperCase().padStart(2, '0')}</strong>
                     </span>
                   </div>
 
                   {/* Quick Preset Masks */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-slate-400">Masks:</span>
                     <button
                       onClick={() => applyBitmaskPreset('clear_low')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 hover:text-white"
+                      className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[10px] text-slate-300 hover:text-white cursor-pointer"
                     >
                       0xF0
                     </button>
                     <button
                       onClick={() => applyBitmaskPreset('clear_high')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 hover:text-white"
+                      className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[10px] text-slate-300 hover:text-white cursor-pointer"
                     >
                       0x0F
                     </button>
                     <button
                       onClick={() => applyBitmaskPreset('invert_all')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 hover:text-white"
+                      className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[10px] text-slate-300 hover:text-white cursor-pointer"
                     >
                       0xFF
                     </button>
                     <button
                       onClick={() => applyBitmaskPreset('syn_mask')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 hover:text-white"
+                      className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[10px] text-slate-300 hover:text-white cursor-pointer"
                     >
                       SYN (0x02)
                     </button>
@@ -1059,10 +1071,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     <button
                       key={idx}
                       onClick={() => toggleBitB(idx)}
-                      className={`py-2 rounded-lg font-mono font-bold text-sm cursor-pointer border transition-all ${
+                      className={`py-2 rounded-xl font-mono font-bold text-sm cursor-pointer border transition-all tabular-nums ${
                         bit === 1
-                          ? 'border-amber-500 bg-amber-950/50 text-amber-300 shadow'
-                          : 'border-slate-800 bg-slate-950 text-slate-600 hover:border-slate-700'
+                          ? 'border-amber-400/60 bg-amber-500/20 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.18)]'
+                          : 'border-white/[0.06] bg-black/40 text-slate-500 hover:border-white/[0.16] hover:text-slate-300'
                       }`}
                     >
                       {bit}
@@ -1073,12 +1085,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             )}
 
             {/* Result Register */}
-            <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/30 to-slate-950 p-4 space-y-2">
+            <div className="rounded-xl border border-emerald-400/35 bg-emerald-500/[0.08] p-4 space-y-2">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-bold text-emerald-400">
+                <span className="font-bold text-emerald-300">
                   RESULT = A {bitwiseOp} {bitwiseOp !== 'NOT' ? 'B' : ''}:
                 </span>
-                <span className="text-slate-300">
+                <span className="text-slate-300 tabular-nums">
                   Decimal: <strong className="text-emerald-300">{decRes}</strong> · Hex:{' '}
                   <strong className="text-emerald-300">0x{decRes.toString(16).toUpperCase().padStart(2, '0')}</strong>
                 </span>
@@ -1087,10 +1099,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 {bitwiseResult.map((bit, idx) => (
                   <div
                     key={idx}
-                    className={`py-2.5 rounded-lg font-mono font-black text-center text-base border transition-all ${
+                    className={`py-2.5 rounded-xl font-mono font-black text-center text-base border transition-all tabular-nums ${
                       bit === 1
-                        ? 'border-emerald-400 bg-emerald-950/70 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.5)]'
-                        : 'border-slate-800 bg-slate-900 text-slate-600'
+                        ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.22)]'
+                        : 'border-white/[0.06] bg-black/40 text-slate-600'
                     }`}
                   >
                     {bit}
@@ -1100,28 +1112,28 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Bit-by-bit column breakdown */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+            <div className="optical-inset rounded-xl p-4 space-y-2">
               <span className="text-xs font-mono font-bold text-slate-300 block">
                 Bit-by-Bit Position Verification (Positions 7 down to 0):
               </span>
               <div className="grid grid-cols-8 gap-2 text-center text-xs font-mono text-slate-400 pt-1">
                 {bitwiseResult.map((res, i) => (
-                  <div key={i} className="p-2 rounded bg-slate-900/60 border border-slate-800/80 space-y-1">
+                  <div key={i} className="p-2 rounded-xl bg-black/35 border border-white/[0.06] space-y-1 tabular-nums">
                     <div className="text-[10px] text-slate-400">b{7 - i}</div>
                     <div className="text-cyan-400 font-bold">{opBitsA[i]}</div>
                     <div className="text-slate-400 text-[10px]">{bitwiseOp}</div>
                     {bitwiseOp !== 'NOT' && <div className="text-amber-400 font-bold">{opBitsB[i]}</div>}
-                    <div className="border-t border-slate-800 pt-0.5 text-emerald-400 font-black">{res}</div>
+                    <div className="border-t border-white/[0.08] pt-0.5 text-emerald-400 font-black">{res}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Real World Security & Engineering Insight */}
-            <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4 text-xs space-y-1.5 text-slate-300 leading-relaxed">
+            <div className="rounded-xl border border-cyan-400/25 bg-cyan-500/[0.07] p-4 text-xs space-y-1.5 text-slate-300 leading-relaxed">
               <div className="font-bold font-mono text-cyan-300 flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4" />
-                <span>Computer Science & Security Applications:</span>
+                <span>Computer Science &amp; Security Applications:</span>
               </div>
               {bitwiseOp === 'AND' && (
                 <p>
@@ -1170,11 +1182,11 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 3: REAL-TIME BIT SHIFTS & ROTATION */}
       {/* ======================================================== */}
       {activeTab === 'shifts' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-5">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div>
               <span className="text-xs font-mono text-cyan-400 font-bold">
-                REAL-TIME HARDWARE SHIFTER & ROTATION ENGINE
+                REAL-TIME HARDWARE SHIFTER &amp; ROTATION ENGINE
               </span>
               <p className="text-xs text-slate-400 mt-1">
                 Perform hardware bit shifts. Watch bits move left or right, observe zero-fills, arithmetic sign extensions, and circular rotations.
@@ -1182,9 +1194,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Current Register Status */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+            <div className="optical-inset rounded-xl p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="text-xs font-mono">
+                <div className="text-xs font-mono tabular-nums">
                   <span className="text-slate-400">Current Value: </span>
                   <span className="text-lg font-bold text-white font-mono">{shiftDec}</span>
                   <span className="text-xs text-cyan-400 font-mono ml-2">
@@ -1192,16 +1204,16 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-mono text-slate-400">Shift By:</span>
                   {[1, 2, 3, 4].map((n) => (
                     <button
                       key={n}
                       onClick={() => setShiftAmount(n)}
-                      className={`px-2.5 py-1 rounded text-xs font-mono font-bold cursor-pointer transition-colors ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold cursor-pointer border transition-colors ${
                         shiftAmount === n
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                          ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+                          : 'border-white/[0.08] bg-white/[0.04] text-slate-400 hover:text-white'
                       }`}
                     >
                       {n} bit{n > 1 ? 's' : ''}
@@ -1209,7 +1221,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   ))}
                   <button
                     onClick={() => resetShiftRegister(42)}
-                    className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 cursor-pointer"
+                    className="ml-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-300 cursor-pointer"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     <span>Reset</span>
@@ -1222,10 +1234,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 {shiftRegister.map((bit, idx) => (
                   <div
                     key={idx}
-                    className={`py-3 rounded-xl border text-center font-mono transition-all ${
+                    className={`py-3 rounded-xl border text-center font-mono transition-all tabular-nums ${
                       bit === 1
-                        ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.5)]'
-                        : 'border-slate-800 bg-slate-950 text-slate-600'
+                        ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.2)]'
+                        : 'border-white/[0.06] bg-black/40 text-slate-500'
                     }`}
                   >
                     <div className="text-xl font-black">{bit}</div>
@@ -1239,9 +1251,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <button
                 onClick={() => performShift('shl')}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-left cursor-pointer transition-all space-y-1"
+                className="optical-card p-3.5 rounded-xl text-left cursor-pointer space-y-1 hover:border-cyan-400/40"
               >
-                <div className="font-mono font-bold text-cyan-400 text-sm">
+                <div className="font-mono font-bold text-cyan-300 text-sm">
                   &lt;&lt; {shiftAmount} (Logical Left Shift)
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
@@ -1251,9 +1263,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               <button
                 onClick={() => performShift('shr_log')}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-left cursor-pointer transition-all space-y-1"
+                className="optical-card p-3.5 rounded-xl text-left cursor-pointer space-y-1 hover:border-amber-400/40"
               >
-                <div className="font-mono font-bold text-amber-400 text-sm">
+                <div className="font-mono font-bold text-amber-300 text-sm">
                   &gt;&gt;&gt; {shiftAmount} (Logical Right Shift)
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
@@ -1263,9 +1275,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               <button
                 onClick={() => performShift('shr_arith')}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-left cursor-pointer transition-all space-y-1"
+                className="optical-card p-3.5 rounded-xl text-left cursor-pointer space-y-1 hover:border-indigo-400/40"
               >
-                <div className="font-mono font-bold text-indigo-400 text-sm">
+                <div className="font-mono font-bold text-indigo-300 text-sm">
                   &gt;&gt; {shiftAmount} (Arithmetic Right Shift)
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
@@ -1275,9 +1287,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               <button
                 onClick={() => performShift('rol')}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-left cursor-pointer transition-all space-y-1"
+                className="optical-card p-3.5 rounded-xl text-left cursor-pointer space-y-1 hover:border-emerald-400/40"
               >
-                <div className="font-mono font-bold text-emerald-400 text-sm">
+                <div className="font-mono font-bold text-emerald-300 text-sm">
                   ROL {shiftAmount} (Rotate Left)
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
@@ -1287,9 +1299,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               <button
                 onClick={() => performShift('ror')}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-left cursor-pointer transition-all space-y-1"
+                className="optical-card p-3.5 rounded-xl text-left cursor-pointer space-y-1 hover:border-purple-400/40"
               >
-                <div className="font-mono font-bold text-purple-400 text-sm">
+                <div className="font-mono font-bold text-purple-300 text-sm">
                   ROR {shiftAmount} (Rotate Right)
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
@@ -1299,9 +1311,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Last Shift Mathematical Log */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+            <div className="optical-inset rounded-xl p-4 space-y-2">
               <span className="text-xs font-mono font-bold text-slate-300 block">Last Shift Execution Details:</span>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono tabular-nums">
                 <div>
                   <span className="text-slate-400">Operation: </span>
                   <span className="text-cyan-400 font-bold">{lastShiftLog.op}</span>
@@ -1316,7 +1328,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Practical Compiler Optimization Insight */}
-            <div className="rounded-xl border border-indigo-900/60 bg-indigo-950/20 p-4 text-xs text-slate-300 space-y-2">
+            <div className="rounded-xl border border-indigo-400/25 bg-indigo-500/[0.07] p-4 text-xs text-slate-300 space-y-2">
               <div className="font-bold text-indigo-300 font-mono flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4" />
                 <span>Compiler Optimization &amp; Cryptography Secret:</span>
@@ -1337,9 +1349,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 4: REAL-WORLD SYSTEMS BITMASKS (CHMOD & TCP) */}
       {/* ======================================================== */}
       {activeTab === 'applications' && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
           {/* 1. Linux chmod Octal Simulator */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-4">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <span className="text-xs font-mono text-cyan-400 font-bold">
@@ -1352,11 +1364,11 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
               {/* Command Generator */}
               <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-slate-900 border border-slate-800 px-3 py-1.5 font-mono text-xs text-emerald-400 flex items-center gap-2">
+                <div className="optical-inset rounded-xl px-3 py-1.5 font-mono text-xs text-emerald-300 flex items-center gap-2 tabular-nums">
                   <span>chmod {userOctal}{groupOctal}{otherOctal} script.sh</span>
                   <button
                     onClick={() => copyToClipboard(`chmod ${userOctal}${groupOctal}${otherOctal} script.sh`, 'chmod')}
-                    className="text-slate-400 hover:text-white"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     {copiedKey === 'chmod' ? (
                       <Check className="h-3.5 w-3.5 text-emerald-400" />
@@ -1371,10 +1383,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             {/* 3 Categories: User, Group, Other */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* User / Owner */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+              <div className="optical-inset rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-cyan-400">1. OWNER (USER)</span>
-                  <span className="text-sm font-bold font-mono text-white">Octal: {userOctal}</span>
+                  <span className="text-sm font-bold font-mono text-white tabular-nums">Octal: {userOctal}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -1385,10 +1397,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     <button
                       key={p.label}
                       onClick={() => toggleChmodBit(p.idx)}
-                      className={`p-2.5 rounded-lg border text-center font-mono text-xs font-bold transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-xl border text-center font-mono text-xs font-bold transition-all cursor-pointer tabular-nums ${
                         chmodBits[p.idx] === 1
-                          ? 'border-cyan-400 bg-cyan-950/70 text-cyan-300'
-                          : 'border-slate-800 bg-slate-950 text-slate-600'
+                          ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+                          : 'border-white/[0.06] bg-black/40 text-slate-500 hover:text-slate-300'
                       }`}
                     >
                       <div>{chmodBits[p.idx]}</div>
@@ -1399,10 +1411,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Group */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+              <div className="optical-inset rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-amber-400">2. GROUP</span>
-                  <span className="text-sm font-bold font-mono text-white">Octal: {groupOctal}</span>
+                  <span className="text-sm font-bold font-mono text-white tabular-nums">Octal: {groupOctal}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -1413,10 +1425,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     <button
                       key={p.label}
                       onClick={() => toggleChmodBit(p.idx)}
-                      className={`p-2.5 rounded-lg border text-center font-mono text-xs font-bold transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-xl border text-center font-mono text-xs font-bold transition-all cursor-pointer tabular-nums ${
                         chmodBits[p.idx] === 1
-                          ? 'border-amber-400 bg-amber-950/70 text-amber-300'
-                          : 'border-slate-800 bg-slate-950 text-slate-600'
+                          ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+                          : 'border-white/[0.06] bg-black/40 text-slate-500 hover:text-slate-300'
                       }`}
                     >
                       <div>{chmodBits[p.idx]}</div>
@@ -1427,10 +1439,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Others */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+              <div className="optical-inset rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-emerald-400">3. OTHERS (WORLD)</span>
-                  <span className="text-sm font-bold font-mono text-white">Octal: {otherOctal}</span>
+                  <span className="text-sm font-bold font-mono text-white tabular-nums">Octal: {otherOctal}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -1441,10 +1453,10 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     <button
                       key={p.label}
                       onClick={() => toggleChmodBit(p.idx)}
-                      className={`p-2.5 rounded-lg border text-center font-mono text-xs font-bold transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-xl border text-center font-mono text-xs font-bold transition-all cursor-pointer tabular-nums ${
                         chmodBits[p.idx] === 1
-                          ? 'border-emerald-400 bg-emerald-950/70 text-emerald-300'
-                          : 'border-slate-800 bg-slate-950 text-slate-600'
+                          ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                          : 'border-white/[0.06] bg-black/40 text-slate-500 hover:text-slate-300'
                       }`}
                     >
                       <div>{chmodBits[p.idx]}</div>
@@ -1456,28 +1468,28 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Real-Time Permission String */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs font-mono">
+            <div className="optical-inset rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs font-mono tabular-nums">
               <div>
                 <span className="text-slate-400">Symbolic Permission: </span>
-                <span className="text-emerald-400 font-extrabold text-sm tracking-widest">
+                <span className="text-emerald-300 font-extrabold text-sm tracking-widest">
                   -{chmodSymbolic}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400">9-Bit Binary: </span>
-                <span className="text-cyan-400 font-bold">
+                <span className="text-cyan-300 font-bold">
                   {chmodBits.slice(0, 3).join('')} {chmodBits.slice(3, 6).join('')} {chmodBits.slice(6, 9).join('')}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400">Octal Code: </span>
-                <span className="text-amber-400 font-extrabold text-sm">{chmodOctal}</span>
+                <span className="text-amber-300 font-extrabold text-sm">{chmodOctal}</span>
               </div>
             </div>
           </div>
 
           {/* 2. TCP Header Flags Bitmask */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-4">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <span className="text-xs font-mono text-cyan-400 font-bold">
@@ -1488,7 +1500,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 </p>
               </div>
 
-              <div className="text-xs font-mono bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+              <div className="optical-inset text-xs font-mono px-3 py-1.5 rounded-xl tabular-nums">
                 <span className="text-slate-400">TCP Flags Byte: </span>
                 <span className="text-cyan-300 font-bold">{tcpHexVal}</span>
               </div>
@@ -1510,12 +1522,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     onClick={() => toggleTcpFlag(flag.name)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       isActive
-                        ? 'border-cyan-400 bg-cyan-950/60 shadow-md shadow-cyan-950 text-white'
-                        : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700'
+                        ? 'border-cyan-400/60 bg-cyan-500/20 text-white shadow-[0_0_16px_rgba(34,211,238,0.16)]'
+                        : 'optical-card text-slate-400'
                     }`}
                   >
-                    <div className="flex items-center justify-between font-mono font-bold text-sm">
-                      <span className={isActive ? 'text-cyan-300' : 'text-slate-300'}>{flag.name}</span>
+                    <div className="flex items-center justify-between font-mono font-bold text-sm tabular-nums">
+                      <span className={isActive ? 'text-cyan-200' : 'text-slate-300'}>{flag.name}</span>
                       <span className="text-[10px] text-slate-400">{flag.bit}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-1 leading-tight">{flag.desc}</div>
@@ -1525,7 +1537,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Handshake Analysis */}
-            <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-3 text-xs text-slate-300 space-y-1">
+            <div className="optical-inset rounded-xl p-3.5 text-xs text-slate-300 space-y-1">
               <span className="font-mono font-bold text-cyan-400">3-Way Handshake Connection State:</span>
               <p className="leading-relaxed text-[11px] text-slate-400">
                 {tcpFlags.SYN && !tcpFlags.ACK && 'SYN Packet (Step 1): Client requests new TCP connection.'}
@@ -1543,8 +1555,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 5: TWO'S COMPLEMENT & NEGATIVE PROOF */}
       {/* ======================================================== */}
       {activeTab === 'twoscomp' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-5 space-y-5">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div>
               <span className="text-xs font-mono text-cyan-400 font-bold">
                 TWO&apos;S COMPLEMENT MATHEMATICAL PROOF (HOW NEGATIVE NUMBERS EXIST)
@@ -1555,25 +1567,30 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Input Slider */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+            <div className="optical-inset rounded-xl p-4 space-y-2">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">Choose Positive Value X:</span>
-                <span className="text-base font-bold text-white font-mono">{twosCompNum}</span>
+                <span className="text-slate-300">Choose Positive Value X:</span>
+                <span className="text-base font-bold text-cyan-300 font-mono tabular-nums">+{twosCompNum}</span>
               </div>
-              <input
-                type="range"
-                min="1"
-                max="127"
-                value={twosCompNum}
-                onChange={(e) => setTwosCompNum(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
+              <div className="py-1">
+                <SoapBubbleSlider
+                  value={twosCompNum}
+                  min={1}
+                  max={127}
+                  step={1}
+                  onValueChange={setTwosCompNum}
+                  label="Choose Positive Value X"
+                  from="#22d3ee"
+                  to="#6366f1"
+                  scale={0.75}
+                />
+              </div>
             </div>
 
             {/* Step-by-Step Proof */}
             <div className="space-y-3">
               {/* Step 1 */}
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/50 space-y-2">
+              <div className="optical-inset p-4 rounded-xl space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-cyan-400 font-bold">STEP 1: Original Positive Number (+{twosCompNum})</span>
                   <span className="text-slate-400">MSB is 0 (Positive)</span>
@@ -1582,8 +1599,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   {positiveBits.map((b, i) => (
                     <div
                       key={i}
-                      className={`p-2.5 rounded-lg border text-center font-mono font-bold text-base ${
-                        b === 1 ? 'border-cyan-500 bg-cyan-950/50 text-cyan-300' : 'border-slate-800 bg-slate-950 text-slate-500'
+                      className={`p-2.5 rounded-xl border text-center font-mono font-bold text-base tabular-nums ${
+                        b === 1 ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200' : 'border-white/[0.06] bg-black/40 text-slate-500'
                       }`}
                     >
                       {b}
@@ -1593,7 +1610,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Step 2 */}
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/50 space-y-2">
+              <div className="optical-inset p-4 rounded-xl space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-amber-400 font-bold">STEP 2: Invert All Bits (One&apos;s Complement, ~X)</span>
                   <span className="text-slate-400">Every 0 becomes 1, every 1 becomes 0</span>
@@ -1602,8 +1619,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   {invertedBits.map((b, i) => (
                     <div
                       key={i}
-                      className={`p-2.5 rounded-lg border text-center font-mono font-bold text-base ${
-                        b === 1 ? 'border-amber-500 bg-amber-950/50 text-amber-300' : 'border-slate-800 bg-slate-950 text-slate-500'
+                      className={`p-2.5 rounded-xl border text-center font-mono font-bold text-base tabular-nums ${
+                        b === 1 ? 'border-amber-400/50 bg-amber-500/15 text-amber-200' : 'border-white/[0.06] bg-black/40 text-slate-500'
                       }`}
                     >
                       {b}
@@ -1613,19 +1630,19 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Step 3 */}
-              <div className="p-4 rounded-xl border border-indigo-500/40 bg-indigo-950/20 space-y-2">
+              <div className="p-4 rounded-xl border border-indigo-400/35 bg-indigo-500/10 space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-indigo-300 font-bold">
+                  <span className="text-indigo-200 font-bold">
                     STEP 3: Add 1 to Result = Two&apos;s Complement (-{twosCompNum})
                   </span>
-                  <span className="text-indigo-400 font-bold">Signed Value: -{twosCompNum}</span>
+                  <span className="text-indigo-300 font-bold tabular-nums">Signed Value: -{twosCompNum}</span>
                 </div>
                 <div className="grid grid-cols-8 gap-2">
                   {negativeBits.map((b, i) => (
                     <div
                       key={i}
-                      className={`p-2.5 rounded-lg border text-center font-mono font-bold text-base ${
-                        b === 1 ? 'border-indigo-400 bg-indigo-950/70 text-indigo-300' : 'border-slate-800 bg-slate-950 text-slate-500'
+                      className={`p-2.5 rounded-xl border text-center font-mono font-bold text-base tabular-nums ${
+                        b === 1 ? 'border-indigo-400/60 bg-indigo-500/20 text-indigo-200' : 'border-white/[0.06] bg-black/40 text-slate-500'
                       }`}
                     >
                       {b}
@@ -1636,14 +1653,14 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Arithmetic Verification Proof */}
-            <div className="rounded-xl border border-emerald-500/40 bg-slate-950 p-4 space-y-2">
-              <span className="text-xs font-mono font-bold text-emerald-400">
+            <div className="rounded-xl border border-emerald-400/35 bg-emerald-500/10 p-4 space-y-2">
+              <span className="text-xs font-mono font-bold text-emerald-300">
                 Mathematical Verification: (+{twosCompNum}) + (-{twosCompNum}) = 0
               </span>
               <div className="font-mono text-xs text-slate-300 space-y-1">
                 <div>&nbsp;&nbsp;{positiveBits.join('')} &nbsp;(+{twosCompNum})</div>
                 <div>+ {negativeBits.join('')} &nbsp;(-{twosCompNum})</div>
-                <div className="border-t border-slate-700 pt-1 text-emerald-400 font-bold">
+                <div className="border-t border-white/[0.1] pt-1 text-emerald-300 font-bold">
                   = {twosCompVerificationSum.sumBits.join('')} &nbsp;(Carry bit {twosCompVerificationSum.finalCarry} drops off register!)
                 </div>
               </div>
@@ -1659,36 +1676,36 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 6: POWERS OF 2 MATRIX & SPEED TRAINER */}
       {/* ======================================================== */}
       {activeTab === 'powers' && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
           {/* Interactive Speed Drill */}
-          <div className="rounded-xl border border-cyan-500/40 bg-gradient-to-br from-cyan-950/30 to-slate-900 p-5 space-y-4">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                <div className="h-8 w-8 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
                   <Calculator className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Powers of 2 Speed Drill (Flash Trainer)</h4>
+                  <h4 className="font-display text-sm font-bold text-white">Powers of 2 Speed Drill (Flash Trainer)</h4>
                   <p className="text-xs text-slate-400">Train your brain to recognize powers of 2 without hesitation.</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-xs font-mono">
-                <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+              <div className="flex items-center gap-3 text-xs font-mono">
+                <div className="optical-inset flex items-center gap-1.5 px-3 py-1.5 rounded-xl">
                   <Flame className="h-4 w-4 text-amber-400" />
                   <span className="text-slate-400">Streak:</span>
-                  <span className="text-amber-400 font-bold">{drillStreak}</span>
+                  <span className="text-amber-300 font-bold tabular-nums">{drillStreak}</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <div className="optical-inset flex items-center gap-1.5 px-3 py-1.5 rounded-xl">
                   <Award className="h-4 w-4 text-cyan-400" />
                   <span className="text-slate-400">Score:</span>
-                  <span className="text-cyan-400 font-bold">{drillScore}</span>
+                  <span className="text-cyan-300 font-bold tabular-nums">{drillScore}</span>
                 </div>
               </div>
             </div>
 
             {/* Drill Card */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 space-y-4">
+            <div className="optical-inset rounded-xl p-5 space-y-4">
               <div className="text-sm font-bold text-white font-mono">{drillQuestion.prompt}</div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -1696,7 +1713,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   <button
                     key={opt}
                     onClick={() => handleDrillAnswer(opt)}
-                    className="p-3 rounded-lg border border-slate-800 bg-slate-900 hover:border-cyan-500 hover:bg-cyan-950/40 text-sm font-mono font-bold text-white transition-all cursor-pointer"
+                    className="optical-card p-3 rounded-xl text-sm font-mono font-bold text-white cursor-pointer tabular-nums"
                   >
                     {opt.toLocaleString()}
                   </button>
@@ -1712,22 +1729,25 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   >
                     {drillFeedback}
                   </span>
-                  <button
+                  <SoapBubbleButton
                     onClick={generateNextDrill}
-                    className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-mono font-bold cursor-pointer"
+                    tint="rgb(14 165 233)"
+                    opacity={0.9}
+                    style={{ fontSize: 12 }}
+                    className="!min-h-[32px] !px-3.5 font-mono font-bold text-white"
                   >
                     <span>Next Drill Question</span>
                     <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
+                  </SoapBubbleButton>
                 </div>
               )}
             </div>
           </div>
 
           {/* Reference Table 2^0 to 2^16 */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 space-y-4">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-4">
             <div>
-              <h4 className="text-sm font-bold text-white font-mono">Powers of 2 Master Table (2^0 to 2^16)</h4>
+              <h4 className="font-display text-sm font-bold text-white">Powers of 2 Master Table (2^0 to 2^16)</h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 Required memory table from Page 10 of the Student Handbook. Every Computer Science concept is anchored here.
               </p>
@@ -1737,12 +1757,12 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               {POWERS_OF_TWO.map((item) => (
                 <div
                   key={item.exp}
-                  className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 flex items-start justify-between gap-2 hover:border-slate-700 transition-colors"
+                  className="optical-card rounded-xl p-3.5 flex items-start justify-between gap-2"
                 >
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-xs font-mono text-cyan-400 font-bold">2^{item.exp}</span>
-                      <span className="text-base font-mono font-extrabold text-white">
+                      <span className="text-base font-mono font-extrabold text-white tabular-nums">
                         = {item.val.toLocaleString()}
                       </span>
                     </div>
@@ -1760,8 +1780,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 7: BOOLEAN LOGIC GATES & CIRCUITS */}
       {/* ======================================================== */}
       {activeTab === 'logic' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-5 space-y-5">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div>
               <span className="text-xs font-mono text-cyan-400 font-bold">INTERACTIVE LOGIC GATE SIMULATOR</span>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -1777,8 +1797,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   onClick={() => setSelectedGate(gate)}
                   className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border ${
                     selectedGate === gate
-                      ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300 shadow-md shadow-cyan-950'
-                      : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700'
+                      ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                      : 'optical-inset text-slate-400 hover:text-white hover:border-white/[0.14]'
                   }`}
                 >
                   {gate} GATE
@@ -1789,56 +1809,50 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             {/* Circuit Workbench */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
               {/* Left: Input Switches */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-4">
+              <div className="optical-inset rounded-xl p-4 space-y-4">
                 <span className="text-xs font-mono font-bold text-slate-300 block">1. Toggle Digital Inputs</span>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-white/[0.08] bg-black/45">
                     <div>
-                      <span className="text-xs font-mono font-bold text-white block">INPUT A</span>
+                      <span className="text-xs font-mono font-bold text-white block">INPUT A · Bit {inputA}</span>
                       <span className="text-[10px] font-mono text-slate-400">
                         {inputA === 1 ? 'High (5 Volts)' : 'Low (0 Volts)'}
                       </span>
                     </div>
-                    <button
-                      onClick={() => setInputA(inputA === 1 ? 0 : 1)}
-                      className={`h-9 w-16 rounded-full p-1 transition-colors cursor-pointer flex items-center ${
-                        inputA === 1 ? 'bg-cyan-600 justify-end' : 'bg-slate-800 justify-start'
-                      }`}
-                    >
-                      <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center font-mono font-bold text-xs text-slate-950 shadow">
-                        {inputA}
-                      </div>
-                    </button>
+                    <SoapBubbleToggle
+                      checked={inputA === 1}
+                      onCheckedChange={(checked) => setInputA(checked ? 1 : 0)}
+                      aria-label="Toggle Digital Input A"
+                      color="#22d3ee"
+                      scale={0.75}
+                    />
                   </div>
 
                   {selectedGate !== 'NOT' && (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950">
+                    <div className="flex items-center justify-between p-3 rounded-xl border border-white/[0.08] bg-black/45">
                       <div>
-                        <span className="text-xs font-mono font-bold text-white block">INPUT B</span>
+                        <span className="text-xs font-mono font-bold text-white block">INPUT B · Bit {inputB}</span>
                         <span className="text-[10px] font-mono text-slate-400">
                           {inputB === 1 ? 'High (5 Volts)' : 'Low (0 Volts)'}
                         </span>
                       </div>
-                      <button
-                        onClick={() => setInputB(inputB === 1 ? 0 : 1)}
-                        className={`h-9 w-16 rounded-full p-1 transition-colors cursor-pointer flex items-center ${
-                          inputB === 1 ? 'bg-cyan-600 justify-end' : 'bg-slate-800 justify-start'
-                        }`}
-                      >
-                        <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center font-mono font-bold text-xs text-slate-950 shadow">
-                          {inputB}
-                        </div>
-                      </button>
+                      <SoapBubbleToggle
+                        checked={inputB === 1}
+                        onCheckedChange={(checked) => setInputB(checked ? 1 : 0)}
+                        aria-label="Toggle Digital Input B"
+                        color="#22d3ee"
+                        scale={0.75}
+                      />
                     </div>
                   )}
                 </div>
 
                 {/* Gate Rule & Security Role */}
-                <div className="rounded-lg bg-slate-950 p-3 text-xs text-slate-300 border border-slate-800 space-y-1.5">
+                <div className="rounded-xl bg-black/45 p-3 text-xs text-slate-300 border border-white/[0.08] space-y-1.5">
                   <div className="font-bold font-mono text-cyan-400">{GATE_SPECS[selectedGate].formula}</div>
                   <p className="text-[11px] leading-relaxed text-slate-300">{GATE_SPECS[selectedGate].rule}</p>
-                  <div className="text-[11px] text-amber-400/90 pt-1 border-t border-slate-800/80">
+                  <div className="text-[11px] text-amber-300/90 pt-1 border-t border-white/[0.08]">
                     <strong>Cybersecurity &amp; Systems: </strong>
                     {GATE_SPECS[selectedGate].securityRole}
                   </div>
@@ -1846,7 +1860,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Middle: Visual Wire Circuit */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <div className="optical-inset rounded-xl flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                   Live Digital Circuit Signal
                 </span>
@@ -1855,29 +1869,29 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   {/* Wire Inputs */}
                   <div className="flex flex-col gap-4">
                     <div
-                      className={`h-4 w-12 rounded transition-colors ${
-                        inputA === 1 ? 'bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'bg-slate-800'
+                      className={`h-4 w-12 rounded-md transition-colors ${
+                        inputA === 1 ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-white/[0.08]'
                       }`}
                     />
                     {selectedGate !== 'NOT' && (
                       <div
-                        className={`h-4 w-12 rounded transition-colors ${
-                          inputB === 1 ? 'bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'bg-slate-800'
+                        className={`h-4 w-12 rounded-md transition-colors ${
+                          inputB === 1 ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-white/[0.08]'
                         }`}
                       />
                     )}
                   </div>
 
                   {/* Gate Box */}
-                  <div className="h-20 w-24 rounded-2xl border-2 border-cyan-400/80 bg-cyan-950/40 flex flex-col items-center justify-center shadow-lg shadow-cyan-950">
+                  <div className="h-20 w-24 rounded-2xl border-2 border-cyan-400/70 bg-cyan-500/15 flex flex-col items-center justify-center shadow-[0_0_24px_-6px_rgba(34,211,238,0.45)]">
                     <span className="text-base font-extrabold font-mono text-white">{selectedGate}</span>
-                    <span className="text-[10px] font-mono text-cyan-400">GATE</span>
+                    <span className="text-[10px] font-mono text-cyan-300">GATE</span>
                   </div>
 
                   {/* Output Wire */}
                   <div
-                    className={`h-4 w-12 rounded transition-colors ${
-                      currentGateOutput === 1 ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-slate-800'
+                    className={`h-4 w-12 rounded-md transition-colors ${
+                      currentGateOutput === 1 ? 'bg-emerald-400 shadow-[0_0_12px_#34d399]' : 'bg-white/[0.08]'
                     }`}
                   />
 
@@ -1885,8 +1899,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   <div
                     className={`h-16 w-16 rounded-full border-2 flex flex-col items-center justify-center font-mono font-extrabold text-lg transition-all ${
                       currentGateOutput === 1
-                        ? 'border-emerald-400 bg-emerald-950/60 text-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.6)] scale-110'
-                        : 'border-slate-800 bg-slate-900 text-slate-600'
+                        ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200 shadow-[0_0_22px_rgba(52,211,153,0.55)] scale-105'
+                        : 'border-white/[0.1] bg-black/45 text-slate-600'
                     }`}
                   >
                     <span>{currentGateOutput}</span>
@@ -1898,21 +1912,21 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
               </div>
 
               {/* Right: Dynamic Truth Table */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+              <div className="optical-inset rounded-xl p-4 space-y-3">
                 <span className="text-xs font-mono font-bold text-slate-300 block">
                   3. Truth Table for {selectedGate} Gate
                 </span>
 
-                <div className="overflow-hidden rounded-lg border border-slate-800">
+                <div className="overflow-hidden rounded-xl border border-white/[0.08]">
                   <table className="w-full text-xs font-mono text-left">
-                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                    <thead className="bg-white/[0.03] text-slate-400 border-b border-white/[0.08]">
                       <tr>
                         <th className="p-2 text-center">A</th>
                         {selectedGate !== 'NOT' && <th className="p-2 text-center">B</th>}
                         <th className="p-2 text-center text-cyan-400 font-bold">OUTPUT</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-white/[0.06]">
                       {(selectedGate === 'NOT'
                         ? [
                             { a: 0, b: 0, out: GATE_SPECS['NOT'].compute(0, 0) },
@@ -1935,18 +1949,18 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                             key={idx}
                             className={`transition-colors ${
                               isCurrentState
-                                ? 'bg-cyan-950/40 text-cyan-200 font-bold'
-                                : 'text-slate-400 hover:bg-slate-900'
+                                ? 'bg-cyan-500/20 text-cyan-200 font-bold'
+                                : 'text-slate-400 hover:bg-white/[0.03]'
                             }`}
                           >
                             <td className="p-2 text-center">{row.a}</td>
                             {selectedGate !== 'NOT' && <td className="p-2 text-center">{row.b}</td>}
                             <td className="p-2 text-center">
                               <span
-                                className={`px-2 py-0.5 rounded ${
+                                className={`px-2 py-0.5 rounded-md ${
                                   row.out === 1
-                                    ? 'bg-emerald-950 text-emerald-400 font-bold'
-                                    : 'bg-slate-900 text-slate-500'
+                                    ? 'bg-emerald-500/20 text-emerald-300 font-bold'
+                                    : 'bg-white/[0.04] text-slate-500'
                                 }`}
                               >
                                 {row.out}
@@ -1968,8 +1982,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 8: CPU & MEMORY ARCHITECTURE */}
       {/* ======================================================== */}
       {activeTab === 'hardware' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-5 space-y-6">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-6">
             <div>
               <span className="text-xs font-mono text-cyan-400 font-bold">THE VON NEUMANN ARCHITECTURE</span>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -1979,9 +1993,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
 
             {/* Pipeline Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="optical-card p-4 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-cyan-400 font-mono text-xs font-bold">
-                  <span className="h-6 w-6 rounded-full bg-cyan-950 flex items-center justify-center border border-cyan-800">
+                  <span className="h-6 w-6 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-400/35">
                     1
                   </span>
                   <span>FETCH CYCLE</span>
@@ -1993,9 +2007,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="optical-card p-4 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold">
-                  <span className="h-6 w-6 rounded-full bg-amber-950 flex items-center justify-center border border-amber-800">
+                  <span className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-400/35">
                     2
                   </span>
                   <span>DECODE CYCLE</span>
@@ -2007,9 +2021,9 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="optical-card p-4 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs font-bold">
-                  <span className="h-6 w-6 rounded-full bg-emerald-950 flex items-center justify-center border border-emerald-800">
+                  <span className="h-6 w-6 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-400/35">
                     3
                   </span>
                   <span>EXECUTE CYCLE</span>
@@ -2023,26 +2037,26 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             {/* Memory Latency Hierarchy Pyramid */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+            <div className="optical-inset rounded-xl p-4 space-y-3">
               <span className="text-xs font-mono font-bold text-cyan-400">
                 Memory Latency Hierarchy (Why Data Locality Matters)
               </span>
 
               <div className="space-y-2">
                 {[
-                  { level: 'CPU Registers (RAX, RBX, RCX...)', speed: '~0.5 nanoseconds', size: 'Bytes (~1 KB)', color: 'bg-cyan-600' },
-                  { level: 'L1 Cache (On-die fast SRAM)', speed: '~1 nanosecond', size: '32 - 64 KB per core', color: 'bg-indigo-600' },
-                  { level: 'L2 Cache (Shared SRAM)', speed: '~3 - 4 nanoseconds', size: '512 KB - 1 MB', color: 'bg-purple-600' },
-                  { level: 'L3 Cache (Big LLC SRAM)', speed: '~10 - 20 nanoseconds', size: '16 - 64 MB', color: 'bg-amber-600' },
-                  { level: 'Main Memory (DDR4 / DDR5 DRAM)', speed: '~60 - 80 nanoseconds', size: '16 - 64 GB', color: 'bg-rose-600' },
-                  { level: 'NVMe SSD / Disk Storage', speed: '~10,000 - 100,000 ns', size: '1 - 4 TB', color: 'bg-slate-700' }
+                  { level: 'CPU Registers (RAX, RBX, RCX...)', speed: '~0.5 nanoseconds', size: 'Bytes (~1 KB)', color: 'bg-cyan-500' },
+                  { level: 'L1 Cache (On-die fast SRAM)', speed: '~1 nanosecond', size: '32 - 64 KB per core', color: 'bg-indigo-500' },
+                  { level: 'L2 Cache (Shared SRAM)', speed: '~3 - 4 nanoseconds', size: '512 KB - 1 MB', color: 'bg-purple-500' },
+                  { level: 'L3 Cache (Big LLC SRAM)', speed: '~10 - 20 nanoseconds', size: '16 - 64 MB', color: 'bg-amber-500' },
+                  { level: 'Main Memory (DDR4 / DDR5 DRAM)', speed: '~60 - 80 nanoseconds', size: '16 - 64 GB', color: 'bg-rose-500' },
+                  { level: 'NVMe SSD / Disk Storage', speed: '~10,000 - 100,000 ns', size: '1 - 4 TB', color: 'bg-slate-600' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-800 bg-slate-950 text-xs font-mono">
+                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-white/[0.06] bg-black/45 text-xs font-mono">
                     <div className="flex items-center gap-2">
                       <div className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
                       <span className="text-white font-semibold">{item.level}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-slate-400">
+                    <div className="flex items-center gap-4 text-slate-400 tabular-nums">
                       <span>Size: {item.size}</span>
                       <span className="text-cyan-400 font-bold">{item.speed}</span>
                     </div>
@@ -2058,8 +2072,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
       {/* MODULE 9: MINIMUM MATH CHECKLIST */}
       {/* ======================================================== */}
       {activeTab === 'checklist' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-5 space-y-5">
+        <div className="space-y-6">
+          <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <span className="text-xs font-mono text-cyan-400 font-bold">MINIMUM MATHEMATICS CHECKLIST</span>
@@ -2067,7 +2081,7 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                   Extracted directly from Section 3 (Pages 10 &amp; 11) of the Student Handbook.
                 </p>
               </div>
-              <div className="text-xs font-mono text-cyan-400 font-bold">
+              <div className="text-xs font-mono text-cyan-400 font-bold tabular-nums">
                 {Object.values(checkedItems).filter(Boolean).length} of {MATH_CHECKLIST.length} Mastered
               </div>
             </div>
@@ -2082,8 +2096,8 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
                     onClick={() => toggleCheck(item.id)}
                     className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 ${
                       isChecked
-                        ? 'border-emerald-600/50 bg-emerald-950/20 text-slate-200'
-                        : 'border-slate-800 bg-slate-900/40 text-slate-300 hover:border-slate-700'
+                        ? 'border-emerald-400/40 bg-emerald-500/10 text-slate-100'
+                        : 'optical-card text-slate-300'
                     }`}
                   >
                     <button className="mt-0.5 text-slate-400 hover:text-white shrink-0">
@@ -2105,17 +2119,20 @@ export function FoundationsStudio({ onOpenAiMentor, onAwardXp }: FoundationsStud
             </div>
 
             <div className="pt-2 flex justify-end">
-              <button
+              <SoapBubbleButton
                 onClick={() =>
                   onOpenAiMentor(
                     'ELI9: Give me a short 3-question math quiz on powers of 2, binary conversions, and Boolean XOR to test my readiness for Stage 0 & 1!'
                   )
                 }
-                className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer bg-slate-900 px-3.5 py-2 rounded-lg border border-slate-800"
+                tint="rgb(14 165 233)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="!min-h-[34px] !px-4 font-mono font-bold text-white"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Test My Math Readiness with AI Tutor</span>
-              </button>
+              </SoapBubbleButton>
             </div>
           </div>
         </div>

@@ -1719,6 +1719,282 @@ for item in test_inputs:
       'I have a clear study plan for the next semester balancing high-school academics, health, and CS growth.'
     ],
     safetyWarning: 'Never claim titles like "Expert Ethical Hacker" without proof. Let your reproducible code, write-ups, and humility speak for you.'
+  },
+  {
+    id: 'stage-12',
+    number: 12,
+    title: 'Data Structures, Algorithms & Discrete Math',
+    subtitle: 'Asymptotics, trees, graphs, dynamic programming, and mathematical proofs',
+    timeEstimate: '6-8 weeks',
+    sprintMonth: 'Advanced Track A',
+    goal: 'Master algorithmic complexity analysis (Big-O/Theta/Omega), balanced trees, hash tables, graph shortest paths, dynamic programming, and discrete mathematics.',
+    eli9Metaphor: 'A library with 10 million unindexed books takes hours to search; organize them as a balanced search tree or hash map and you find any page in a blink.',
+    topics: [
+      {
+        id: 's12-t1',
+        title: 'Asymptotic Analysis & Recurrence Relations',
+        description: 'Prove upper, tight, and lower bounds (O, Theta, Omega) and solve divide-and-conquer recurrences using recursion trees and the Master Theorem.',
+        eli9: 'Asymptotics measure how fast work grows as input triples or scales a thousandfold, stripping away CPU clock differences.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Compares O(n^2) quadratic pair search against O(n log n) merge sort + binary search step counts.',
+          code: `import math
+
+def count_steps(n: int):
+    return {
+        "O(1)": 1,
+        "O(log n)": round(math.log2(max(n, 1)), 2),
+        "O(n)": n,
+        "O(n log n)": round(n * math.log2(max(n, 1))),
+        "O(n^2)": n * n,
+    }
+
+for size in [10, 100, 1000, 10000]:
+    print(f"N={size:5d} ->", count_steps(size))
+`
+        },
+        externalLinks: [
+          { title: 'MIT 6.006 Introduction to Algorithms', url: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/', type: 'Course' },
+          { title: 'MIT 6.042J Mathematics for CS', url: 'https://ocw.mit.edu/courses/6-042j-mathematics-for-computer-science-spring-2015/', type: 'Course' }
+        ]
+      },
+      {
+        id: 's12-t2',
+        title: 'Hash Tables, Heaps & Balanced Search Trees',
+        description: 'Implement chaining vs open addressing with load factor resizing, binary heaps for O(log n) priority queues, and self-balancing AVL/Red-Black tree invariants.',
+        eli9: 'A hash table turns a name directly into a locker number using math, while a heap always keeps the most urgent item sitting right on top.',
+        externalLinks: [
+          { title: 'VisuAlgo Tree & Heap Visualizations', url: 'https://visualgo.net/en', type: 'Docs' },
+          { title: 'CP-Algorithms Reference', url: 'https://cp-algorithms.com/', type: 'Article' }
+        ]
+      },
+      {
+        id: 's12-t3',
+        title: 'Graphs, Topological Sort & Shortest Paths (BFS, DFS, Dijkstra)',
+        description: 'Represent sparse graphs with adjacency lists, detect cycles with DFS colors, resolve dependencies via Kahn topological sorting, and find weighted shortest paths via Dijkstra.',
+        eli9: 'A city map of intersections and one-way streets is a graph: BFS explores step-by-step rings outward while Dijkstra always picks the closest unexplored corner.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Clean Dijkstra shortest-path solver using Python heapq min-priority queue.',
+          code: `import heapq
+
+def dijkstra(graph, start):
+    dist = {node: float('inf') for node in graph}
+    dist[start] = 0
+    pq = [(0, start)]
+    while pq:
+        cost, u = heapq.heappop(pq)
+        if cost > dist[u]:
+            continue
+        for v, weight in graph[u]:
+            if cost + weight < dist[v]:
+                dist[v] = cost + weight
+                heapq.heappush(pq, (dist[v], v))
+    return dist
+
+net = {
+    'A': [('B', 4), ('C', 1)],
+    'B': [('D', 1)],
+    'C': [('B', 2), ('D', 5)],
+    'D': []
+}
+print("Shortest latencies from Node A:", dijkstra(net, 'A'))
+`
+        },
+        externalLinks: [
+          { title: 'NeetCode Algorithm Roadmap', url: 'https://neetcode.io/roadmap', type: 'Docs' }
+        ]
+      },
+      {
+        id: 's12-t4',
+        title: 'Dynamic Programming & Memoization State Spaces',
+        description: 'Formulate optimal substructure and overlapping subproblems cleanly using both recursive top-down memoization and iterative bottom-up DP tables.',
+        eli9: 'Instead of solving the same puzzle sub-question a million times, write down each answer once on a sticky note and reuse it instantly.'
+      }
+    ],
+    commands: [
+      {
+        name: 'python3 -m cProfile',
+        syntax: 'python3 -m cProfile -s cumtime algo.py',
+        category: 'Dev',
+        explanation: 'Profiles runtime function calls and cumulative time to confirm asymptotic bottlenecks empirically.',
+        example: 'python3 -m cProfile -s cumtime solver.py'
+      },
+      {
+        name: 'pytest --benchmark',
+        syntax: 'python3 -m timeit -n 1000 "sorted(range(1000))"',
+        category: 'Dev',
+        explanation: 'Measures micro-benchmark execution times with repeatable iteration sampling.',
+        example: 'python3 -m timeit "sum(range(10000))"'
+      }
+    ],
+    resources: [
+      {
+        title: 'MIT 6.006: Introduction to Algorithms',
+        url: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/',
+        type: 'Course',
+        isFree: true,
+        notes: 'Full lecture videos, recitations, problem sets, and asymptotic proofs.'
+      },
+      {
+        title: 'MIT 6.042J: Mathematics for Computer Science',
+        url: 'https://ocw.mit.edu/courses/6-042j-mathematics-for-computer-science-spring-2015/',
+        type: 'Course',
+        isFree: true,
+        notes: 'Free textbook and videos covering proofs, graph theory, modular math, and probability.'
+      },
+      {
+        title: 'VisuAlgo Interactive Visualizer',
+        url: 'https://visualgo.net/en',
+        type: 'Lab',
+        isFree: true,
+        notes: 'Animate heaps, AVL trees, Dijkstra, union-find, and network flow step by step.'
+      }
+    ],
+    practiceTask: {
+      title: 'Benchmark & Shortest-Path Router in Python',
+      description: 'Implement a weighted road-network router supporting Dijkstra shortest path plus empirical benchmark charts comparing O(n log n) mergesort vs O(n^2) insertion sort.',
+      deliverable: 'Runnable Python module with unit tests verifying path optimality and timing benchmarks.'
+    },
+    exitChecklist: [
+      'I can derive tight Big-O bounds for nested loops, binary search, and recursive trees.',
+      'I can implement BFS, DFS, and Dijkstra from scratch without copying solutions.',
+      'I can design bottom-up dynamic programming state transitions and trace base cases.',
+      'I understand collision handling and amortized O(1) resizing in hash tables.'
+    ],
+    safetyWarning: 'Avoid memorizing algorithm templates blindly—always state your loop invariant and termination condition before writing code.'
+  },
+  {
+    id: 'stage-13',
+    number: 13,
+    title: 'Compilers, OS Internals & Distributed Systems',
+    subtitle: 'Lexers, AST evaluators, virtual memory, Raft consensus, and production engineering',
+    timeEstimate: '8-12 weeks',
+    sprintMonth: 'Advanced Track B',
+    goal: 'Understand how programming languages execute from source text to AST/bytecode and how multi-node distributed systems reach fault-tolerant consensus.',
+    eli9Metaphor: 'A compiler translates human ideas into strict machine choreography; distributed consensus gets five unreliable computers across continents to agree on one shared truth even when cables snap.',
+    topics: [
+      {
+        id: 's13-t1',
+        title: 'Lexical Analysis, Recursive Descent Parsing & AST Evaluation',
+        description: 'Tokenize character streams into lexemes, parse operator precedence via recursive descent grammars into Abstract Syntax Trees (ASTs), and interpret or emit bytecode.',
+        eli9: 'A parser breaks a sentence like "3 + 4 * 5" into a family tree where multiplication sits deeper so it evaluates before addition.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Working arithmetic tokenizer & recursive-descent evaluator honoring precedence and parentheses.',
+          code: `import re
+
+def eval_expr(expr: str) -> float:
+    tokens = re.findall(r'\\d+(?:\\.\\d+)?|[+\\-*/()]', expr.replace(' ', ''))
+    pos = [0]
+
+    def parse_expr():
+        val = parse_term()
+        while pos[0] < len(tokens) and tokens[pos[0]] in ('+', '-'):
+            op = tokens[pos[0]]; pos[0] += 1
+            val = val + parse_term() if op == '+' else val - parse_term()
+        return val
+
+    def parse_term():
+        val = parse_factor()
+        while pos[0] < len(tokens) and tokens[pos[0]] in ('*', '/'):
+            op = tokens[pos[0]]; pos[0] += 1
+            val = val * parse_factor() if op == '*' else val / parse_factor()
+        return val
+
+    def parse_factor():
+        tok = tokens[pos[0]]; pos[0] += 1
+        if tok == '(':
+            val = parse_expr()
+            pos[0] += 1  # consume ')'
+            return val
+        return float(tok)
+
+    return parse_expr()
+
+for sample in ['3 + 4 * 5', '(3 + 4) * 5', '100 / (2 + 3) - 6']:
+    print(f"{sample} = {eval_expr(sample)}")
+`
+        },
+        externalLinks: [
+          { title: 'Crafting Interpreters (Full Free Book)', url: 'https://craftinginterpreters.com/', type: 'Docs' },
+          { title: 'Nand2Tetris Part II: Compiler & VM', url: 'https://www.nand2tetris.org/', type: 'Course' }
+        ]
+      },
+      {
+        id: 's13-t2',
+        title: 'Virtual Memory, Page Tables & Concurrency Primitives',
+        description: 'Trace multi-level page tables, Translation Lookaside Buffer (TLB) hits/misses, copy-on-write fork semantics, mutexes, condition variables, and lock-free atomics.',
+        eli9: 'Virtual memory gives every running app its own private desk drawer numbers while the OS hardware quietly maps them to real physical RAM chips.'
+      },
+      {
+        id: 's13-t3',
+        title: 'Distributed Consensus (Raft), Vector Clocks & CAP/PACELC',
+        description: 'Understand leader election terms, majority quorums (N/2 + 1), append-entries log replication, logical Lamport/vector clocks, and consistency vs availability trade-offs.',
+        eli9: 'When a team loses phone signal, Raft guarantees only a clear majority quorum can elect a leader so two conflicting captains never rewrite history.',
+        externalLinks: [
+          { title: 'MIT 6.5840 Distributed Systems', url: 'https://pdos.csail.mit.edu/6.824/', type: 'Course' },
+          { title: 'The Raft Paper (Stanford)', url: 'https://raft.github.io/raft.pdf', type: 'Article' }
+        ]
+      },
+      {
+        id: 's13-t4',
+        title: 'Storage Engines: B+ Trees vs LSM-Trees & Write-Ahead Logging',
+        description: 'Contrast page-in-place B+ Trees (PostgreSQL) against append-only Write-Ahead Logs, MemTables, and compacted SSTables (RocksDB/LSM).',
+        eli9: 'A Write-Ahead Log records changes in an emergency diary before updating big files—if the power cord gets kicked out, recovery replays the diary.'
+      }
+    ],
+    commands: [
+      {
+        name: 'gcc -S -O2',
+        syntax: 'gcc -O2 -S -masm=intel program.c -o program.s',
+        category: 'C/C++',
+        explanation: 'Emits optimized x86-64 Intel-syntax assembly directly from C source for compiler inspection.',
+        example: 'gcc -O2 -S -masm=intel main.c -o main.s'
+      },
+      {
+        name: 'strace',
+        syntax: 'strace -e trace=memory,process ./app',
+        category: 'System',
+        explanation: 'Traces mmap, brk, fork, and execve kernel syscalls at runtime.',
+        example: 'strace -c ./a.out'
+      }
+    ],
+    resources: [
+      {
+        title: 'Crafting Interpreters by Robert Nystrom',
+        url: 'https://craftinginterpreters.com/',
+        type: 'Book',
+        isFree: true,
+        notes: 'Hands-down the best walkthrough of scanning, parsing, bytecode VMs, closures, and garbage collection.'
+      },
+      {
+        title: 'Operating Systems: Three Easy Pieces (OSTEP)',
+        url: 'https://pages.cs.wisc.edu/~remzi/OSTEP/',
+        type: 'Book',
+        isFree: true,
+        notes: 'Complete university OS textbook available free online chapter by chapter.'
+      },
+      {
+        title: 'MIT 6.5840 Distributed Systems Labs',
+        url: 'https://pdos.csail.mit.edu/6.824/',
+        type: 'Course',
+        isFree: true,
+        notes: 'Industry-revered graduate labs on Raft, sharded KV storage, and fault tolerance.'
+      }
+    ],
+    practiceTask: {
+      title: 'Mini Expression Bytecode VM + Raft Leader Simulator',
+      description: 'Build a stack-based bytecode virtual machine supporting PUSH, ADD, MUL, JMP instructions in C or Python alongside a 5-node Raft quorum election script.',
+      deliverable: 'GitHub repo with architecture diagram, unit tests covering tie-votes/splits, and benchmark write-up.'
+    },
+    exitChecklist: [
+      'I can write a tokenizer and recursive descent parser for expressions without regex hacks.',
+      'I can explain how virtual memory page tables isolate processes and trigger page faults.',
+      'I can explain majority quorum math in Raft and why wall-clock timestamps fail in clusters.',
+      'I can contrast B+ Tree read amplification against LSM-Tree write/compaction trade-offs.'
+    ],
+    safetyWarning: 'Concurrent and distributed bugs often appear only under contention or packet loss; always test with randomized fault injection and race detectors.'
   }
 ];
 
@@ -2169,69 +2445,107 @@ export const ESSENTIAL_BOOKS = [
   {
     title: 'Computer Networking: A Top-Down Approach',
     author: 'James Kurose & Keith Ross',
+    url: 'https://gaia.cs.umass.edu/kurose_ross/online_lectures.htm',
     why: 'The standard university networking textbook. Teaches application layer first (DNS, HTTP) before descending to routing and transport.',
     level: 'Beginner to Intermediate'
   },
   {
     title: 'Code: The Hidden Language of Computer Hardware and Software',
     author: 'Charles Petzold',
+    url: 'https://www.codehiddenlanguage.com/',
     why: 'Explains computers from the ground up starting with flashlights, switches, relays, logic gates, and building up to modern CPUs.',
     level: 'Absolute Beginner'
   },
   {
     title: 'Automate the Boring Stuff with Python',
     author: 'Al Sweigart',
+    url: 'https://automatetheboringstuff.com/',
     why: 'Practical, project-oriented beginner guide to automating everyday tasks with Python. Available completely free online.',
     level: 'Beginner'
   },
   {
     title: 'The Linux Command Line',
     author: 'William Shotts',
+    url: 'https://linuxcommand.org/tlcl.php',
     why: 'A comprehensive, structured guide to mastering the shell, files, permissions, and bash scripting. Available free online.',
     level: 'Beginner'
   },
   {
+    title: 'Operating Systems: Three Easy Pieces (OSTEP)',
+    author: 'Remzi & Andrea Arpaci-Dusseau',
+    url: 'https://pages.cs.wisc.edu/~remzi/OSTEP/',
+    why: 'Freely available gold-standard OS text on virtualization, concurrency, locks, and crash-consistent filesystems.',
+    level: 'Intermediate to Advanced'
+  },
+  {
+    title: 'Crafting Interpreters',
+    author: 'Robert Nystrom',
+    url: 'https://craftinginterpreters.com/',
+    why: 'Free interactive handbook building a lexer, parser, AST interpreter, bytecode VM, and mark-sweep garbage collector.',
+    level: 'Intermediate to Advanced'
+  },
+  {
+    title: 'Designing Data-Intensive Applications',
+    author: 'Martin Kleppmann',
+    url: 'https://dataintensive.net/',
+    why: 'Definitive architecture text on storage engines, B-Trees vs LSM-Trees, replication, distributed transactions, and consensus.',
+    level: 'Advanced'
+  },
+  {
     title: 'Security Engineering',
     author: 'Ross Anderson',
-    why: 'A masterwork on security systems design, human factors, economics, and access control. Free online from author’s website.',
+    url: 'https://www.cl.cam.ac.uk/~rja14/book.html',
+    why: 'A masterwork on security systems design, human factors, economics, and access control. Free online from author\'s website.',
     level: 'Intermediate'
   },
   {
     title: 'Serious Cryptography',
     author: 'Jean-Philippe Aumasson',
+    url: 'https://nostarch.com/seriouscrypto',
     why: 'A clear, modern guide to practical cryptography: hashing, ciphers, public-key crypto, and implementation pitfalls.',
     level: 'Intermediate'
   },
   {
     title: 'Hacking: The Art of Exploitation',
     author: 'Jon Erickson',
+    url: 'https://nostarch.com/hacking2.htm',
     why: 'Teaches C programming, memory layout, machine architecture, and exploitation concepts from a technical perspective.',
     level: 'Intermediate'
   },
   {
-    title: 'The Web Application Hacker’s Handbook',
-    author: 'Dafydd Stuttard & Marcus Pinto',
-    why: 'The foundational classic reference on web security. Pair with the actively maintained PortSwigger Web Security Academy.',
-    level: 'Intermediate'
+    title: 'Introduction to Algorithms (CLRS)',
+    author: 'Cormen, Leiserson, Rivest & Stein',
+    url: 'https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/',
+    why: 'Complete mathematical reference on asymptotic proofs, data structures, graph algorithms, DP, and NP-completeness.',
+    level: 'Advanced'
+  },
+  {
+    title: 'Pro Git (2nd Edition)',
+    author: 'Scott Chacon & Ben Straub',
+    url: 'https://git-scm.com/book/en/v2',
+    why: 'Free official Git handbook demystifying commits, DAG pointers, branching, rebasing, and internal object hashes.',
+    level: 'Beginner to Intermediate'
   }
 ];
 
 export const YOUTUBE_CHANNELS = [
-  { name: 'Crash Course Computer Science', focus: 'How computers, chips, logic, and software work', level: 'Beginner' },
-  { name: 'CS50 (Harvard)', focus: 'Best introductory programming and CS lectures in the world', level: 'Beginner' },
-  { name: 'freeCodeCamp.org', focus: 'Full multi-hour video courses on Python, C++, Linux, and networking', level: 'Beginner' },
-  { name: 'Neso Academy', focus: 'Digital logic, C programming, operating systems, and computer networks', level: 'Beginner' },
-  { name: 'Professor Messer', focus: 'CompTIA Network+ and Security+ modular concept videos', level: 'Beginner to Intermediate' },
-  { name: 'NetworkChuck', focus: 'Energetic, motivating introductions to Linux, coffee, and networking', level: 'Beginner' },
-  { name: 'David Bombal', focus: 'Hands-on networking, Wireshark, Packet Tracer, and ethical hacking', level: 'Beginner to Intermediate' },
-  { name: '3Blue1Brown', focus: 'Unmatched visual mathematical foundations, linear algebra, and logic', level: 'All Levels' },
-  { name: 'Computerphile', focus: 'Clear conceptual explanations from computer science professors', level: 'All Levels' },
-  { name: 'John Hammond', focus: 'Malware analysis, CTF puzzle walkthroughs, and security education', level: 'Intermediate' },
-  { name: 'The Cyber Mentor (TCM Security)', focus: 'Practical ethical hacking and cybersecurity career advice', level: 'Beginner to Intermediate' },
-  { name: 'LiveOverflow', focus: 'Deep technical binary exploitation, reverse engineering, and web security', level: 'Advanced' },
-  { name: 'IppSec', focus: 'Detailed, systematic Hack The Box machine walkthroughs', level: 'Advanced' },
-  { name: 'PwnFunction', focus: 'Animated visual breakdowns of web security vulnerabilities (XSS, CSRF)', level: 'Beginner' },
-  { name: 'Low Level Learning', focus: 'C programming, x86-64 assembly, and hardware reverse engineering', level: 'Intermediate' }
+  { name: 'Crash Course Computer Science', url: 'https://www.youtube.com/playlist?list=PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo', focus: 'How computers, chips, logic, and software work', level: 'Beginner' },
+  { name: 'CS50 (Harvard)', url: 'https://www.youtube.com/@cs50', focus: 'World-class introductory programming and CS lectures', level: 'Beginner' },
+  { name: 'freeCodeCamp.org', url: 'https://www.youtube.com/@freecodecamp', focus: 'Full multi-hour video courses on Python, C++, Linux, SQL, and networking', level: 'Beginner' },
+  { name: 'MIT OpenCourseWare', url: 'https://www.youtube.com/@mitocw', focus: 'Full university lectures in Algorithms (6.006), Discrete Math, and Systems', level: 'Intermediate to Advanced' },
+  { name: 'Ben Eater', url: 'https://www.youtube.com/@BenEater', focus: 'Building an 8-bit computer and networking hardware from transistors up', level: 'Beginner to Intermediate' },
+  { name: 'Neso Academy', url: 'https://www.youtube.com/@nesoacademy', focus: 'Digital logic, C programming, operating systems, and computer networks', level: 'Beginner' },
+  { name: 'Professor Messer', url: 'https://www.youtube.com/@professormesser', focus: 'CompTIA Network+ and Security+ modular concept videos', level: 'Beginner to Intermediate' },
+  { name: 'NetworkChuck', url: 'https://www.youtube.com/@NetworkChuck', focus: 'Energetic introductions to Linux, containers, and networking', level: 'Beginner' },
+  { name: 'David Bombal', url: 'https://www.youtube.com/@davidbombal', focus: 'Hands-on networking, Wireshark, Packet Tracer, and security labs', level: 'Beginner to Intermediate' },
+  { name: '3Blue1Brown', url: 'https://www.youtube.com/@3blue1brown', focus: 'Visual mathematical foundations, linear algebra, probability, and crypto math', level: 'All Levels' },
+  { name: 'Computerphile', url: 'https://www.youtube.com/@Computerphile', focus: 'Clear conceptual explanations from computer science faculty', level: 'All Levels' },
+  { name: 'John Hammond', url: 'https://www.youtube.com/@_JohnHammond', focus: 'Malware analysis, CTF puzzle walkthroughs, and security education', level: 'Intermediate' },
+  { name: 'The Cyber Mentor (TCM Security)', url: 'https://www.youtube.com/@TCMSecurityAcademy', focus: 'Practical ethical hacking and defensive security workflows', level: 'Beginner to Intermediate' },
+  { name: 'LiveOverflow', url: 'https://www.youtube.com/@LiveOverflow', focus: 'Deep technical binary exploitation, reverse engineering, and web security', level: 'Advanced' },
+  { name: 'IppSec', url: 'https://www.youtube.com/@ippsec', focus: 'Detailed, systematic penetration testing and lab walkthroughs', level: 'Advanced' },
+  { name: 'PwnFunction', url: 'https://www.youtube.com/@PwnFunction', focus: 'Animated visual breakdowns of web security vulnerabilities', level: 'Beginner' },
+  { name: 'Low Level Learning', url: 'https://www.youtube.com/@LowLevelLearning', focus: 'C programming, x86-64 assembly, and systems engineering', level: 'Intermediate' }
 ];
 
 export const GLOSSARY_TERMS: GlossaryTerm[] = [
@@ -2611,7 +2925,9 @@ export interface AdvancedHeroTopic {
     | 'Computer Networking & Protocols'
     | 'Software Engineering & System Design'
     | 'Distributed Systems & Cloud Architecture'
-    | 'Systems Security & Cryptography';
+    | 'Systems Security & Cryptography'
+    | 'Compilers & Programming Languages'
+    | 'Computer Architecture & Hardware';
   title: string;
   badge: string;
   overview: string;
@@ -3174,6 +3490,147 @@ print("Is Packet Authentic?", verify_payload(packet)) # True
 tampered = packet.replace("amount=500", "amount=50000")
 print("\\nTampered Packet:", tampered)
 print("Is Tampered Packet Authentic?", verify_payload(tampered)) # False!
+`
+    }
+  },
+  {
+    id: 'hero-compilers',
+    subjectArea: 'Compilers & Programming Languages',
+    title: 'Lexing, Recursive Descent Parsers, SSA IR & Bytecode VMs',
+    badge: 'Language Runtimes',
+    overview: 'Demystifying how human syntax turns into native machine instructions or portable bytecode. Explore finite-state lexers, context-free grammars, Abstract Syntax Trees, static single assignment (SSA) optimization passes, register allocation, and tracing garbage collection.',
+    keyConcepts: [
+      'Front-End Pipeline: Lexical Scanning (Tokens), Recursive Descent / Pratt Parsing, and AST Construction',
+      'Semantic Analysis: Symbol Tables, Lexical Scoping, Hindley-Milner / Structural Type Inference',
+      'Intermediate Representation (IR): Control Flow Graphs, Basic Blocks, Static Single Assignment (SSA)',
+      'Back-End Codegen: Instruction Selection, Liveness Analysis, Graph-Coloring Register Allocation',
+      'Runtime Memory: Mark-and-Sweep GC, Generational Hypothesis, vs Compile-Time Ownership / RAII'
+    ],
+    keyCommands: [
+      { command: 'clang -O2 -emit-llvm -S file.c -o file.ll', purpose: 'Outputs human-readable LLVM SSA Intermediate Representation' },
+      { command: 'python3 -m dis script.py', purpose: 'Disassembles CPython bytecode instructions for any function' },
+      { command: 'objdump -d -M intel ./binary | less', purpose: 'Inspects emitted native x86-64 machine instructions' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Crafting Interpreters',
+        authorOrPlatform: 'Robert Nystrom',
+        type: 'Book',
+        url: 'https://craftinginterpreters.com/',
+        isClassic: true,
+        notes: 'Builds both a Java AST tree-walker and a complete C bytecode virtual machine from scratch.'
+      },
+      {
+        title: 'Engineering a Compiler',
+        authorOrPlatform: 'Keith Cooper & Linda Torczon',
+        type: 'Book',
+        url: 'https://www.elsevier.com/books/engineering-a-compiler/cooper/978-0-12-815412-0',
+        isClassic: true,
+        notes: 'Modern university reference focusing deeply on IR, dataflow analysis, and SSA optimizations.'
+      }
+    ],
+    essentialTips: [
+      'Separate syntax parsing from semantic validation: keep the parser focused purely on structure.',
+      'Run python3 -m dis on small Python functions to see exactly how stack-based bytecode VMs execute loops.',
+      'Inspect Compiler Explorer (godbolt.org) side-by-side when learning C/C++ optimizations.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Stack-based Bytecode Virtual Machine executing arithmetic and conditionals',
+      code: `def run_vm(program):
+    stack = []
+    ip = 0
+    while ip < len(program):
+        op, *arg = program[ip]
+        if op == "PUSH":
+            stack.append(arg[0])
+        elif op == "ADD":
+            b, a = stack.pop(), stack.pop()
+            stack.append(a + b)
+        elif op == "MUL":
+            b, a = stack.pop(), stack.pop()
+            stack.append(a * b)
+        elif op == "PRINT":
+            print("VM Output:", stack[-1])
+        ip += 1
+
+# Evaluates (6 + 4) * 5 cleanly on stack VM
+bytecode = [
+    ("PUSH", 6),
+    ("PUSH", 4),
+    ("ADD",),
+    ("PUSH", 5),
+    ("MUL",),
+    ("PRINT",),
+]
+run_vm(bytecode)
+`
+    }
+  },
+  {
+    id: 'hero-architecture',
+    subjectArea: 'Computer Architecture & Hardware',
+    title: 'CPU Pipelines, Cache Locality, Branch Prediction & SIMD',
+    badge: 'Microarchitecture',
+    overview: 'Why asymptotically identical O(n) algorithms can differ by 30x in wall-clock latency. Examine instruction pipelining, out-of-order execution, speculative branch prediction, L1/L2/L3 cache lines (64 bytes), false sharing across CPU cores, and SIMD vectorization.',
+    keyConcepts: [
+      '5-Stage RISC Pipeline (IF, ID, EX, MEM, WB) & Structural/Data/Control Pipeline Hazards',
+      'Cache Hierarchy: 64-Byte Cache Lines, Temporal vs Spatial Locality, Set-Associative Mapping',
+      'Multi-Core Coherence: MESI Cache Coherence Protocol & Avoiding False Sharing Across Threads',
+      'Speculative Execution & Branch Prediction Penalties (Sorted vs Unsorted Branching)',
+      'Data-Oriented Design & SIMD Vector Instructions (AVX2 / NEON)'
+    ],
+    keyCommands: [
+      { command: 'perf stat ./program', purpose: 'Measures hardware CPU cycles, instructions-per-cycle (IPC), branch misses, and cache misses' },
+      { command: 'lscpu', purpose: 'Displays CPU cores, L1d/L1i/L2/L3 cache geometry, and SIMD vector flags' },
+      { command: 'getconf LEVEL1_DCACHE_LINESIZE', purpose: 'Prints the exact hardware L1 data cache line size in bytes (typically 64)' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Computer Systems: A Programmer\'s Perspective (Chapter 6: Memory Hierarchy)',
+        authorOrPlatform: 'Bryant & O\'Hallaron (CMU)',
+        type: 'Book',
+        url: 'https://csapp.cs.cmu.edu/',
+        isClassic: true,
+        notes: 'Explains spatial/temporal locality and the Memory Mountain quantitatively.'
+      },
+      {
+        title: 'What Every Programmer Should Know About Memory',
+        authorOrPlatform: 'Ulrich Drepper (Red Hat)',
+        type: 'Paper',
+        url: 'https://people.akkadia.org/drepper/cpumemory.pdf',
+        isClassic: true,
+        notes: 'Seminal hardware engineering paper detailing DRAM banks, CPU caches, NUMA, and prefetching.'
+      }
+    ],
+    essentialTips: [
+      'Iterate multidimensional arrays in row-major order in C/Python so memory reads stream sequentially through 64-byte cache lines.',
+      'Arrays of primitives (SoA / contiguous vectors) often beat pointer-chasing linked lists by an order of magnitude due to hardware prefetching.',
+      'Measure before optimizing: perf stat exposes cache misses and branch mispredictions directly from CPU counters.'
+    ],
+    sampleCodeSnippet: {
+      language: 'c',
+      description: 'Cache locality benchmark: comparing row-major contiguous reads vs strided column reads in C',
+      code: `#include <stdio.h>
+#include <stdlib.h>
+
+#define SIZE 512
+
+int main(void) {
+    static int matrix[SIZE][SIZE];
+    long long row_sum = 0;
+
+    // Row-major traversal streams adjacent 64-byte cache lines sequentially
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            matrix[i][j] = (i + j) & 0xFF;
+            row_sum += matrix[i][j];
+        }
+    }
+
+    printf("Matrix %dx%d populated row-major cleanly. Checksum: %lld\\n", SIZE, SIZE, row_sum);
+    return 0;
+}
 `
     }
   }

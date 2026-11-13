@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { BookOpen, Save, Download, Upload, FileText, Check, Sparkles, RefreshCw } from 'lucide-react';
+import { Download, Upload, FileText, Sparkles } from 'lucide-react';
+import { SoapBubbleButton } from '@/components/soap-bubble';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 
 interface NotebookViewProps {
@@ -37,7 +38,7 @@ export function NotebookView({
   const insertTemplate = (templateType: 'weekly' | 'lab' | 'incident') => {
     let tpl = '';
     if (templateType === 'weekly') {
-      tpl = `\n\n## 📝 Weekly Review Reflection (${new Date().toISOString().split('T')[0]})
+      tpl = `\n\n## Weekly Review Reflection (${new Date().toISOString().split('T')[0]})
 1. **What did I build or solve this week?**
    - 
 2. **Which idea can I explain without notes?**
@@ -54,7 +55,7 @@ export function NotebookView({
    - 3. 
 `;
     } else if (templateType === 'lab') {
-      tpl = `\n\n## 🔬 10-Step Lab Write-Up (${new Date().toISOString().split('T')[0]})
+      tpl = `\n\n## 10-Step Lab Write-Up (${new Date().toISOString().split('T')[0]})
 1. **Title & Date**: 
 2. **Scope & Authorization**: 
 3. **Objective**: 
@@ -67,7 +68,7 @@ export function NotebookView({
 10. **Cleanup & Snapshot Restoration**: 
 `;
     } else if (templateType === 'incident') {
-      tpl = `\n\n## 🚨 Incident Report Simulation
+      tpl = `\n\n## Incident Report Simulation
 - **Executive Summary**: 
 - **Scope & Timeline**: 
 - **Evidence**: 
@@ -113,18 +114,20 @@ export function NotebookView({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1">
-            <span>STUDENT NOTEBOOK & CLOUD SYNC</span>
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-400 mb-1">
+            <span>Student Notebook &amp; Local Persistence</span>
             <span>·</span>
             <span className="text-emerald-400 font-semibold">{saveStatus}</span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Personal Study Journal & Lab Reports</h2>
+          <h2 className="font-display text-xl font-bold text-white tracking-tight [text-wrap:balance]">
+            Personal Study Journal &amp; Lab Reports
+          </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Write notes in your own words. Auto-saved locally with one-click JSON backup export and markdown downloads.
+            Write notes in your own words. Auto-saved locally with one-click JSON backup and markdown export.
           </p>
         </div>
 
@@ -132,18 +135,18 @@ export function NotebookView({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={onExportBackup}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer"
           >
             <Download className="h-3.5 w-3.5 text-cyan-400" />
-            <span>Export Cloud JSON</span>
+            <span>Export JSON</span>
           </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer"
           >
             <Upload className="h-3.5 w-3.5 text-amber-400" />
-            <span>Import Backup</span>
+            <span>Import JSON</span>
           </button>
           <input
             ref={fileInputRef}
@@ -153,32 +156,37 @@ export function NotebookView({
             className="hidden"
           />
 
-          <button
+          <SoapBubbleButton
             onClick={handleDownloadMarkdown}
-            className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors cursor-pointer"
+            tint="rgb(56 189 248)"
+            opacity={0.92}
+            style={{ fontSize: 12 }}
+            className="!min-h-[34px] !px-4 font-semibold text-white"
           >
-            <FileText className="h-3.5 w-3.5" />
-            <span>Export .md</span>
-          </button>
+            <span className="inline-flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              <span>Export .md</span>
+            </span>
+          </SoapBubbleButton>
         </div>
       </div>
 
       {importStatus && (
-        <div className="rounded-lg bg-cyan-950/40 border border-cyan-800 p-3 text-xs text-cyan-200 font-mono">
+        <div className="optical-panel rounded-xl border-cyan-400/35 bg-cyan-500/10 p-3 text-xs text-cyan-200 font-mono">
           {importStatus}
         </div>
       )}
 
-      {/* Stage Selector Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {/* Stage Selector */}
+      <div className="optical-subnav flex gap-1 p-1 rounded-xl overflow-x-auto no-scrollbar">
         {STAGES_DATA.map((s) => (
           <button
             key={s.id}
             onClick={() => setActiveStageId(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono whitespace-nowrap transition-colors cursor-pointer border ${
               activeStageId === s.id
-                ? 'bg-cyan-600 text-white font-bold'
-                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-cyan-500/18 border-cyan-400/35 text-cyan-200 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             Stage {s.number}
@@ -187,31 +195,31 @@ export function NotebookView({
       </div>
 
       {/* Editor & Templates Toolbar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
-        <div className="border-b border-slate-800 bg-slate-900/90 p-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="optical-panel rounded-2xl overflow-hidden">
+        <div className="border-b border-white/[0.08] bg-[#040710]/65 p-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
-            <span className="font-bold text-white">
+            <span className="font-semibold text-white">
               {STAGES_DATA.find((s) => s.id === activeStageId)?.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">Insert Template:</span>
             <button
               onClick={() => insertTemplate('weekly')}
-              className="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-2.5 py-1 text-[11px] rounded-lg border border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.09] transition-colors cursor-pointer"
             >
               + Weekly Review
             </button>
             <button
               onClick={() => insertTemplate('lab')}
-              className="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-2.5 py-1 text-[11px] rounded-lg border border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.09] transition-colors cursor-pointer"
             >
               + 10-Step Lab
             </button>
             <button
               onClick={() => insertTemplate('incident')}
-              className="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-2.5 py-1 text-[11px] rounded-lg border border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.09] transition-colors cursor-pointer"
             >
               + Incident Report
             </button>
@@ -222,9 +230,9 @@ export function NotebookView({
                   `Review these study notes for ${STAGES_DATA.find((s) => s.id === activeStageId)?.title} and give me feedback on accuracy and suggestions:\n\n${currentNote}`
                 )
               }
-              className="flex items-center gap-1 px-3 py-1 text-[11px] rounded bg-purple-900/60 border border-purple-700 text-purple-200 hover:bg-purple-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-3 py-1 text-[11px] rounded-lg bg-purple-500/15 border border-purple-400/35 text-purple-200 hover:bg-purple-500/25 transition-colors cursor-pointer"
             >
-              <Sparkles className="h-3 w-3 text-purple-400" />
+              <Sparkles className="h-3 w-3 text-purple-300" />
               <span>Review Notes with AI</span>
             </button>
           </div>
@@ -236,7 +244,7 @@ export function NotebookView({
           value={currentNote}
           onChange={handleTextChange}
           placeholder="# Write your notes, command snippets, and reflections here..."
-          className="w-full bg-slate-950 p-6 text-sm text-slate-200 focus:outline-none font-mono leading-relaxed resize-y"
+          className="w-full bg-[#040710]/85 p-6 text-sm text-slate-200 focus:outline-none font-mono leading-relaxed resize-y placeholder:text-slate-600"
         />
       </div>
     </div>

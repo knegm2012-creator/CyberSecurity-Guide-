@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FolderGit2, CheckCircle2, Circle, Clock, Download, Copy, ExternalLink, Sparkles, Check, GitBranch } from 'lucide-react';
+import {
+  CheckCircle2,
+  Download,
+  Copy,
+  Sparkles,
+  Check,
+  GitBranch,
+} from 'lucide-react';
 import { PORTFOLIO_PROJECTS, PortfolioProject } from '@/lib/curriculum-data';
+import { SoapBubbleButton } from './soap-bubble';
 
 interface ProjectsStudioProps {
   projectStatuses: Record<string, 'not_started' | 'in_progress' | 'completed'>;
@@ -23,7 +31,6 @@ export function ProjectsStudio({
 }: ProjectsStudioProps) {
   const [filter, setFilter] = useState<'all' | 'Easy' | 'Medium'>('all');
   const [selectedProj, setSelectedProj] = useState<PortfolioProject>(PORTFOLIO_PROJECTS[0]);
-  const [showReadmeModal, setShowReadmeModal] = useState(false);
   const [copiedReadme, setCopiedReadme] = useState(false);
 
   const filtered = PORTFOLIO_PROJECTS.filter((p) => {
@@ -31,54 +38,38 @@ export function ProjectsStudio({
     return p.difficulty === filter;
   });
 
-  const completedCount = Object.values(projectStatuses).filter((s) => s === 'completed').length;
-
   const generateReadmeMarkdown = (proj: PortfolioProject) => {
+    const slug = proj.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     return `# ${proj.title}
 
-> A student cybersecurity and systems engineering project built for the CS Odyssey 6-Month Mastery portfolio.
+> Built as part of the CS Odyssey Systems Engineering Portfolio.
 
-## 1. Project Purpose & Objectives
+## 1. Objective
 ${proj.brief}
 
 ## 2. Scope & Safety Boundaries
 - **Intended Use**: Educational testing, local verification, and portfolio demonstration.
-- **Out-of-Scope**: Do not deploy against unauthorized third-party networks or systems.
-- **Data Privacy**: Strictly uses synthetic or lab data. No personal data, passwords, or live tokens are stored.
+- **Out-of-Scope**: Never execute against unauthorized networks or third-party infrastructure.
+- **Privacy**: Strictly uses synthetic or local fixture data.
 
-## 3. Technologies & Tools
+## 3. Technologies
 ${proj.tools.map((t) => `- ${t}`).join('\n')}
 
-## 4. Installation & Requirements
+## 4. Setup & Execution
 \`\`\`bash
-# Clone the repository
-git clone https://github.com/your-username/${proj.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.git
-cd ${proj.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
-
-# Setup environment (if Python)
-python3 -m venv .venv
-source .venv/bin/activate
-\`\`\`
-
-## 5. How to Run
-\`\`\`bash
-# Safe sample execution command
+git clone https://github.com/your-username/${slug}.git
+cd ${slug}
 python3 main.py --help
 \`\`\`
 
-## 6. Acceptance Criteria & Test Verification
+## 5. Acceptance Criteria
 ${proj.acceptanceCriteria.map((c) => `- [x] ${c}`).join('\n')}
 
-## 7. Threats & Limitations
-- What this tool detects: Standard policy edge cases and synthetic test inputs.
-- Known limitations: This tool provides heuristic estimates and does not guarantee absolute system security.
-
-## 8. What I Learned
+## 6. Key Outcome
 - ${proj.learningOutcome}
-- Key takeaway: Building small, reproducible, and verifiable tools beats complex copied scripts.
 
 ## License
-MIT License - Student Educational Project (2026)
+MIT
 `;
   };
 
@@ -96,45 +87,42 @@ MIT License - Student Educational Project (2026)
   const handleCopyReadme = (proj: PortfolioProject) => {
     navigator.clipboard.writeText(generateReadmeMarkdown(proj));
     setCopiedReadme(true);
-    setTimeout(() => setCopiedReadme(false), 2000);
+    setTimeout(() => setCopiedReadme(false), 1800);
   };
 
+  const currentStatus = projectStatuses[selectedProj.id] || 'not_started';
+
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1">
-            <span>GITHUB PORTFOLIO STUDIO</span>
-            <span>·</span>
-            <span>14 DEFINED STUDENT PROJECTS</span>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Your Engineering Portfolio Showcase</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            &quot;Build at least 3 to 5 small projects with clear READMEs. A finished, understandable project beats a huge copied repository.&quot;
+          <h2 className="font-display text-xl font-bold text-white tracking-tight">
+            14 Portfolio Projects
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Small, reproducible repositories with clear READMEs, bounded scope, and verifiable tests.
           </p>
         </div>
 
-        {/* Git Sandbox Preparatory Callout */}
-        {onOpenGitSandbox && (
-          <button
-            onClick={onOpenGitSandbox}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-300 text-xs font-semibold transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
-          >
-            <GitBranch className="h-4 w-4 text-emerald-400" />
-            <span>Master Git in Interactive Sandbox →</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenGitSandbox && (
+            <button
+              onClick={onOpenGitSandbox}
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-200 cursor-pointer"
+            >
+              <GitBranch className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Git Studio</span>
+            </button>
+          )}
 
-        {/* Filter controls */}
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg bg-slate-900 border border-slate-800 p-1 text-xs font-semibold">
+          <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium">
             {(['all', 'Easy', 'Medium'] as const).map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => setFilter(lvl)}
-                className={`px-3 py-1 rounded transition-colors capitalize cursor-pointer ${
-                  filter === lvl ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                className={`px-2.5 py-1 rounded-lg transition-colors capitalize cursor-pointer ${
+                  filter === lvl ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {lvl}
@@ -144,94 +132,84 @@ MIT License - Student Educational Project (2026)
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Projects List Sidebar */}
-        <div className="lg:w-96 shrink-0 space-y-2.5 max-h-[750px] overflow-y-auto pr-1">
-          {filtered.map((proj) => {
-            const status = projectStatuses[proj.id] || 'not_started';
-            const isSelected = selectedProj.id === proj.id;
+      {/* 2-Column Portfolio Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Sidebar Project Index */}
+        <aside className="lg:col-span-4 optical-panel rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/[0.08] bg-[#050811]/70 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+            Project Specifications ({filtered.length})
+          </div>
+          <div className="divide-y divide-white/[0.06] max-h-[680px] overflow-y-auto">
+            {filtered.map((proj) => {
+              const status = projectStatuses[proj.id] || 'not_started';
+              const isSelected = selectedProj.id === proj.id;
 
-            return (
-              <button
-                key={proj.id}
-                onClick={() => setSelectedProj(proj)}
-                className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-cyan-500 bg-cyan-950/40 shadow-lg shadow-cyan-950/40'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900'
-                }`}
-              >
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-mono text-slate-500">PROJECT {proj.number}</span>
-                  <span
-                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                      status === 'completed'
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
-                        : status === 'in_progress'
-                        ? 'bg-amber-950 text-amber-400 border border-amber-800/60'
-                        : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {status === 'completed' ? 'Done' : status === 'in_progress' ? 'In Progress' : 'Not Started'}
-                  </span>
-                </div>
+              return (
+                <button
+                  key={proj.id}
+                  onClick={() => setSelectedProj(proj)}
+                  className={`w-full text-left px-4 py-3 transition-colors cursor-pointer space-y-1 ${
+                    isSelected
+                      ? 'bg-sky-500/12 text-white shadow-[inset_0_0_0_1px_rgba(56,189,248,0.22)]'
+                      : 'hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className={isSelected ? 'text-sky-400 font-semibold' : 'text-slate-500'}>
+                      PROJECT {String(proj.number).padStart(2, '0')}
+                    </span>
+                    <span
+                      className={
+                        status === 'completed'
+                          ? 'text-emerald-400'
+                          : status === 'in_progress'
+                          ? 'text-amber-400'
+                          : 'text-slate-500'
+                      }
+                    >
+                      {status === 'completed' ? 'Done' : status === 'in_progress' ? 'Active' : 'Todo'}
+                    </span>
+                  </div>
+                  <div className={`text-xs sm:text-sm font-semibold line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                    {proj.title}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500 truncate">
+                    {proj.tools.join(' · ')} · {proj.difficulty}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
 
-                <div className="text-sm font-bold text-white line-clamp-1">{proj.title}</div>
-                <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-400 font-mono">
-                  <span>{proj.tools.join(', ')}</span>
-                  <span>·</span>
-                  <span
-                    className={
-                      proj.difficulty === 'Easy'
-                        ? 'text-emerald-400'
-                        : proj.difficulty === 'Medium'
-                        ? 'text-amber-400'
-                        : 'text-rose-400'
-                    }
-                  >
-                    {proj.difficulty}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Project Full Dossier */}
-        <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
-            <div>
-              <div className="text-xs font-mono text-cyan-400 mb-1">
-                PROJECT {selectedProj.number} · {selectedProj.difficulty.toUpperCase()} DIFFICULTY
+        {/* Selected Project Dossier */}
+        <section className="lg:col-span-8 optical-panel rounded-2xl p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-white/[0.08] pb-5">
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-mono text-sky-400 uppercase tracking-wider">
+                Project {selectedProj.number} · {selectedProj.difficulty} · {selectedProj.tools.join(' / ')}
               </div>
-              <h3 className="text-2xl font-extrabold text-white tracking-tight">{selectedProj.title}</h3>
-              <div className="flex items-center gap-2 mt-2 text-xs font-mono text-slate-300">
-                <span className="text-slate-400">Tools:</span>
-                {selectedProj.tools.map((t) => (
-                  <span key={t} className="bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-cyan-300">
-                    {t}
-                  </span>
-                ))}
-              </div>
+              <h3 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+                {selectedProj.title}
+              </h3>
             </div>
 
-            {/* Status Selector */}
-            <div className="flex items-center gap-2">
+            {/* Status Switch */}
+            <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium shrink-0">
               {(['not_started', 'in_progress', 'completed'] as const).map((st) => {
-                const currentStatus = projectStatuses[selectedProj.id] || 'not_started';
                 const isActive = currentStatus === st;
                 return (
                   <button
                     key={st}
                     onClick={() => onUpdateStatus(selectedProj.id, st)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                       isActive
                         ? st === 'completed'
-                          ? 'border-emerald-600 bg-emerald-950 text-emerald-300'
+                          ? 'bg-emerald-500 text-slate-950 font-semibold'
                           : st === 'in_progress'
-                          ? 'border-amber-600 bg-amber-950 text-amber-300'
-                          : 'border-slate-600 bg-slate-800 text-slate-200'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                          ? 'bg-amber-400 text-slate-950 font-semibold'
+                          : 'bg-white/15 text-white'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     {st === 'completed' ? 'Completed' : st === 'in_progress' ? 'In Progress' : 'Not Started'}
@@ -241,27 +219,22 @@ MIT License - Student Educational Project (2026)
             </div>
           </div>
 
-          {/* Project Brief */}
           <div className="space-y-2">
-            <h4 className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-semibold">
-              Project Brief
+            <h4 className="text-xs font-mono text-sky-400 uppercase tracking-wider font-semibold">
+              Architecture Brief
             </h4>
-            <p className="text-sm text-slate-200 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <p className="optical-inset text-xs sm:text-sm text-slate-200 leading-relaxed p-4 rounded-xl">
               {selectedProj.brief}
             </p>
           </div>
 
-          {/* Acceptance Criteria */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-semibold">
-              Acceptance Criteria Checklist
+          <div className="space-y-2.5">
+            <h4 className="text-xs font-mono text-sky-400 uppercase tracking-wider font-semibold">
+              Acceptance Criteria
             </h4>
-            <div className="space-y-2">
+            <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
               {selectedProj.acceptanceCriteria.map((crit, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-800/80 bg-slate-950/70 text-xs text-slate-300"
-                >
+                <div key={idx} className="flex items-start gap-2.5 p-3 text-xs text-slate-300">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>{crit}</span>
                 </div>
@@ -269,43 +242,60 @@ MIT License - Student Educational Project (2026)
             </div>
           </div>
 
-          {/* Learning Outcome */}
-          <div className="rounded-xl border border-indigo-950/70 bg-indigo-950/20 p-4 text-xs text-indigo-200 leading-relaxed">
-            <strong className="text-indigo-400">Core Engineering Outcome:</strong> {selectedProj.learningOutcome}
+          <div className="optical-inset rounded-xl p-3.5 text-xs text-slate-300 leading-relaxed">
+            <span className="font-mono text-emerald-400 font-semibold mr-1.5">Engineering Outcome:</span>
+            {selectedProj.learningOutcome}
           </div>
 
-          {/* Actions & README Generation */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          {/* Wired Implementation Notes */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider">
+              Implementation Notes & Repo Link
+            </label>
+            <textarea
+              rows={3}
+              value={projectNotes[selectedProj.id] || ''}
+              onChange={(e) => onUpdateNotes(selectedProj.id, e.target.value)}
+              placeholder="Track design decisions, edge cases tested, or your GitHub repository URL..."
+              className="optical-inset w-full rounded-xl p-3 text-xs text-slate-200 font-mono focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.08]">
             <button
               onClick={() =>
                 onOpenAiMentor(
-                  `Help me architect Project ${selectedProj.number}: "${selectedProj.title}". Give me advice on step-by-step code structure for a Grade 9 student!`
+                  `Help me structure Project ${selectedProj.number}: "${selectedProj.title}" into clean modules and automated tests.`
                 )
               }
-              className="flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-950/40 px-4 py-2 text-xs font-semibold text-purple-200 hover:bg-purple-900/50 transition-colors cursor-pointer"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer"
             >
-              <Sparkles className="h-4 w-4 text-purple-400" />
-              <span>Architect with AI Mentor</span>
+              <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+              <span>Architect with Mentor</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => handleCopyReadme(selectedProj)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 cursor-pointer"
               >
                 {copiedReadme ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{copiedReadme ? 'Copied README' : 'Copy README.md'}</span>
+                <span>{copiedReadme ? 'Copied' : 'Copy README'}</span>
               </button>
-              <button
+              <SoapBubbleButton
                 onClick={() => handleDownloadReadme(selectedProj)}
-                className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors cursor-pointer"
+                tint="rgb(14 165 233)"
+                opacity={0.92}
+                style={{ fontSize: 12 }}
+                className="!min-h-[34px] !px-4 font-semibold text-white"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Download README.md</span>
-              </button>
+              </SoapBubbleButton>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

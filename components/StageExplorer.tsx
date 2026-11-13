@@ -9,52 +9,61 @@ import {
   Sparkles,
   Terminal,
   ShieldAlert,
-  HelpCircle,
   BookOpen,
-  Award,
-  ChevronRight,
-  Flame,
-  Check,
-  Calculator,
-  GitBranch,
   Code2,
   Plus,
+  Check,
+  ArrowRight,
+  Cpu,
+  GitBranch,
+  Download,
 } from 'lucide-react';
-import { STAGES_DATA, StageData, TopicItem, CommandItem, ResourceItem } from '@/lib/curriculum-data';
-import { FoundationsStudio } from './FoundationsStudio';
-import { GitSandbox } from './GitSandbox';
+import { STAGES_DATA, TopicItem, CommandItem, ResourceItem } from '@/lib/curriculum-data';
+import { generateSingleStageMarkdown, getSourcesForStage } from '@/lib/curriculum-export';
+import { SoapBubbleButton } from './soap-bubble';
 
 interface StageExplorerProps {
+  selectedStageId: string;
+  onSelectStage: (stageId: string) => void;
   completedTopics: Record<string, boolean>;
   completedExitChecks: Record<string, boolean>;
   onToggleTopic: (topicId: string) => void;
   onToggleExitCheck: (checkKey: string) => void;
   onOpenAiMentor: (context?: string) => void;
-  onOpenBandit: () => void;
+  onOpenShell: () => void;
   onOpenNotes: (stageId: string) => void;
   onOpenPlayground?: (language: 'python' | 'c', code: string) => void;
+  onOpenLab?: (labTab: 'foundations' | 'git') => void;
   onMarkStageComplete?: (stageId: string, completed: boolean) => void;
-  onAddMilestone?: (title: string, category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom', targetDate?: string, stageId?: string, xpReward?: number) => void;
+  onAddMilestone?: (
+    title: string,
+    category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom',
+    targetDate?: string,
+    stageId?: string,
+    xpReward?: number
+  ) => void;
 }
 
 export function StageExplorer({
+  selectedStageId,
+  onSelectStage,
   completedTopics,
   completedExitChecks,
   onToggleTopic,
   onToggleExitCheck,
   onOpenAiMentor,
-  onOpenBandit,
+  onOpenShell,
   onOpenNotes,
   onOpenPlayground,
+  onOpenLab,
   onMarkStageComplete,
   onAddMilestone,
 }: StageExplorerProps) {
-  const [selectedStageId, setSelectedStageId] = useState<string>('stage-0');
-  const [activeTab, setActiveTab] = useState<'topics' | 'foundations' | 'git' | 'commands' | 'resources' | 'task' | 'exit'>('topics');
+  const [activeTab, setActiveTab] = useState<'topics' | 'commands' | 'resources' | 'task' | 'exit'>('topics');
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  const [milestoneAddedId, setMilestoneAddedId] = useState<string | null>(null);
 
   const stage = STAGES_DATA.find((s) => s.id === selectedStageId) || STAGES_DATA[0];
-
   const stageCompletedTopics = stage.topics.filter((t) => completedTopics[t.id]).length;
   const stageTopicProgress = Math.round((stageCompletedTopics / stage.topics.length) * 100);
   const isStageFullyComplete = stageCompletedTopics === stage.topics.length && stage.topics.length > 0;
@@ -62,327 +71,324 @@ export function StageExplorer({
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCmd(text);
-    setTimeout(() => setCopiedCmd(null), 2000);
+    setTimeout(() => setCopiedCmd(null), 1800);
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Stage Carousel / Selector */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold text-white tracking-tight">The 12-Stage Odyssey Roadmap</h2>
-          <span className="text-xs font-mono text-cyan-400">Total 6-Month Intensive Plan</span>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Left Rail: 14-Stage Index (4 cols) */}
+      <aside className="lg:col-span-4 optical-panel rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/[0.08] bg-[#050811]/70 flex items-center justify-between">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {STAGES_DATA.length}-Stage Roadmap
+          </span>
+          <span className="font-mono text-[11px] text-slate-500">Zero to Systems</span>
         </div>
 
-        {/* Scrollable Stage Pills / Segmented Selector */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+        <div className="divide-y divide-white/[0.06] max-h-[720px] overflow-y-auto">
           {STAGES_DATA.map((s) => {
-            const isSelected = s.id === selectedStageId;
+            const isSelected = s.id === stage.id;
             const completedCount = s.topics.filter((t) => completedTopics[t.id]).length;
             const isComplete = completedCount === s.topics.length && s.topics.length > 0;
 
             return (
               <button
                 key={s.id}
-                onClick={() => setSelectedStageId(s.id)}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                onClick={() => onSelectStage(s.id)}
+                className={`w-full px-4 py-3 text-left transition-colors cursor-pointer flex items-start justify-between gap-3 ${
                   isSelected
-                    ? 'border-cyan-500 bg-cyan-950/40 shadow-lg shadow-cyan-950/50'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900'
+                    ? 'bg-sky-500/12 text-white shadow-[inset_0_0_0_1px_rgba(56,189,248,0.22)]'
+                    : 'hover:bg-white/[0.03]'
                 }`}
               >
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
-                  <span>STAGE {s.number}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
+                    <span className={isSelected ? 'text-sky-400 font-semibold' : ''}>
+                      STAGE {String(s.number).padStart(2, '0')}
+                    </span>
+                    <span>·</span>
+                    <span className="truncate">{s.sprintMonth}</span>
+                  </div>
+                  <div className={`text-xs font-semibold mt-0.5 line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                    {s.title}
+                  </div>
+                </div>
+
+                <div className="shrink-0 pt-0.5 font-mono text-[11px] tabular-nums">
                   {isComplete ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                   ) : (
                     <span className="text-slate-500">{completedCount}/{s.topics.length}</span>
                   )}
-                </div>
-                <div className="text-xs font-bold text-slate-200 line-clamp-1">{s.title.split(':')[0]}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-mono truncate">{s.sprintMonth}</div>
-
-                {/* Bottom line progress */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800">
-                  <div
-                    className="h-full bg-cyan-400 transition-all duration-300"
-                    style={{ width: `${(completedCount / s.topics.length) * 100}%` }}
-                  />
                 </div>
               </button>
             );
           })}
         </div>
-      </div>
+      </aside>
 
-      {/* Selected Stage Workspace */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm overflow-hidden">
+      {/* Right Workspace: Selected Stage Dossier (8 cols) */}
+      <section className="lg:col-span-8 optical-panel rounded-2xl overflow-hidden">
         {/* Stage Header */}
-        <div className="border-b border-slate-800 p-6 bg-slate-900/80">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1.5">
-                <span>STAGE {stage.number}</span>
-                <span>·</span>
-                <span>{stage.timeEstimate}</span>
-                <span>·</span>
-                <span>{stage.sprintMonth}</span>
+        <div className="p-6 border-b border-white/[0.08] space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-sky-400 uppercase tracking-wider">
+                <span>Stage {stage.number}</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-400">{stage.timeEstimate}</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-400">{stage.sprintMonth}</span>
               </div>
-              <h3 className="text-2xl font-extrabold text-white tracking-tight">
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
                 {stage.title}
-              </h3>
-              <p className="mt-1 text-sm text-slate-300 max-w-3xl">
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
                 {stage.subtitle}
               </p>
             </div>
 
-            {/* Quick action buttons for this stage */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               {onMarkStageComplete && (
                 <button
                   onClick={() => onMarkStageComplete(stage.id, !isStageFullyComplete)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer border ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
                     isStageFullyComplete
-                      ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60'
-                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-emerald-950/40 hover:border-emerald-600/50 hover:text-emerald-300'
+                      ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
+                      : 'optical-card text-slate-200'
                   }`}
-                  title={isStageFullyComplete ? 'Reset all topics in this stage' : 'Mark all topics in this stage as complete'}
                 >
                   <CheckCircle2 className={`h-3.5 w-3.5 ${isStageFullyComplete ? 'text-emerald-400' : 'text-slate-400'}`} />
-                  <span>{isStageFullyComplete ? 'Stage Complete ✓' : 'Mark Stage Complete'}</span>
+                  <span>{isStageFullyComplete ? 'Completed' : 'Complete All'}</span>
                 </button>
               )}
 
               {onAddMilestone && (
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     onAddMilestone(
                       `Complete Stage ${stage.number}: ${stage.title.split(':')[0]}`,
                       'basics',
                       undefined,
                       stage.id,
                       100
-                    )
-                  }
-                  className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/30 px-3 py-1.5 text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition-colors cursor-pointer"
-                  title="Add this stage as a personalized milestone in your progress tracker"
+                    );
+                    setMilestoneAddedId(stage.id);
+                    setTimeout(() => setMilestoneAddedId(null), 2000);
+                  }}
+                  className="optical-card inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 cursor-pointer"
                 >
-                  <Plus className="h-3.5 w-3.5 text-purple-400" />
-                  <span>Set as Milestone</span>
+                  {milestoneAddedId === stage.id ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 text-sky-400" />
+                  )}
+                  <span>{milestoneAddedId === stage.id ? 'Added' : 'Milestone'}</span>
                 </button>
               )}
-
-              <button
-                onClick={() => onOpenAiMentor(`Quiz me on Stage ${stage.number}: ${stage.title}`)}
-                className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-900/50 transition-colors cursor-pointer"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                <span>Quiz Me</span>
-              </button>
 
               <button
                 onClick={() => onOpenNotes(stage.id)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 cursor-pointer"
               >
-                <BookOpen className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Stage Notes</span>
+                <BookOpen className="h-3.5 w-3.5 text-slate-400" />
+                <span>Notes</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const md = generateSingleStageMarkdown(stage.id);
+                  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `cs-odyssey-stage-${stage.number}.md`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 cursor-pointer"
+                title="Download stage syllabus as Markdown"
+              >
+                <Download className="h-3.5 w-3.5 text-sky-400" />
+                <span>Export .md</span>
               </button>
 
               {stage.number === 3 && (
-                <button
-                  onClick={onOpenBandit}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors cursor-pointer"
+                <SoapBubbleButton
+                  onClick={onOpenShell}
+                  tint="rgb(16 185 129)"
+                  opacity={0.92}
+                  style={{ fontSize: 11.5 }}
+                  className="!min-h-[30px] !px-3.5 font-semibold text-white"
                 >
                   <Terminal className="h-3.5 w-3.5" />
-                  <span>Bandit Wargame</span>
-                </button>
+                  <span>Wargame Shell</span>
+                </SoapBubbleButton>
               )}
             </div>
           </div>
 
-          {/* Goal & Grade 9 Metaphor Callout */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <div className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-1 font-semibold">
-                Core Stage Goal
+          {/* Goal & Intuition */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="optical-inset rounded-xl p-3.5 space-y-1">
+              <div className="font-mono text-[11px] text-sky-400 uppercase tracking-wider font-semibold">
+                Stage Objective
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {stage.goal}
-              </p>
+              <p className="text-slate-300 leading-relaxed">{stage.goal}</p>
             </div>
-
-            <div className="rounded-xl border border-indigo-950/70 bg-indigo-950/20 p-4">
-              <div className="text-xs font-mono text-indigo-400 uppercase tracking-wider mb-1 font-semibold flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                ELI9 Intuitive Mental Model
+            <div className="optical-inset rounded-xl p-3.5 space-y-1">
+              <div className="font-mono text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                Mental Model
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {stage.eli9Metaphor}
-              </p>
+              <p className="text-slate-300 leading-relaxed">{stage.eli9Metaphor}</p>
             </div>
           </div>
-          {/* Stage 0 & 1 Bedrock Banner */}
-          {(stage.number === 0 || stage.number === 1) && (
-            <div className="mt-4 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-                  <Calculator className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Stage {stage.number} Bedrock: Master Binary, Hex, Bitwise &amp; Math</h4>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    Before configuring code editors, master electrical switches, 8-bit registers, hex nibbles, bit shifts, and Boolean logic gates.
-                  </p>
-                </div>
+
+          {/* Deep-link Bar to Unified Systems Labs */}
+          {onOpenLab && (stage.number === 0 || stage.number === 1 || stage.number === 2) && (
+            <div className="optical-inset rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="text-slate-300">
+                Hands-on interactive practice for Stage {stage.number} is available in <strong className="text-white">Systems Lab</strong>.
+              </span>
+              <div className="flex items-center gap-2">
+                <SoapBubbleButton
+                  onClick={() => onOpenLab('foundations')}
+                  tint="rgb(14 165 233)"
+                  opacity={0.9}
+                  style={{ fontSize: 11.5 }}
+                  className="!min-h-[30px] !px-3.5 font-semibold text-white"
+                >
+                  <Cpu className="h-3.5 w-3.5" />
+                  <span>Bitwise &amp; Hardware Lab</span>
+                  <ArrowRight className="h-3 w-3" />
+                </SoapBubbleButton>
+                <button
+                  onClick={() => onOpenLab('git')}
+                  className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-medium text-slate-200 cursor-pointer"
+                >
+                  <GitBranch className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Git Studio</span>
+                </button>
               </div>
-              <button
-                onClick={() => setActiveTab('foundations')}
-                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-mono font-bold text-white transition-all cursor-pointer whitespace-nowrap shadow-lg shadow-cyan-950/60"
-              >
-                Launch Math &amp; Binary Studio →
-              </button>
             </div>
           )}
         </div>
 
-        {/* Tab Navigation for Stage Details */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 gap-6 text-xs font-medium overflow-x-auto no-scrollbar">
+        {/* Section Tabs */}
+        <div className="flex border-b border-white/[0.08] bg-[#050811]/70 px-6 gap-6 text-xs font-medium overflow-x-auto no-scrollbar">
           {[
-            { id: 'topics', label: `Topics & Milestones (${stageCompletedTopics}/${stage.topics.length})` },
-            ...(stage.number === 0 || stage.number === 1 || stage.number === 2
-              ? [
-                  { id: 'foundations', label: '⚡ Math, Binary & Logic Studio' },
-                  { id: 'git', label: '🌿 Git Sandbox' },
-                ]
-              : []),
-            { id: 'commands', label: `Command Deck (${stage.commands.length})` },
-            { id: 'resources', label: `Curated Sources (${stage.resources.length})` },
-            { id: 'task', label: 'Hands-on Assignment' },
-            { id: 'exit', label: 'Exit Verification Gate' },
+            { id: 'topics', label: `Topics (${stageCompletedTopics}/${stage.topics.length})` },
+            { id: 'commands', label: `Commands (${stage.commands.length})` },
+            {
+              id: 'resources',
+              label: `Sources (${stage.resources.length + getSourcesForStage(stage.id).length})`,
+            },
+            { id: 'task', label: 'Assignment' },
+            { id: 'exit', label: 'Exit Gate' },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`py-3.5 whitespace-nowrap transition-colors relative cursor-pointer ${
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`py-3 whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
                 activeTab === tab.id
-                  ? 'text-cyan-400 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'border-sky-400 text-white font-semibold'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 rounded-full" />
-              )}
             </button>
           ))}
         </div>
 
-        {/* Tab Content Areas */}
+        {/* Tab Content */}
         <div className="p-6">
-          {/* TAB 0: FOUNDATIONS STUDIO (STAGE 0 & 1 & 2) */}
-          {activeTab === 'foundations' && (
-            <FoundationsStudio onOpenAiMentor={onOpenAiMentor} />
-          )}
-
-          {/* TAB 0.5: GIT SANDBOX (STAGE 0 & 1 & 2) */}
-          {activeTab === 'git' && (
-            <GitSandbox onOpenAiMentor={onOpenAiMentor} />
-          )}
-
-          {/* TAB 1: TOPICS CHECKLIST */}
           {activeTab === 'topics' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                <span>Check off each topic as you practice and master it.</span>
-                <span className="font-mono text-cyan-400 font-semibold">{stageTopicProgress}% Completed</span>
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Check off each concept as you build working mastery.</span>
+                <span className="font-mono text-sky-400 font-semibold tabular-nums">
+                  {stageTopicProgress}% Complete
+                </span>
               </div>
 
-              <div className="space-y-3">
+              <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
                 {stage.topics.map((topic: TopicItem) => {
                   const isChecked = Boolean(completedTopics[topic.id]);
                   return (
-                    <div
-                      key={topic.id}
-                      className={`flex items-start gap-3.5 p-4 rounded-xl border transition-all ${
-                        isChecked
-                          ? 'border-emerald-900/60 bg-emerald-950/15'
-                          : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
-                      }`}
-                    >
+                    <div key={topic.id} className="p-4 flex items-start gap-3.5">
                       <button
                         onClick={() => onToggleTopic(topic.id)}
                         className="mt-0.5 text-slate-500 hover:text-emerald-400 transition-colors shrink-0 cursor-pointer"
                       >
                         {isChecked ? (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                         ) : (
-                          <Circle className="h-5 w-5 text-slate-600 hover:text-cyan-400" />
+                          <Circle className="h-4 w-4" />
                         )}
                       </button>
 
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
                           <h4
-                            className={`text-sm font-bold ${
-                              isChecked ? 'text-emerald-300 line-through opacity-85' : 'text-white'
+                            className={`text-sm font-semibold ${
+                              isChecked ? 'text-slate-400 line-through' : 'text-white'
                             }`}
                           >
                             {topic.title}
                           </h4>
                           <button
                             onClick={() =>
-                              onOpenAiMentor(`ELI9: Explain "${topic.title}" from Stage ${stage.number} with a simple Grade 9 analogy and code example!`)
+                              onOpenAiMentor(`Explain "${topic.title}" from Stage ${stage.number} clearly with a concise example.`)
                             }
-                            className="flex items-center gap-1 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 shrink-0 cursor-pointer"
+                            className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-400 hover:underline shrink-0 cursor-pointer"
                           >
                             <Sparkles className="h-3 w-3" />
                             <span>Explain</span>
                           </button>
                         </div>
 
-                        <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                          {topic.description}
-                        </p>
+                        <p className="text-xs text-slate-300 leading-relaxed">{topic.description}</p>
 
-                        <div className="mt-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 px-3 py-1.5 text-[11px] text-slate-400 font-mono">
-                          <span className="text-indigo-400 font-semibold">ELI9:</span> {topic.eli9}
+                        <div className="rounded-lg border border-white/[0.07] bg-[#060913]/80 px-3 py-2 text-xs text-slate-400">
+                          <span className="font-mono text-sky-400 font-semibold mr-1.5">Intuition:</span>
+                          {topic.eli9}
                         </div>
 
                         {topic.codeSnippet && (
-                          <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-2">
-                            <div className="flex items-center justify-between text-xs font-mono">
-                              <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                          <div className="rounded-xl border border-white/[0.08] bg-[#03060d] p-3 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-mono">
+                              <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                                 <Code2 className="h-3.5 w-3.5" />
-                                <span>Code Example ({topic.codeSnippet.language.toUpperCase()})</span>
+                                <span>{topic.codeSnippet.language.toUpperCase()} Example</span>
                               </span>
                               {onOpenPlayground && (
                                 <button
                                   onClick={() => onOpenPlayground(topic.codeSnippet!.language, topic.codeSnippet!.code)}
-                                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
+                                  className="text-sky-400 hover:underline font-semibold cursor-pointer"
                                 >
-                                  <span>Open in Playground →</span>
+                                  Open in Playground -&gt;
                                 </button>
                               )}
                             </div>
-                            <pre className="p-2.5 rounded-lg bg-slate-900 text-[11px] font-mono text-slate-200 overflow-x-auto whitespace-pre">
+                            <pre className="p-2.5 rounded-lg bg-black/50 text-[11px] font-mono text-slate-200 overflow-x-auto whitespace-pre border border-white/[0.06]">
                               {topic.codeSnippet.code}
                             </pre>
-                            <div className="text-[11px] text-slate-400 font-mono">
+                            <div className="text-[11px] text-slate-500">
                               {topic.codeSnippet.explanation}
                             </div>
                           </div>
                         )}
 
                         {topic.externalLinks && topic.externalLinks.length > 0 && (
-                          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-mono text-slate-500">Curated Sources:</span>
+                          <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono">
+                            <span className="text-slate-500">References:</span>
                             {topic.externalLinks.map((link, lIdx) => (
                               <a
                                 key={lIdx}
                                 href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 border border-slate-700/60"
+                                className="inline-flex items-center gap-1 text-sky-400 hover:underline"
                               >
                                 <span>{link.title}</span>
                                 <ExternalLink className="h-2.5 w-2.5" />
@@ -398,52 +404,39 @@ export function StageExplorer({
             </div>
           )}
 
-          {/* TAB 2: COMMAND DECK */}
           {activeTab === 'commands' && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-400">
-                Key commands, compiler flags, and syntax you need to practice for this stage. Click copy to grab them for your terminal!
-              </p>
-
+            <div className="space-y-3">
               {stage.commands.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
-                  This stage focuses on conceptual foundations. See the Command Vault tab for general tools!
+                <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-xs text-slate-500">
+                  Stage {stage.number} focuses on conceptual hardware and architectural models.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
                   {stage.commands.map((cmd: CommandItem, idx: number) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-2 font-mono text-xs"
-                    >
+                    <div key={idx} className="p-4 space-y-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-cyan-400">{cmd.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-500 border border-slate-800 rounded px-1.5 py-0.5">
-                            {cmd.category}
-                          </span>
-                          <button
-                            onClick={() => handleCopy(cmd.syntax)}
-                            className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
-                          >
-                            {copiedCmd === cmd.syntax ? (
-                              <Check className="h-3 w-3 text-emerald-400" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                            <span>{copiedCmd === cmd.syntax ? 'Copied' : 'Copy'}</span>
-                          </button>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span className="font-bold text-sky-400">{cmd.name}</span>
+                          <span className="text-[11px] text-slate-500">· {cmd.category}</span>
                         </div>
+                        <button
+                          onClick={() => handleCopy(cmd.syntax)}
+                          className="optical-card inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-mono text-slate-300 hover:text-white cursor-pointer"
+                        >
+                          {copiedCmd === cmd.syntax ? (
+                            <Check className="h-3 w-3 text-emerald-400" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                          <span>{copiedCmd === cmd.syntax ? 'Copied' : 'Copy'}</span>
+                        </button>
                       </div>
-
-                      <div className="rounded bg-slate-900 border border-slate-800 p-2 text-slate-200 select-all overflow-x-auto">
+                      <pre className="rounded-lg bg-black/50 border border-white/[0.06] px-3 py-2 font-mono text-slate-200 overflow-x-auto">
                         {cmd.syntax}
-                      </div>
-
-                      <p className="text-[11px] text-slate-400 font-sans">{cmd.explanation}</p>
-
+                      </pre>
+                      <p className="text-slate-400">{cmd.explanation}</p>
                       {cmd.safeNote && (
-                        <div className="text-[11px] text-amber-400/90 font-sans flex items-center gap-1.5 mt-1">
+                        <div className="text-[11px] text-amber-400/90 flex items-center gap-1.5">
                           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
                           <span>{cmd.safeNote}</span>
                         </div>
@@ -455,106 +448,132 @@ export function StageExplorer({
             </div>
           )}
 
-          {/* TAB 3: CURATED SOURCES */}
           {activeTab === 'resources' && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-400">
-                Verified high-quality resources from the student roadmap. &quot;Free&quot; indicates open educational access verified for October 2026.
-              </p>
-
+            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {stage.resources.map((res: ResourceItem, idx: number) => (
                   <div
                     key={idx}
-                    className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+                    className="optical-card flex flex-col justify-between rounded-xl p-4 space-y-3"
                   >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span
-                          className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded ${
-                            res.isFree
-                              ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
-                              : 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
-                          }`}
-                        >
-                          {res.isFree ? '100% Free' : res.costNote || 'Paid / Audit Free'}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className={res.isFree ? 'text-emerald-400' : 'text-amber-400'}>
+                          {res.isFree ? 'Free Access' : res.costNote || 'Audit Free'}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-500 uppercase">{res.type}</span>
+                        <span className="text-slate-500 uppercase">{res.type}</span>
                       </div>
-
-                      <h4 className="text-sm font-bold text-white mb-1">{res.title}</h4>
+                      <h4 className="text-sm font-semibold text-white">{res.title}</h4>
                       <p className="text-xs text-slate-400 leading-relaxed">{res.notes}</p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-900 flex justify-end">
-                      <a
-                        href={res.url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
-                      >
-                        <span>Open Resource</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
+                    <a
+                      href={res.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1 text-xs font-mono text-sky-400 hover:underline pt-2 border-t border-white/[0.07]"
+                    >
+                      <span>Open Source</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
                 ))}
               </div>
+
+              {getSourcesForStage(stage.id).length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-white/[0.08]">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                    Extended Open-Source Library for Stage {stage.number} (Courses, Videos, Books &amp; Labs)
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {getSourcesForStage(stage.id).map((src) => (
+                      <div
+                        key={src.id}
+                        className="optical-card flex flex-col justify-between rounded-xl p-4 space-y-2.5"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                            <span>
+                              {src.medium} · {src.level}
+                            </span>
+                            <span className={src.cost === 'Free' || src.cost === 'Open Source' ? 'text-emerald-400' : 'text-amber-400'}>
+                              {src.cost}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-white">{src.title}</h4>
+                          <p className="text-[11px] font-mono text-slate-500">{src.authorOrOrg}</p>
+                          <p className="text-xs text-slate-400 leading-relaxed">{src.whyItMatters}</p>
+                        </div>
+
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-xs font-mono text-sky-400 hover:underline pt-2 border-t border-white/[0.07]"
+                        >
+                          <span>Open {src.medium}</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* TAB 4: PRACTICE TASK */}
           {activeTab === 'task' && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-5">
-                <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 mb-2 font-semibold">
-                  <Award className="h-4 w-4" />
-                  <span>Deliverable Assignment for Stage {stage.number}</span>
+            <div className="optical-inset rounded-xl p-5 space-y-4">
+              <div className="space-y-1">
+                <div className="text-[11px] font-mono text-emerald-400 uppercase tracking-wider font-semibold">
+                  Deliverable Assignment
                 </div>
-                <h4 className="text-lg font-bold text-white mb-2">{stage.practiceTask.title}</h4>
-                <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                <h4 className="font-display text-lg font-semibold text-white">
+                  {stage.practiceTask.title}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {stage.practiceTask.description}
                 </p>
+              </div>
 
-                <div className="rounded-lg bg-slate-900 border border-slate-800 p-3.5">
-                  <div className="text-[11px] font-mono text-cyan-400 font-semibold mb-1">
-                    Required Deliverable:
-                  </div>
-                  <p className="text-xs text-slate-200">{stage.practiceTask.deliverable}</p>
-                </div>
+              <div className="rounded-xl border border-white/[0.07] bg-[#060913]/80 p-3.5 text-xs space-y-1">
+                <div className="font-mono text-[11px] text-sky-400 font-semibold">Required Deliverable</div>
+                <p className="text-slate-200">{stage.practiceTask.deliverable}</p>
+              </div>
 
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() =>
-                      onOpenAiMentor(
-                        `Review and guide me on the assignment: "${stage.practiceTask.title}". What are the key steps for a Grade 9 student to complete this safely?`
-                      )
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Get Assignment Tips from AI</span>
-                  </button>
-                  <button
-                    onClick={() => onOpenNotes(stage.id)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
-                  >
-                    <BookOpen className="h-3.5 w-3.5 text-cyan-400" />
-                    <span>Write Lab Report in Notes</span>
-                  </button>
-                </div>
+              <div className="flex flex-wrap gap-2.5">
+                <SoapBubbleButton
+                  onClick={() =>
+                    onOpenAiMentor(
+                      `Break down step-by-step engineering hints for: "${stage.practiceTask.title}".`
+                    )
+                  }
+                  tint="rgb(14 165 233)"
+                  opacity={0.92}
+                  style={{ fontSize: 12 }}
+                  className="!min-h-[34px] !px-4 font-semibold text-white"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Ask Mentor for Breakdown</span>
+                </SoapBubbleButton>
+                <button
+                  onClick={() => onOpenNotes(stage.id)}
+                  className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer"
+                >
+                  <BookOpen className="h-3.5 w-3.5 text-slate-400" />
+                  <span>Write Lab Notes</span>
+                </button>
               </div>
             </div>
           )}
 
-          {/* TAB 5: EXIT CHECKLIST */}
           {activeTab === 'exit' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-amber-900/40 bg-amber-950/20 text-xs text-amber-300/90 leading-relaxed">
-                <strong>The Exit Gate Rule:</strong> Do not rush to the next stage! You should be able to demonstrate every single item below independently without following a step-by-step tutorial.
+              <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-3.5 text-xs text-amber-200/90 leading-relaxed">
+                <strong>Exit Gate Verification:</strong> Verify you can demonstrate every item below independently without consulting a tutorial before advancing.
               </div>
 
-              <div className="space-y-2.5">
+              <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
                 {stage.exitChecklist.map((check: string, idx: number) => {
                   const checkKey = `${stage.id}-${idx}`;
                   const isChecked = Boolean(completedExitChecks[checkKey]);
@@ -563,11 +582,7 @@ export function StageExplorer({
                     <button
                       key={idx}
                       onClick={() => onToggleExitCheck(checkKey)}
-                      className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        isChecked
-                          ? 'border-emerald-800/80 bg-emerald-950/25'
-                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
-                      }`}
+                      className="w-full flex items-start gap-3 p-3.5 text-left hover:bg-white/[0.03] transition-colors cursor-pointer"
                     >
                       <div className="mt-0.5 shrink-0">
                         {isChecked ? (
@@ -576,7 +591,7 @@ export function StageExplorer({
                           <Circle className="h-4 w-4 text-slate-600" />
                         )}
                       </div>
-                      <span className={`text-xs ${isChecked ? 'text-emerald-200 line-through' : 'text-slate-200'}`}>
+                      <span className={`text-xs ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                         {check}
                       </span>
                     </button>
@@ -587,12 +602,11 @@ export function StageExplorer({
           )}
         </div>
 
-        {/* Safety Warning Footer */}
-        <div className="border-t border-slate-800 bg-slate-950/80 px-6 py-3 flex items-center gap-2.5 text-xs text-amber-400/90">
-          <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
+        <div className="border-t border-white/[0.08] bg-[#04070e]/85 px-6 py-3 flex items-center gap-2 text-xs text-amber-400/90">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
           <span>{stage.safetyWarning}</span>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
