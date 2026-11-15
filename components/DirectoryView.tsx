@@ -22,7 +22,7 @@ export function DirectoryView() {
 
   const sections: Array<{ id: DirectorySection; label: string }> = [
     { id: 'certs', label: 'Certs Reality Check' },
-    { id: 'tracks', label: '8 Specializations' },
+    { id: 'tracks', label: '10 Specializations' },
     { id: 'books', label: 'Essential Books' },
     { id: 'youtube', label: 'YouTube Channels' },
     { id: 'schedule', label: 'Weekly Schedule' },
@@ -43,7 +43,7 @@ export function DirectoryView() {
             Resources, Careers &amp; Certification Status
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Verified facts on certificates, 8 specialization tracks, books, channels, and weekly schedules.
+            Verified facts on certificates, 10 specialization tracks, books, channels, and weekly schedules.
           </p>
         </div>
 

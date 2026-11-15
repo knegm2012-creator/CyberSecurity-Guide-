@@ -132,7 +132,7 @@ export function SourceLibraryView() {
               Curated Websites, Videos, Courses, Books &amp; Papers
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 max-w-3xl">
-              Primary university courses, canonical video series, open-license textbooks, Internet RFC specs, and hands-on arenas mapped across all 14 stages.
+              Primary university courses, canonical video series, open-license textbooks, Internet RFC specs, and hands-on arenas mapped across all 16 stages.
             </p>
           </div>
 
@@ -198,7 +198,7 @@ export function SourceLibraryView() {
               className="w-full rounded-xl border border-white/[0.1] bg-[#040710]/85 px-3 py-2 text-xs text-slate-200 focus:border-cyan-400/50 focus:outline-none cursor-pointer"
               aria-label="Filter by curriculum stage"
             >
-              <option value="All">All 14 Stages</option>
+              <option value="All">All {STAGES_DATA.length} Stages</option>
               {STAGES_DATA.map((st) => (
                 <option key={st.id} value={st.id}>
                   Stage {st.number}

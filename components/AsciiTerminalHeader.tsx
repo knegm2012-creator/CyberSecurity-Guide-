@@ -374,7 +374,7 @@ export function AsciiTerminalHeader({
   }[color];
 
   return (
-    <div className={`border-b border-white/[0.08] bg-[#040710]/75 backdrop-blur-md font-mono transition-all duration-200 ${colorClasses.bg}`}>
+    <div className={`border-b border-white/[0.08] bg-[#040710]/94 font-mono transition-all duration-200 ${colorClasses.bg}`}>
       {/* Header Bar Controls */}
       <div className="flex items-center justify-between px-3 py-1.5 text-[11px] border-b border-white/[0.07] bg-white/[0.025] select-none">
         <div className="flex items-center gap-2">

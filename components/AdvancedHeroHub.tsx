@@ -18,6 +18,7 @@ import {
   Check,
   Globe,
   Lock,
+  Sigma,
 } from 'lucide-react';
 import { ADVANCED_HERO_TOPICS } from '@/lib/curriculum-data';
 import { SoapBubbleButton } from './soap-bubble';
@@ -38,6 +39,7 @@ const SUBJECT_AREAS = [
   'Systems Security & Cryptography',
   'Compilers & Programming Languages',
   'Computer Architecture & Hardware',
+  'Applied Math, AI Systems & HPC',
 ];
 
 export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: AdvancedHeroHubProps) {
@@ -80,6 +82,8 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
         return <Code2 className="h-3.5 w-3.5 text-emerald-400" />;
       case 'Computer Architecture & Hardware':
         return <Cpu className="h-3.5 w-3.5 text-amber-400" />;
+      case 'Applied Math, AI Systems & HPC':
+        return <Sigma className="h-3.5 w-3.5 text-fuchsia-400" />;
       default:
         return <BookOpen className="h-3.5 w-3.5 text-slate-400" />;
     }

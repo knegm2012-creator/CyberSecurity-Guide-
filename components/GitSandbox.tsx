@@ -2246,7 +2246,7 @@ Thumbs.db`}
 
       {/* MODAL 1: Create New Branch */}
       {showBranchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-base font-bold text-white flex items-center gap-2">
@@ -2307,7 +2307,7 @@ Thumbs.db`}
 
       {/* MODAL 2: Merge Branch */}
       {showMergeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-base font-bold text-white flex items-center gap-2">
@@ -2359,7 +2359,7 @@ Thumbs.db`}
 
       {/* MODAL 3: Rebase Branch */}
       {showRebaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-base font-bold text-white flex items-center gap-2">

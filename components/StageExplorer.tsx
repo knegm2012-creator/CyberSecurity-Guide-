@@ -17,6 +17,7 @@ import {
   Cpu,
   GitBranch,
   Download,
+  Calendar,
 } from 'lucide-react';
 import { STAGES_DATA, TopicItem, CommandItem, ResourceItem } from '@/lib/curriculum-data';
 import { generateSingleStageMarkdown, getSourcesForStage } from '@/lib/curriculum-export';
@@ -35,6 +36,9 @@ interface StageExplorerProps {
   onOpenPlayground?: (language: 'python' | 'c', code: string) => void;
   onOpenLab?: (labTab: 'foundations' | 'git') => void;
   onMarkStageComplete?: (stageId: string, completed: boolean) => void;
+  stageTargetDates?: Record<string, string>;
+  onSetStageTargetDate?: (stageId: string, targetDate: string) => void;
+  onCompleteTopicWithHabit?: (topicId: string, stageId: string, logMinutes?: number) => void;
   onAddMilestone?: (
     title: string,
     category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom',
@@ -42,6 +46,16 @@ interface StageExplorerProps {
     stageId?: string,
     xpReward?: number
   ) => void;
+}
+
+function categoryForStageNumber(
+  num: number
+): 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom' {
+  if (num <= 2) return 'basics';
+  if (num === 3 || num === 9 || num === 10) return 'bandit';
+  if (num === 11) return 'projects';
+  if (num === 12) return 'algorithms';
+  return 'systems';
 }
 
 export function StageExplorer({
@@ -57,6 +71,9 @@ export function StageExplorer({
   onOpenPlayground,
   onOpenLab,
   onMarkStageComplete,
+  stageTargetDates,
+  onSetStageTargetDate,
+  onCompleteTopicWithHabit,
   onAddMilestone,
 }: StageExplorerProps) {
   const [activeTab, setActiveTab] = useState<'topics' | 'commands' | 'resources' | 'task' | 'exit'>('topics');
@@ -76,13 +93,13 @@ export function StageExplorer({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Left Rail: 14-Stage Index (4 cols) */}
+      {/* Left Rail: 16-Stage Index (4 cols) */}
       <aside className="lg:col-span-4 optical-panel rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-white/[0.08] bg-[#050811]/70 flex items-center justify-between">
           <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             {STAGES_DATA.length}-Stage Roadmap
           </span>
-          <span className="font-mono text-[11px] text-slate-500">Zero to Systems</span>
+          <span className="font-mono text-[11px] text-slate-500">Zero to Hero · A–Z</span>
         </div>
 
         <div className="divide-y divide-white/[0.06] max-h-[720px] overflow-y-auto">
@@ -168,8 +185,8 @@ export function StageExplorer({
                   onClick={() => {
                     onAddMilestone(
                       `Complete Stage ${stage.number}: ${stage.title.split(':')[0]}`,
-                      'basics',
-                      undefined,
+                      categoryForStageNumber(stage.number),
+                      stageTargetDates?.[stage.id],
                       stage.id,
                       100
                     );
@@ -185,6 +202,20 @@ export function StageExplorer({
                   )}
                   <span>{milestoneAddedId === stage.id ? 'Added' : 'Milestone'}</span>
                 </button>
+              )}
+
+              {onSetStageTargetDate && (
+                <label className="optical-card inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-mono text-slate-300">
+                  <Calendar className="h-3 w-3 text-sky-400 shrink-0" />
+                  <span className="text-slate-400">Due:</span>
+                  <input
+                    type="date"
+                    aria-label={`Target date for Stage ${stage.number}`}
+                    value={stageTargetDates?.[stage.id] || ''}
+                    onChange={(e) => onSetStageTargetDate(stage.id, e.target.value)}
+                    className="bg-transparent text-slate-100 focus:outline-none cursor-pointer"
+                  />
+                </label>
               )}
 
               <button
@@ -336,15 +367,27 @@ export function StageExplorer({
                           >
                             {topic.title}
                           </h4>
-                          <button
-                            onClick={() =>
-                              onOpenAiMentor(`Explain "${topic.title}" from Stage ${stage.number} clearly with a concise example.`)
-                            }
-                            className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-400 hover:underline shrink-0 cursor-pointer"
-                          >
-                            <Sparkles className="h-3 w-3" />
-                            <span>Explain</span>
-                          </button>
+                          <div className="flex items-center gap-3 shrink-0">
+                            {!isChecked && onCompleteTopicWithHabit && (
+                              <button
+                                onClick={() => onCompleteTopicWithHabit(topic.id, stage.id, 15)}
+                                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+                                title="Mark complete and log 15m practice toward today's streak"
+                              >
+                                <CheckCircle2 className="h-3 w-3" />
+                                <span>Complete +15m</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() =>
+                                onOpenAiMentor(`Explain "${topic.title}" from Stage ${stage.number} clearly with a concise example.`)
+                              }
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-sky-400 hover:underline shrink-0 cursor-pointer"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              <span>Explain</span>
+                            </button>
+                          </div>
                         </div>
 
                         <p className="text-xs text-slate-300 leading-relaxed">{topic.description}</p>

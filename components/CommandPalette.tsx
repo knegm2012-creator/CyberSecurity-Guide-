@@ -29,6 +29,7 @@ interface CommandPaletteProps {
   onOpenAiMentor: (prompt?: string) => void;
   onOpenQuickQuiz: () => void;
   onOpenCheatSheet: () => void;
+  onOpenGame?: () => void;
 }
 
 interface PaletteEntry {
@@ -48,6 +49,7 @@ export function CommandPalette({
   onOpenAiMentor,
   onOpenQuickQuiz,
   onOpenCheatSheet,
+  onOpenGame,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -73,6 +75,32 @@ export function CommandPalette({
           onClose();
         },
       },
+      {
+        id: 'act-media',
+        title: 'Open Architecture Diagram & Motion Lab',
+        subtitle: 'Create CS blueprints, edit uploaded photos & export WebM motion videos',
+        category: 'Systems Lab',
+        keywords: 'diagram image editor animate video webm architecture studio',
+        action: () => {
+          onNavigate('lab', 'media');
+          onClose();
+        },
+      },
+      ...(onOpenGame
+        ? [
+            {
+              id: 'act-game',
+              title: 'Play Kernel Defense: Packet & Stack Arena',
+              subtitle: 'Full-viewport CS systems defense arcade game with XP rewards',
+              category: 'Action' as const,
+              keywords: 'game arcade kernel defense play cpu packet stack',
+              action: () => {
+                onClose();
+                onOpenGame();
+              },
+            },
+          ]
+        : []),
       {
         id: 'act-visualizer',
         title: 'Open Sorting & Graph Pathfinding Visualizer',
@@ -216,6 +244,17 @@ export function CommandPalette({
           onOpenAiMentor();
         },
       },
+      {
+        id: 'act-mentor-search',
+        title: 'Live Google Search Engineering Mentor',
+        subtitle: 'Search RFCs, CVEs, compiler specs & docs with grounded citations',
+        category: 'Action',
+        keywords: 'search google web rfc latest docs grounding mentor',
+        action: () => {
+          onClose();
+          onOpenAiMentor('Search latest RFC specs and modern compiler flags');
+        },
+      },
     ];
 
     STAGES_DATA.forEach((stage) => {
@@ -304,7 +343,7 @@ export function CommandPalette({
     });
 
     return list;
-  }, [onNavigate, onClose, onOpenAiMentor, onOpenQuickQuiz, onOpenCheatSheet]);
+  }, [onNavigate, onClose, onOpenAiMentor, onOpenQuickQuiz, onOpenCheatSheet, onOpenGame]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -364,7 +403,7 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-[#03050b]/80 backdrop-blur-md px-4 pt-16 sm:pt-24"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[#03050b]/92 px-4 pt-16 sm:pt-24"
       onClick={onClose}
       onKeyDown={handleKeyDown}
     >

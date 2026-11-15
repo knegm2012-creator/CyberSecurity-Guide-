@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
@@ -19,6 +20,20 @@ export interface CodeExecutionResult {
   exitCode: number;
   executionTimeMs: number;
   compileError?: string;
+  toolchainMissing?: boolean;
+}
+
+export interface ToolchainStatus {
+  available: boolean;
+  executable: string | null;
+  version: string | null;
+}
+
+export interface ToolchainCapabilities {
+  platform: NodeJS.Platform;
+  arch: string;
+  python: ToolchainStatus;
+  gcc: ToolchainStatus;
 }
 
 // Security & Execution Boundaries
@@ -27,22 +42,98 @@ const MAX_TIMEOUT_MS = 5000; // Hard cap at 5 seconds
 const MAX_OUTPUT_BUFFER_BYTES = 1024 * 1024; // 1MB buffer ceiling
 const MAX_CODE_LENGTH_CHARS = 100000; // 100KB source code limit
 
+const IS_WINDOWS = process.platform === 'win32';
+
+function getCandidateBinDirs(): string[] {
+  const hostPathEntries = (process.env.PATH || '')
+    .split(path.delimiter)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const platformDefaults = IS_WINDOWS
+    ? [
+        'C:\\Program Files\\LLVM\\bin',
+        'C:\\msys64\\ucrt64\\bin',
+        'C:\\msys64\\mingw64\\bin',
+        'C:\\MinGW\\bin',
+        'C:\\Windows\\System32',
+      ]
+    : [
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        '/usr/bin',
+        '/bin',
+      ];
+
+  return Array.from(new Set([...platformDefaults, ...hostPathEntries]));
+}
+
+async function resolveExecutable(candidates: string[]): Promise<string | null> {
+  const dirs = getCandidateBinDirs();
+
+  for (const name of candidates) {
+    for (const dir of dirs) {
+      const fullPath = path.join(dir, name);
+      try {
+        if (existsSync(fullPath)) {
+          return fullPath;
+        }
+      } catch {
+        // Ignore unreadable directory entries
+      }
+    }
+  }
+  return null;
+}
+
+export async function resolvePythonExecutable(): Promise<string | null> {
+  const candidates = IS_WINDOWS
+    ? ['python3.exe', 'python.exe', 'py.exe']
+    : ['python3', 'python'];
+  return resolveExecutable(candidates);
+}
+
+export async function resolveGccExecutable(): Promise<string | null> {
+  const candidates = IS_WINDOWS ? ['gcc.exe', 'clang.exe'] : ['gcc', 'clang'];
+  return resolveExecutable(candidates);
+}
+
 /**
  * Sanitized, stripped environment to prevent credential/environment variable leaks
- * (e.g. GEMINI_API_KEY, system secrets).
+ * (e.g. GEMINI_API_KEY, system secrets) while remaining portable across Linux, macOS, and Windows.
  */
-function getSanitizedEnv(tmpDir: string): NodeJS.ProcessEnv {
-  return {
+function getSanitizedEnv(tmpDir: string, resolvedExecutable?: string): NodeJS.ProcessEnv {
+  const safePathDirs = new Set<string>(
+    IS_WINDOWS
+      ? ['C:\\Windows\\System32', 'C:\\Windows']
+      : ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin']
+  );
+
+  if (resolvedExecutable) {
+    safePathDirs.add(path.dirname(resolvedExecutable));
+  }
+
+  const baseEnv: NodeJS.ProcessEnv = {
     NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'production',
-    PATH: '/usr/local/bin:/usr/bin:/bin',
+    PATH: Array.from(safePathDirs).join(path.delimiter),
     LANG: 'C.UTF-8',
     LC_ALL: 'C.UTF-8',
     HOME: tmpDir,
     TMPDIR: tmpDir,
+    TMP: tmpDir,
+    TEMP: tmpDir,
     PYTHONDONTWRITEBYTECODE: '1',
     PYTHONUNBUFFERED: '1',
     PYTHONHASHSEED: 'random',
   };
+
+  if (IS_WINDOWS) {
+    baseEnv.USERPROFILE = tmpDir;
+    if (process.env.SYSTEMROOT) baseEnv.SYSTEMROOT = process.env.SYSTEMROOT;
+    if (process.env.COMSPEC) baseEnv.COMSPEC = process.env.COMSPEC;
+  }
+
+  return baseEnv;
 }
 
 /**
@@ -66,7 +157,7 @@ function runSubprocessDirect(
 
     const child = spawn(executable, args, {
       cwd,
-      env: envOverride || getSanitizedEnv(cwd),
+      env: envOverride || getSanitizedEnv(cwd, executable),
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false, // CRITICAL: NEVER invoke shell (/bin/sh)
       windowsHide: true,
@@ -152,6 +243,38 @@ function runSubprocessDirect(
   });
 }
 
+async function probeVersion(executable: string | null): Promise<ToolchainStatus> {
+  if (!executable) {
+    return { available: false, executable: null, version: null };
+  }
+  const tmpDir = os.tmpdir();
+  const res = await runSubprocessDirect(executable, ['--version'], tmpDir, '', 2000);
+  const firstLine = (res.stdout || res.stderr || '').split('\n')[0]?.trim() || null;
+  return {
+    available: res.exitCode === 0,
+    executable: path.basename(executable),
+    version: firstLine,
+  };
+}
+
+export async function detectToolchainCapabilities(): Promise<ToolchainCapabilities> {
+  const [pyExe, gccExe] = await Promise.all([
+    resolvePythonExecutable(),
+    resolveGccExecutable(),
+  ]);
+  const [python, gcc] = await Promise.all([
+    probeVersion(pyExe),
+    probeVersion(gccExe),
+  ]);
+
+  return {
+    platform: process.platform,
+    arch: process.arch,
+    python,
+    gcc,
+  };
+}
+
 /**
  * Executes user code (Python or C) inside an isolated temporary directory
  * with zero shell interpolation, stripped environment, and hard resource boundaries.
@@ -161,7 +284,7 @@ export async function executeCodeSecurely(
 ): Promise<CodeExecutionResult> {
   const startTime = Date.now();
   const { language, code, stdin = '' } = req;
-  const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(1000, req.timeoutMs || DEFAULT_TIMEOUT_MS));
+  const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(1000, Number(req.timeoutMs) || DEFAULT_TIMEOUT_MS));
 
   if (!code || typeof code !== 'string') {
     throw new Error('Code is required.');
@@ -169,6 +292,10 @@ export async function executeCodeSecurely(
 
   if (code.length > MAX_CODE_LENGTH_CHARS) {
     throw new Error(`Code length exceeds maximum allowed limit (${MAX_CODE_LENGTH_CHARS} characters).`);
+  }
+
+  if (typeof stdin !== 'string' || stdin.length > 65536) {
+    throw new Error('Standard input must be a string under 64KB.');
   }
 
   if (language !== 'python' && language !== 'c') {
@@ -187,13 +314,29 @@ export async function executeCodeSecurely(
     let compileError = '';
 
     if (language === 'python') {
+      const pythonBin = await resolvePythonExecutable();
+      if (!pythonBin) {
+        return {
+          success: false,
+          stdout: '',
+          stderr:
+            'Python 3 runtime was not found on this machine.\nInstall Python 3: macOS (`brew install python`), Ubuntu/Debian (`sudo apt install python3`), or Windows (`winget install Python.Python.3.12`), or use the provided Dockerfile.',
+          exitCode: 127,
+          executionTimeMs: Date.now() - startTime,
+          toolchainMissing: true,
+        };
+      }
+
       const scriptPath = path.join(tmpDir, 'main.py');
       await fs.writeFile(scriptPath, code, { encoding: 'utf-8', mode: 0o600 });
 
-      // Execute python3 directly: /usr/bin/python3 -u main.py
+      const runArgs = path.basename(pythonBin).toLowerCase().startsWith('py.exe')
+        ? ['-3', '-I', '-u', scriptPath]
+        : ['-I', '-u', scriptPath];
+
       const runResult = await runSubprocessDirect(
-        'python3',
-        ['-u', scriptPath],
+        pythonBin,
+        runArgs,
         tmpDir,
         stdin,
         timeoutMs
@@ -210,12 +353,25 @@ export async function executeCodeSecurely(
         stderr += `\n[Output limit exceeded: Process terminated after emitting over 1MB of stdout/stderr.]`;
       }
     } else if (language === 'c') {
+      const gccBin = await resolveGccExecutable();
+      if (!gccBin) {
+        return {
+          success: false,
+          stdout: '',
+          stderr:
+            'GCC/Clang C compiler was not found on this machine.\nInstall C compiler: macOS (`xcode-select --install`), Ubuntu/Debian (`sudo apt install build-essential`), or Windows (`winget install MSYS2.MSYS2` + mingw-w64), or use the provided Dockerfile.',
+          exitCode: 127,
+          executionTimeMs: Date.now() - startTime,
+          toolchainMissing: true,
+        };
+      }
+
       const sourcePath = path.join(tmpDir, 'main.c');
-      const binPath = path.join(tmpDir, 'main.out');
+      const binPath = path.join(tmpDir, IS_WINDOWS ? 'main.exe' : 'main.out');
 
       await fs.writeFile(sourcePath, code, { encoding: 'utf-8', mode: 0o600 });
 
-      // Step 1: Compile with gcc directly using explicit argument vector
+      // Step 1: Compile with gcc/clang directly using explicit argument vector
       const compileArgs = [
         '-O2',
         '-Wall',
@@ -224,11 +380,11 @@ export async function executeCodeSecurely(
         sourcePath,
         '-o',
         binPath,
-        '-lm',
+        ...(IS_WINDOWS ? [] : ['-lm']),
       ];
 
       const compileResult = await runSubprocessDirect(
-        'gcc',
+        gccBin,
         compileArgs,
         tmpDir,
         '',

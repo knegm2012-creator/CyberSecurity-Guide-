@@ -7,8 +7,9 @@ import { AdvancedHeroHub } from './AdvancedHeroHub';
 import { ProjectsStudio } from './ProjectsStudio';
 import { CurriculumExportHub } from './CurriculumExportHub';
 import { CurriculumSkillGraph } from './CurriculumSkillGraph';
+import { CurriculumAtoZAtlas } from './CurriculumAtoZAtlas';
 
-export type CurriculumSubTab = 'stages' | 'hero' | 'projects' | 'export';
+export type CurriculumSubTab = 'atlas' | 'stages' | 'hero' | 'projects' | 'export';
 
 interface CurriculumWorkspaceProps {
   activeSubTab: CurriculumSubTab;
@@ -19,7 +20,10 @@ interface CurriculumWorkspaceProps {
   completedExitChecks: Record<string, boolean>;
   projectStatuses: Record<string, 'not_started' | 'in_progress' | 'completed'>;
   projectNotes: Record<string, string>;
+  stageTargetDates?: Record<string, string>;
   onToggleTopic: (topicId: string) => void;
+  onCompleteTopicWithHabit?: (topicId: string, stageId: string, logMinutes?: number) => void;
+  onSetStageTargetDate?: (stageId: string, targetDate: string) => void;
   onToggleExitCheck: (checkKey: string) => void;
   onMarkStageComplete: (stageId: string, completed: boolean) => void;
   onAddMilestone: (
@@ -47,7 +51,10 @@ export function CurriculumWorkspace({
   completedExitChecks,
   projectStatuses,
   projectNotes,
+  stageTargetDates,
   onToggleTopic,
+  onCompleteTopicWithHabit,
+  onSetStageTargetDate,
   onToggleExitCheck,
   onMarkStageComplete,
   onAddMilestone,
@@ -70,10 +77,10 @@ export function CurriculumWorkspace({
             Curriculum Architecture
           </div>
           <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight [text-wrap:balance]">
-            Curriculum &amp; Engineering Track
+            A–Z Curriculum &amp; Engineering Track
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            14-stage master path from foundations to compilers &amp; distributed systems, with visual dependency map and open-source export.
+            16-stage Zero-to-Hero path from hardware switches to compilers, cloud SRE &amp; AI compute, with A–Z Atlas and open-source export.
           </p>
         </div>
 
@@ -107,9 +114,10 @@ export function CurriculumWorkspace({
 
           <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar">
             {[
-              { id: 'stages', label: '14-Stage Handbook' },
+              { id: 'atlas', label: 'A–Z Master Atlas' },
+              { id: 'stages', label: '16-Stage Handbook' },
               { id: 'hero', label: 'Systems Engineering (Hero)' },
-              { id: 'projects', label: '14 Portfolio Projects' },
+              { id: 'projects', label: '16 Portfolio Projects' },
               { id: 'export', label: 'Open-Source Export' },
             ].map((tab) => (
               <button
@@ -128,6 +136,22 @@ export function CurriculumWorkspace({
         </div>
       </div>
 
+      {activeSubTab === 'atlas' && (
+        <CurriculumAtoZAtlas
+          completedTopics={completedTopics}
+          completedExitChecks={completedExitChecks}
+          onSelectStageAndOpen={(stageId) => {
+            onSelectStage(stageId);
+            setStageViewMode('handbook');
+            onChangeSubTab('stages');
+          }}
+          onCompleteTopicWithHabit={onCompleteTopicWithHabit}
+          onToggleTopic={onToggleTopic}
+          onOpenPlayground={onOpenPlayground}
+          onOpenAiMentor={onOpenAiMentor}
+        />
+      )}
+
       {activeSubTab === 'stages' && (
         stageViewMode === 'graph' ? (
           <CurriculumSkillGraph
@@ -144,7 +168,10 @@ export function CurriculumWorkspace({
             onSelectStage={onSelectStage}
             completedTopics={completedTopics}
             completedExitChecks={completedExitChecks}
+            stageTargetDates={stageTargetDates}
             onToggleTopic={onToggleTopic}
+            onCompleteTopicWithHabit={onCompleteTopicWithHabit}
+            onSetStageTargetDate={onSetStageTargetDate}
             onToggleExitCheck={onToggleExitCheck}
             onOpenAiMentor={onOpenAiMentor}
             onOpenShell={onOpenShell}

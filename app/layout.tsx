@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans, DM_Sans, JetBrains_Mono, Geist } from 'next/font/google';
+import { Plus_Jakarta_Sans, JetBrains_Mono, Geist } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 
@@ -18,20 +18,20 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CS Odyssey: Zero to Hero 6-Month Mastery',
+  title: 'CS Odyssey: Zero to Hero A–Z Computer Science Mastery',
   description:
-    'An interactive, self-paced Computer Science & Systems learning platform for Grade 9 students and self-taught learners to achieve CS mastery in 6 months.',
+    'A complete 16-stage A-to-Z Computer Science & Systems Engineering workbench from binary & Python fundamentals through C/C++, Go, x86-64, cybersecurity, DSA, compilers, cloud native SRE, and AI/HPC systems.',
   openGraph: {
-    title: 'CS Odyssey: Zero to Hero 6-Month Mastery',
+    title: 'CS Odyssey: Zero to Hero A–Z Computer Science Mastery',
     description:
-      'An interactive, self-paced Computer Science & Systems learning platform for Grade 9 students and self-taught learners to achieve CS mastery in 6 months.',
+      'A complete 16-stage A-to-Z Computer Science & Systems Engineering workbench from binary & Python fundamentals through C/C++, Go, x86-64, cybersecurity, DSA, compilers, cloud native SRE, and AI/HPC systems.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CS Odyssey: Zero to Hero 6-Month Mastery',
+    title: 'CS Odyssey: Zero to Hero A–Z Computer Science Mastery',
     description:
-      'An interactive, self-paced Computer Science & Systems learning platform for Grade 9 students and self-taught learners to achieve CS mastery in 6 months.',
+      'A complete 16-stage A-to-Z Computer Science & Systems Engineering workbench from binary & Python fundamentals through C/C++, Go, x86-64, cybersecurity, DSA, compilers, cloud native SRE, and AI/HPC systems.',
   },
 };
 

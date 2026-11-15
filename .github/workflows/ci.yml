@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install GCC & Python toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc python3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: ESLint check
+        run: npm run lint
+
+      - name: Run security, sandbox, 16-stage curriculum & badge tests
+        run: npm test
+
+      - name: Build production Next.js bundle
+        run: npm run build

@@ -1,263 +1,145 @@
-# 🌌 CS Odyssey: Zero to Hero Computer Science & Systems Mastery
+# CS Odyssey: Zero to Hero A–Z Computer Science & Systems Mastery
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Regression Tests](https://img.shields.io/badge/tests-24%20passed-brightgreen.svg)]()
-[![Platform: Next.js 15](https://img.shields.io/badge/Next.js-15.5-black.svg?logo=next.js)]()
-[![React: 19](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)]()
-[![TypeScript: 5](https://img.shields.io/badge/TypeScript-5.9-3178c6.svg?logo=typescript)]()
-[![Tailwind CSS: 4](https://img.shields.io/badge/TailwindCSS-4.1-38b2ac.svg?logo=tailwind-css)]()
-[![Security Audit: Hardened](https://img.shields.io/badge/security-SSRF%20Hardened-blue.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/CI-GitHub%20Actions-2563eb.svg)](.github/workflows/ci.yml)
+[![Curriculum: 16 Stages](https://img.shields.io/badge/Curriculum-16%20Stages%20(A--Z)-0284c7.svg)](#a-to-z-zero-to-hero-16-stage-roadmap)
+[![License: MIT](https://img.shields.io/badge/License-MIT-059669.svg)](LICENSE)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15.5-black.svg?logo=next.js)](https://nextjs.org/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9-3178c6.svg?logo=typescript)](https://www.typescriptlang.org/)
+[![Security Hardened](https://img.shields.io/badge/Security-SSRF%20%26%20Sandbox%20Hardened-0f172a.svg)](#security-architecture--trust-boundary-hardening)
 
-An interactive, self-paced, production-grade Computer Science & Systems Engineering platform engineered for ambitious high-schoolers (Grade 9+), university undergrads, and self-taught engineers to progress from absolute computational foundations (**Zero**) to collegiate-level systems programming (**Hero**).
-
----
-
-## 🌟 Interactive Features & Architecture
-
-### 1. 🛡️ Cyber Citadel Wargame & Linux Terminal Engine
-- **100% Offline Virtual Sandbox**: A client-side simulated Linux filesystem containing 20+ progressively challenging cybersecurity levels. Fully playable offline with zero network latency and no external server requirements.
-- **Interactive File System Explorer**: Visualizes the current working directory in real-time with clickable path breadcrumbs, parent directory (`..`) navigation, dotfile visibility toggle, and item counts. Automatically synchronizes with terminal commands (`cd`, `touch`, `mkdir`, `rm`, redirection `>`).
-- **Split-View File Reader Pane**: Clicking any file in the file explorer opens it instantly in a side-by-side reading split-pane featuring:
-  - Line-numbered monospace viewer with clean syntax presentation.
-  - Plain Text vs. Hex Dump toggle (`00000000: xx xx ... |ascii|`) for binary inspection.
-  - Automatic 32-character wargame password/flag detection with one-click "Save & Unlock Next Level".
-- **Customizable Dynamic ASCII Art Header**:
-  - Automatically updates based on the current active directory (e.g. `/home/bandit3/inhere`, `/var/log`) or Bandit level (Level 0–15+).
-  - 5 switchable typography styles: **Slant**, **Block**, **Doom**, **Matrix**, and **Minimal**.
-  - 5 retro CRT phosphor palettes: **Cyan Glow**, **Matrix Green**, **Amber CRT**, **Neon Purple**, and **Monochrome White**.
-  - One-click collapse/expand toggle to maximize terminal screen real estate.
-  - Full tracking mode options: Auto (Level + Dir), Level-only, or Directory-only.
-- **Tactile Retro Audio Feedback**: Powered natively by the browser **Web Audio API** (`AudioContext`). Features volume-balanced mechanical keyclicks, carriage return thumps, 8-bit dual-tone success chimes, and modem connect chirps. 100% synthesis with **zero external MP3/WAV downloads**, instant offline availability, and persistent mute/unmute control.
-- **Command Quick-Reference Side Panel**:
-  - Dynamically highlights commands relevant to the current active level (e.g., `cat ./-` for dashed files, `file ./*` for magic byte inspection, `find -size 1033c` for byte filtering, `strings` for binary extraction, `tr` for ROT13 ciphers, `xxd -r` for hex dumps, `openssl s_client` for SSL/TLS encrypted sockets).
-  - Search filter by keyword, category, and syntax.
-  - One-click **"Insert ↵"** button to paste and format commands directly into the terminal prompt.
-- **Optional External Wargame Gateway**:
-  - Real-time SSH tunnel supporting educational connections to public wargame targets such as `bandit.labs.overthewire.org:2220`.
-  - Built with a hardened Node.js backend proxy featuring strict SSRF IP whitelisting, connection pooling, and token-bucket rate limiting.
-
-### 2. 📋 Interactive Master Cheat Sheet & Quick-Reference
-- Accessible globally from the navigation bar or terminal prompt.
-- Comprehensive coverage across 8 essential categories:
-  - **Linux Core**: `ls -la`, `cat`, `find`, `file`, `chmod`, `diff`.
-  - **Pipes & Stream Filters**: `sort`, `uniq -u`, `grep -rnE`, `tr`, `strings`, `xxd`.
-  - **Security & Cryptography**: `base64 -d`, `openssl s_client`, `nmap -sV`, `sha256sum`.
-  - **Git Version Control**: `git commit`, `git checkout -b`, `git rebase`, `git reset HEAD~1`.
-  - **C Systems & Memory**: Pointer arithmetic (`*`, `&`), dynamic memory (`malloc`, `free`), hardened GCC flags (`-O2 -Wall -Wextra`).
-  - **Python Engineering**: List comprehensions, generators, and context managers (`with` statement).
-  - **Wargame Tactics**: Handling whitespace, leading-dash flags (`cat ./-`), multilayer decompression pipelines (`tar`, `gzip`, `bzip2`).
-- Real-time search, one-click syntax copy, and direct terminal insertion.
-
-### 3. 🌿 Interactive Git DAG Sandbox & Version Control Studio
-- **Real-Time Directed Acyclic Graph (DAG)**: Visualizes commit nodes, parent hashes, branch pointers, and `HEAD` tracking in responsive SVG.
-- **3-Trees Engine**: Models the working directory, staging area (index), and commit repository.
-- **Interactive Scenarios**:
-  1. *First Commit on Main*
-  2. *Branching & Pointers*
-  3. *Fast-Forward Merges*
-  4. *3-Way Diverged Merges with Conflict Resolution*
-  5. *Linear History Rebasing*
-  6. *Detached HEAD State & Time Travel*
-
-### 4. ⚡ Binary & Mathematical Foundations Lab
-- Interactive 8-bit, 16-bit, and 32-bit binary flipper with power-of-two weights ($2^7$ to $2^0$).
-- Hexadecimal nibble breakdown and address calculator.
-- Two's Complement signed integer visualizer demonstrating negative sign bits and integer overflow.
-- Boolean logic gate simulator (AND, OR, NOT, XOR, NAND, NOR, XNOR) with dynamic truth tables.
-- Floating-Point IEEE 754 single-precision inspector and bitwise shifting workbench (`<<`, `>>`, `&`, `|`, `^`, `~`).
-
-### 5. 🏆 Hero Advanced Systems Engineering & 14-Stage Curriculum
-Progressive curriculum spanning Stages 0–13 (Zero to Collegiate & Systems Depth):
-- **Foundations to Systems**: Binary/Logic, Python, Digital Logic, Linux/Git, Networking, Web/SQL, C Pointers, Modern C++, Go, x86-64 Assembly, Cybersecurity, Portfolio Prep, **Data Structures & Algorithms (Stage 12)**, and **Compilers & Distributed Systems (Stage 13)**.
-- **Hero Modules**: Operating Systems, Databases, Computer Networking, DSA, Distributed Systems, Systems Security, **Compilers & Language Runtimes**, and **CPU Architecture, Pipelines & Cache Locality**.
-- **Interactive Curriculum Competency Graph (`CurriculumSkillGraph`)**: Visual 7-tier prerequisite DAG spanning Stages 0–13, live completion rings, one-click single-stage `.md` handouts, and instant stage jumping.
-- **Global Verified Source Library (`SourceLibraryView`)**: Searchable catalog across University Courses (MIT OCW, Harvard CS50, CMU, Stanford), Video Lectures, Open Textbooks, RFCs/Official Docs, Interactive Labs, Seminal Papers, and GitHub Repositories.
-- **Open-Source Curriculum Exporter (`CurriculumExportHub`)**: Interactive weekly pacing calculator (`4–25 hrs/week`) with one-click generation of Student Roadmaps (`.md`), Educator Syllabi & Rubrics (`.md`), **Printable HTML Syllabi (`.html`)**, GitHub Curriculum Packs (`README-CURRICULUM.md`), **`CONTRIBUTING.md`**, LMS/Spreadsheet schedules (`.csv`), and structured machine-readable JSON schemas (`.json`) released under MIT License.
-
-### 6. 💻 Systems Lab Workspace (`SystemsLabWorkspace`)
-- Unified workbench hosting:
-  - **Code Playground**: Embedded Monaco editor supporting Python 3 and GCC C11 with snippet manager.
-  - **Algorithms & Graph Pathfinding Visualizer (`AlgorithmVisualizerLab`)**: Live interactive simulation engine supporting **Merge Sort**, **Quick Sort**, **Insertion Sort**, **Bubble Sort**, plus an editable weighted grid for **Dijkstra**, **BFS**, and **DFS** pathfinding.
-  - **Hardened Execution Engine**: 5-second process timeout, 64MB memory limit, and 1MB stdout cap.
-  - **Git DAG Sandbox & Foundations Studio**: Interactive commit graph, 3-trees model, and binary/hex/logic labs.
-  - **RAM & Pointer Grid & Packet Tracer**: Live memory cell pointer dereferencing (`*ptr`) and 6-hop DNS → TCP → TLS 1.3 → HTTPS flow inspection.
-  - **Big-O Asymptotics & Memory Latency Lab**: Interactive operation scaling slider (`N = 10..50,000`) alongside CPU Register / L1 / L2 / L3 / DRAM / NVMe latency hierarchy tables.
-  - **Spatial & Optical Studio (`FuturisticStudio`)**: Futuristic optical workbench pairing perspective depth cloud (`DepthField`), WebGL 2.0 chromatic refraction (`RefractedText`), fluid typing ripples (`FluidTyping`), thin-film soap bubble controls (`SoapBubbleMaterial`), 3D sculpted terrain (`TopographicTerrain`), rigid-body 3D-volume physics (`ShapePhysics`), and spring-physics gallery (`FanGallery`), plus `LiquidGlassLogo` and `LiquidGlassOrb` agent visualization.
-
-### 7. 🎯 Overview Workbench, `Cmd+K` Command Palette & Reference Library
-- **Command Palette (`Cmd+K` / `Ctrl+K`)**: Instant keyboard Spotlight jump across all 14 stages, 40+ topics, Hero systems tracks, 40+ verified external sources, CLI commands, and interactive sandboxes.
-- Unified **Overview Workspace** (`OverviewWorkspace`) featuring the live Prerequisite Skill Graph, inline telemetry strip, daily focus micro-tasks, weekly cadence streaks, and personalized milestone tracking.
-- **Reference Library** (`ReferenceWorkspace`) unifying Global Source Library, Command Vault, Stage Study Notebook, Glossary Flashcards, and Field Directory.
-- **100% Client-Side Privacy**: All student data, notes, and milestones are stored exclusively in browser `localStorage`, with one-click JSON backup export and import.
+An interactive, self-paced, open-source **Computer Science & Systems Engineering Workbench** guiding learners from electrical switches, binary, and Python fundamentals (**Stage 0**) all the way to operating systems, C/C++, Go, x86-64 reverse engineering, cybersecurity, algorithms, compilers, distributed consensus, cloud native SRE, and AI/HPC systems (**Stage 15**). Works 100% locally on macOS, Linux, and Windows with optional Gemini AI enhancement.
 
 ---
 
-## 🔒 Security Architecture & Trust Boundary Hardening
+## A-to-Z Zero-to-Hero 16-Stage Roadmap
 
-CS Odyssey enforces an exhaustive zero-trust security architecture across both server-side routes and client-side simulation engines:
-
-1. **SSRF Defense & IP Validation (`/app/api/ssh`)**:
-   - Outbound connections are restricted strictly to authorized targets (`bandit.labs.overthewire.org:2220`).
-   - Disallows loopback (`127.0.0.0/8`, `::1`), link-local (`169.254.0.0/16`), RFC 1918 private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and AWS/GCP cloud metadata endpoints against SSRF, octal/hex IP obfuscation, and DNS rebinding attacks.
-   - Client-isolated token-bucket rate limiter (max 20 requests/minute, 3 concurrent SSH sessions per IP).
-2. **Subprocess Isolation (`/app/api/code`)**:
-   - Completely eliminates unsafe shell-interpolation sinks (`child_process.exec`). Replaced exclusively with direct argument vectors via `child_process.execFile`.
-   - Hard execution limits: 5-second timeout, 64MB maximum memory, 1MB output buffer, and dropped privileges.
-3. **ANSI & DOM XSS Neutralization**:
-   - Terminal stream output is sanitized through a strict regex filter removing hazardous ANSI control escape sequences (OSC hyperlinks, cursor repositioning sequences, and terminal escape injection).
-4. **Automated Security Regression Suite**:
-   - 24 comprehensive automated tests in `tests/security-regression.test.ts` validating SSRF blocking, hex IP normalization, token bucket rate limits, ANSI sanitization, and Git state invariants.
-
----
-
-## ⚖️ Legal, Trademark & Ethical Wargame Notice
-
-- **Original Wargame Engine**: CS Odyssey includes its own original, built-in security challenges under the **"Cyber Citadel"** simulation engine. All levels, virtual filesystem trees, and flags are self-contained within this repository.
-- **External Gateway Interoperability**: For advanced practical training, the platform includes an optional SSH bridge connecting to public educational wargames such as **OverTheWire Bandit** (`bandit.labs.overthewire.org:2220`).
-- **Attribution & Non-Affiliation**: OverTheWire and Bandit are independent community cybersecurity wargames hosted and maintained at [overthewire.org](https://overthewire.org). CS Odyssey is an independent open-source educational workstation and is **not affiliated with, endorsed by, or sponsored by OverTheWire**.
-- **Server Safety**: The integrated SSH bridge enforces client-side rate limits and connection throttling to ensure zero abuse or denial-of-service load on external wargame infrastructure.
+| Stage | Phase | Focus Title | Key Concepts & Hands-On Artifacts |
+| :--- | :--- | :--- | :--- |
+| **Stage 00** | Zero & Bedrock | Basics: Computers, Math, Binary & Digital Foundations | Bits/bytes, hex, Boolean logic gates, Two's Complement, UTF-8, CPU/RAM cycle, Git setup |
+| **Stage 01** | Zero & Bedrock | Python: Beginner to Independent Scripts | Variables, control flow, loops, functions, dicts/lists, clean error handling & automation scripts |
+| **Stage 02** | Zero & Bedrock | Computer Science Foundations & Digital Logic | Transistors, Half/Full Adders, CPU fetch-decode-execute, L1/RAM hierarchy, Big-O scaling |
+| **Stage 03** | Core Infrastructure | Git, Linux & Operating Systems | POSIX shell pipelines, permissions, Git commit DAGs, virtual memory, syscalls & processes |
+| **Stage 04** | Core Infrastructure | Networking Fundamentals & Web Protocols | Subnetting, ARP, DNS resolution, TCP 3-way handshake, ports, TLS 1.3 & HTTP packet inspection |
+| **Stage 05** | Core Infrastructure | Web Basics & SQL Databases | HTTP lifecycle, normalized schemas, JOINs, Prepared Statements vs SQLi, XSS/CSRF defenses |
+| **Stage 06** | Systems & Security | C Programming & Memory Foundations | Stack vs heap (`malloc`/`free`), pointer arithmetic, structs, buffer bounds & `-Wall -Wextra` |
+| **Stage 07** | Systems & Security | Modern C++: Systems & RAII | Deterministic destructors, `unique_ptr`, `const&`, bounds-checked `.at()`, AddressSanitizer |
+| **Stage 08** | Systems & Security | Go (Golang): CLI Tools & Microservices | Explicit `(val, error)`, goroutines & channels, `context.WithTimeout`, hardened HTTP clients |
+| **Stage 09** | Systems & Security | x86-64 Assembly & Reverse Engineering | `RAX`/`RIP`/`RSP`, System V AMD64 ABI, ELF magic bytes, GDB step debugging, Ghidra CFG |
+| **Stage 10** | Systems & Security | Cybersecurity Fundamentals & Legal Labs | CIA Triad, salted Argon2/SHA-256 hashing, AES-GCM, OWASP Top 10 & authorized CTF wargames |
+| **Stage 11** | Systems & Security | Portfolio, Specialization & College Prep | 16 reproducible capstones, architectural READMEs, SOC/Systems career tracks & ethical scope |
+| **Stage 12** | Hero Mastery | Data Structures, Algorithms & Discrete Math | Hash tables, heaps, Merge Sort, Dijkstra, BFS/DFS, dynamic programming & graph proofs |
+| **Stage 13** | Hero Mastery | Compilers, OS Internals & Distributed Systems | Lexers, ASTs, SSA IR optimization, Lamport clocks, Raft quorum consensus & CAP theorem |
+| **Stage 14** | Hero Mastery | Cloud Native Systems, Containers, Observability & CI/CD | Linux namespaces & cgroups, multi-stage Dockerfiles, K8s reconciliation loops, p99 SLOs & SBOMs |
+| **Stage 15** | Hero Mastery | Linear Algebra, Neural Networks & High-Performance Computing | Dot products, backpropagation from scratch, numerical Softmax/Attention & cache-aware C compute |
 
 ---
 
-## 🚀 Quickstart & Local Development
+## Core Platform Capabilities
 
-This application is built with **Next.js 15 (App Router)** and optimized to run with zero friction.
+### 1. Overview Command Workbench, A–Z Atlas & 3D Studio PBR Hero
+- **3D Studio PBR Hero Backdrop (`SpatialBackdrop3D`)**: Three.js composite 3D CS sculptures (Logic ALU Monolith, Memory Bus Lattice, Packet Mesh Relay, **16-Stage Mastery Orrery**) illuminated with `RoomEnvironment` PMREM studio IBL, `ACESFilmicToneMapping`, damped OrbitControls, and a collapsible zero-occlusion inspect mode.
+- **A–Z Master Atlas (`CurriculumAtoZAtlas`)**: Visualizes all 16 stages organized into 4 Mastery Tiers (*Zero to Scripting*, *Core Infrastructure*, *Systems & Security*, *Hero Engineering*) with live search, inline `+15m` topic check-offs, and direct **Playground** code launches.
+- **Interactive Prerequisite Skill Graph (`CurriculumSkillGraph`)**: Interactive SVG dependency DAG from `Stage 0` (Hardware) through `Stage 14` (Cloud & SRE) and `Stage 15` (AI & HPC).
+- **Progress Analytics & Personalized Deadlines (`ProgressAnalyticsDeck`)**: 28-day study consistency matrix, 4-step daily completion loop, per-stage target dates, and automatic `12w / 24w / 36w` study schedule generator.
+- **Engineering Badges Collection (`BadgesCollection`)**: Automatically unlocks 13 tiered achievement badges (*Bronze*, *Silver*, *Gold*, *Obsidian*), including **A–Z Odyssey Hero**.
+- **Hybrid Local Persistence**: Instant client `localStorage` synced transparently to atomic local JSON storage (`/api/progress` -> `.data/odyssey-progress.json` with `.bak.json` snapshots) plus full backup export/import.
+
+### 2. Interactive Systems Lab, Code Playground & Optical Studio
+- **Sandboxed Python 3 & C11 Code Playground (`/api/code/run`)**: Cross-platform isolated subprocess runner (`shell: false`, stripped secrets env, 5s timeout, 1MB cap, custom `stdin`, and saved snippet vault). Runnable scripts are embedded across all 16 curriculum stages.
+- **Cyber Citadel Wargame & Kernel Defense Arcade (`TerminalSimulator`, `SystemsArcadeGame`)**: 16 offline POSIX wargame levels + split 16-byte hex viewer + optional rate-limited SSH bridge to `bandit.labs.overthewire.org:2220` + 60fps Canvas Kernel Defense wave strategy game.
+- **Algorithms, Git DAG, Foundations, Memory & Packet Visualizers**: Step through Merge/Quick Sort, Dijkstra/BFS/DFS, Git 3-Trees commits, 8-bit registers, pointer memory cells, TCP 3-way handshakes, and Big-O curves live.
+- **Local Diagram & Motion Animator (`CreativeMediaStudio`)**: Design CS blueprints and export `16:9` / `9:16` animated WebM clips locally in the browser.
+
+### 3. Complete A–Z Dictionary, Curated Sources & Open-Source Exporter
+- **Full A–Z Glossary & Active Recall Flashcards (`GlossaryFlashcards`)**: Every initial letter **A through Z** covered with plain-English intuition and interactive letter-by-letter filtering.
+- **66 Verified Academic & Industry Sources (`CURATED_CS_SOURCES`)**: Primary courses from MIT, Stanford, CMU, Harvard, UC Berkeley, Google SRE, Kubernetes, Karpathy Neural Networks, Beej, and IETF RFCs mapped directly to Stages `0–15`.
+- **16 Portfolio Projects (`ProjectsStudio`)**: Filterable across `Easy`, `Medium`, and `Hard` difficulty tiers with downloadable starter `README.md` specs.
+- **Open-Source Curriculum Exporter (`/api/curriculum/export`)**: Generate Markdown syllabi (`student`, `teacher`, `github`), CSV rubrics, Printable HTML/PDF packets, and structured JSON v2 schemas with customizable hours/week pacing.
+- **AI Study Mentor (`/api/tutor`)**: Powered by Gemini (`gemini-4-hydrogen`) when `GEMINI_API_KEY` is configured, seamlessly falling back offline to local grounded synthesis and verified 5-question quizzes for **all 16 stages (`stage-0`..`stage-15`)**.
+
+---
+
+## Security Architecture & Trust Boundary Hardening
+
+1. **SSRF & DNS Rebinding Protection (`/app/api/ssh`, `/lib/security.ts`)**: Strictly whitelists `bandit.labs.overthewire.org:2220`, validates resolved IPv4/IPv6 addresses against loopback, RFC-1918, link-local, cloud metadata (`169.254.169.254`), and obfuscated notations, and pins the verified IP socket.
+2. **Isolated Subprocess Sandbox (`/lib/code-runner.ts`)**: Zero shell invocation (`shell: false`), direct binary resolution (`python3`/`python`, `gcc`/`clang`), strictly whitelisted environment variables (zero API keys leaked), 5-second hard timeout, 1MB output cap, and guaranteed temp directory cleanup.
+3. **Request & State Hardening (`/lib/client-security.ts`, `/app/api/progress`)**: Bounded JSON parsing (`parseJsonBodySafe`), prototype-pollution prevention (`sanitizeOdysseyStoreState`), stage bounds validation (`stage-0`..`stage-15`), atomic file writes, token-bucket rate limiting, and `X-Content-Type-Options: nosniff` / `Cache-Control: no-store`.
+4. **Terminal Stream Sanitization**: Neutralizes OSC title/clipboard escapes, DCS sequences, cursor hijacking, and null bytes while preserving safe ANSI SGR formatting.
+
+---
+
+## Local Quickstart (macOS / Linux / Windows)
 
 ### Prerequisites
-- **Node.js**: v20 or higher (v22 LTS recommended)
-- **npm** or **pnpm** or **bun**
+- **Node.js** 20+ (`v22` LTS recommended)
+- **Optional (for local Code Playground execution)**: `python3` (or `python`) and `gcc` (or `clang`)
 
-### Installation
+### Run Locally
 
-\`\`\`bash
-# 1. Clone the repository
-git clone https://github.com/your-username/cs-odyssey.git
-cd cs-odyssey
-
-# 2. Install dependencies
+```bash
+# 1. Install dependencies
 npm install
 
-# 3. Copy environment configuration
+# 2. Configure optional environment (works 100% locally without keys)
 cp .env.example .env.local
+# Optional: set GEMINI_API_KEY in .env.local for live Gemini Study Mentor responses.
 
-# 4. Run automated security regression tests
-npm test
-
-# 5. Start development server (runs on http://localhost:3000)
-npm run dev
-\`\`\`
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## 🧪 Verification & Production Build
-
-\`\`\`bash
-# Run security test suite
-npm test
-
-# Run TypeScript & ESLint validation
+# 3. Verify everything passes locally
+npm run typecheck
 npm run lint
-
-# Compile production bundle
+npm test
 npm run build
 
-# Start production server
-npm start
-\`\`\`
+# 4. Start development or production server on http://localhost:3000
+npm run dev
+```
+
+### Run via Docker (Zero Local Toolchain Setup)
+
+Includes Node 22, Python 3, and GCC preinstalled:
+
+```bash
+docker build -t cs-odyssey .
+docker run -p 3000:3000 --env-file .env.example cs-odyssey
+```
 
 ---
 
-## 🐙 Pushing to GitHub
+## Backend API Reference
 
-To push your repository to GitHub:
+| Endpoint | Methods | Purpose |
+| :--- | :--- | :--- |
+| `/api/health` | `GET` | Reports Node runtime, Python/GCC availability, Gemini readiness, SSH guard, 16-stage curriculum counts & disk status. |
+| `/api/progress` | `GET`, `PUT`, `DELETE` | Reads, atomically saves, and resets sanitized student progress JSON in `.data/odyssey-progress.json`. |
+| `/api/code/run` | `GET`, `POST` | Reports local toolchain capabilities (`GET`) or runs Python 3 / C11 in an isolated temp sandbox (`POST`). |
+| `/api/curriculum/export` | `GET` | Streams `.json`, `.csv`, `.md` (`github` / `student` / `teacher` / single `stage-0..stage-15`), and printable `.html` syllabi. |
+| `/api/tutor` | `POST` | AI Study Mentor (`eli9`, `quiz`, `debug`, `review`, `plan`, `search`) with live Gemini + offline 16-stage synthesis & quizzes. |
+| `/api/ssh` | `POST` | Rate-limited, SSRF-hardened SSH terminal bridge whitelisted solely to `bandit.labs.overthewire.org:2220`. |
 
-\`\`\`bash
-# Initialize git repository (if not already initialized)
+---
+
+## Pushing to GitHub
+
+This repository includes `package-lock.json`, `.gitignore`, `.github/workflows/ci.yml`, `SECURITY.md`, `CONTRIBUTING.md`, issue/PR templates, and `LICENSE` ready for immediate push:
+
+```bash
 git init
-
-# Add all files
 git add .
-
-# Create initial commit following Conventional Commits
-git commit -m "feat: complete CS Odyssey Zero-to-Hero workstation with hardened security, audio FX, and cheat sheet"
-
-# Add your GitHub remote repository
-git remote add origin https://github.com/<your-username>/cs-odyssey.git
-
-# Set default branch to main and push
+git commit -m "feat: cs-odyssey complete 16-stage A-Z CS curriculum, hardened backend & interactive workbench"
 git branch -M main
+git remote add origin https://github.com/<your-username>/cs-odyssey.git
 git push -u origin main
-\`\`\`
+```
+
+Every push to `main` automatically runs **GitHub Actions CI** (`npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`).
 
 ---
 
-## 📁 Repository Structure
+## Ethical Wargame Notice
 
-\`\`\`
-cs-odyssey/
-├── app/
-│   ├── api/
-│   │   ├── code/                  # Hardened sandboxed code runner (Python & C)
-│   │   ├── ssh/                   # SSRF-protected SSH gateway
-│   │   └── tutor/                 # AI mentor proxy
-│   ├── globals.css                # Global Tailwind CSS styles
-│   ├── layout.tsx                 # Root HTML layout & meta tags
-│   └── page.tsx                   # Main workspace assembler & router
-├── components/
-│   ├── AdvancedHeroHub.tsx        # Hero advanced systems modules (OS, DB, DSA, Compilers, Hardware)
-│   ├── AiMentorPanel.tsx          # Gemini AI study mentor slide-over
-│   ├── AlgorithmVisualizerLab.tsx # Live Sorting & Weighted Graph Pathfinding visualizer
-│   ├── AsciiTerminalHeader.tsx    # Dynamic ASCII banner generator for terminal workspace
-│   ├── CheatSheetModal.tsx        # Master interactive 8-category Cheat Sheet
-│   ├── CodePlayground.tsx         # Monaco editor workbench (Python/C)
-│   ├── CommandPalette.tsx         # Global Cmd+K / Ctrl+K Spotlight navigation modal
-│   ├── CommandVault.tsx           # Searchable CLI command database
-│   ├── CurriculumExportHub.tsx    # Student/Teacher/GitHub Exporter (.md/.html/.csv/.json) + pacing calculator
-│   ├── CurriculumSkillGraph.tsx   # Interactive 14-Stage prerequisite dependency DAG
-│   ├── CurriculumWorkspace.tsx    # Unified Curriculum hub (Handbook, Graph, Hero, Projects, Export)
-│   ├── DailyChallengeWidget.tsx   # Daily micro-tasks & streak keeper
-│   ├── DirectoryView.tsx          # Resource directory with direct URLs
-│   ├── FoundationsStudio.tsx      # Binary, hex, Boolean, and bitwise lab
-│   ├── FuturisticStudio.tsx       # Spatial & Optical Studio (Depth, Refraction, Fluid, Soap Optics, Terrain, Physics, Fan)
-│   ├── GitSandbox.tsx             # Interactive Git DAG, 3-Trees, and scenarios
-│   ├── GlossaryFlashcards.tsx     # Computer Science terms flashcards
-│   ├── Navbar.tsx                 # Top 3-zone 5-workspace responsive navigation
-│   ├── NotebookView.tsx           # Student notebook with JSON export/import
-│   ├── OverviewWorkspace.tsx      # Engineering workbench overview with optical hero, Skill Graph & telemetry
-│   ├── ProjectsStudio.tsx         # 14 documented engineering portfolio projects
-│   ├── QuickQuizModal.tsx         # Interactive concept test modal
-│   ├── ReferenceWorkspace.tsx     # Unified Reference hub (Sources, Vault, Notebook, Glossary, Directory)
-│   ├── SourceLibraryView.tsx      # Searchable Global Source Catalog (Videos, Courses, Books, Papers, Labs)
-│   ├── StageExplorer.tsx          # 14-stage student handbook with single-stage .md export
-│   ├── SystemsLabWorkspace.tsx    # Unified Lab hub (Playground, Visualizer, Foundations, Git, RAM, Packet, Big-O, Studio)
-│   └── TerminalSimulator.tsx      # Real SSH + Cyber Citadel virtual sandbox with Quick-Ref
-├── hooks/
-│   └── use-odyssey-store.ts       # Client-side persistent state & local storage
-├── lib/
-│   ├── bandit-commands-data.ts    # Command dictionary with syntaxes & tips
-│   ├── client-security.ts         # Browser-safe path normalization & ANSI sanitization
-│   ├── code-runner.ts             # Hardened subprocess execution engine
-│   ├── curriculum-data.ts         # 14-stage curriculum, Hero modules, projects, channels
-│   ├── curriculum-export.ts       # Open-Source Markdown, CSV, & JSON syllabus generator
-│   ├── gemini.ts                  # Gemini API client initialization
-│   ├── rate-limiter.ts            # Token-bucket rate limiter & concurrency guard
-│   ├── security.ts                # Server-side SSRF validation & IP restriction
-│   ├── sources-catalog.ts         # Verified Global CS Knowledge Library (Videos, OCW, Books, Papers)
-│   ├── terminal-audio.ts          # Native Web Audio API sound synthesizer
-│   └── utils.ts                   # Styling utilities (clsx & twMerge)
-├── tests/
-│   └── security-regression.test.ts # 24 automated security & logic unit tests
-├── .gitattributes                 # Cross-platform line ending normalization
-├── .gitignore                     # Git ignore rules for node_modules, logs, and secrets
-├── metadata.json                  # AI Studio application manifest
-└── package.json                   # Dependencies, build scripts, and test runner
-\`\`\`
+Built-in **Cyber Citadel** levels run 100% offline inside this application. Optional external SSH interoperability targets `bandit.labs.overthewire.org:2220`, an independent public cybersecurity wargame at [overthewire.org](https://overthewire.org). CS Odyssey is an independent open-source educational platform.
 
----
+## License
 
-## 📄 License
-
-MIT License © 2026 CS Odyssey Project. Free and open-source for students, educators, and independent engineers worldwide.
+Released under the [MIT License](LICENSE).

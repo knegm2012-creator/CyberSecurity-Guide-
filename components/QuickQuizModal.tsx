@@ -61,8 +61,8 @@ function QuickQuizBody({
       });
 
       const data = await res.json();
-      if (data.error) {
-        setErrorMsg(data.error);
+      if (!res.ok || data.error) {
+        setErrorMsg(data.error || `Request failed (${res.status})`);
       } else if (Array.isArray(data.quiz) && data.quiz.length > 0) {
         setQuestions(data.quiz);
       } else {
@@ -101,8 +101,8 @@ function QuickQuizBody({
 
         const data = await res.json();
         if (!ignore) {
-          if (data.error) {
-            setErrorMsg(data.error);
+          if (!res.ok || data.error) {
+            setErrorMsg(data.error || `Request failed (${res.status})`);
           } else if (Array.isArray(data.quiz) && data.quiz.length > 0) {
             setQuestions(data.quiz);
           } else {
@@ -157,7 +157,7 @@ function QuickQuizBody({
   const allAnswered = questions.length > 0 && Object.keys(userAnswers).length === questions.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 backdrop-blur-md p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4 overflow-y-auto">
       <div className="optical-panel w-full max-w-2xl rounded-2xl border-white/[0.12] p-6 shadow-2xl space-y-5 my-8">
         <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
           <div className="flex items-center gap-2.5">

@@ -8,8 +8,35 @@ import {
   ALLOWED_SSH_PORT,
   sshRateLimiter,
   sshConcurrencyLimiter,
+  tutorRateLimiter,
 } from '../lib/security.ts';
-import { executeCodeSecurely } from '../lib/code-runner.ts';
+import {
+  executeCodeSecurely,
+  detectToolchainCapabilities,
+} from '../lib/code-runner.ts';
+import {
+  STAGES_DATA,
+  GLOSSARY_TERMS,
+  PORTFOLIO_PROJECTS,
+  ADVANCED_HERO_TOPICS,
+} from '../lib/curriculum-data.ts';
+import { CURATED_CS_SOURCES } from '../lib/sources-catalog.ts';
+import {
+  STAGE_FALLBACK_QUIZZES,
+  validateQuizItems,
+  buildLocalEli9Response,
+  buildLocalDebugResponse,
+  buildLocalLabReviewResponse,
+  buildLocalStudyPlanResponse,
+  sanitizeGroundingSources,
+  buildLocalSearchGroundingResponse,
+} from '../lib/local-mentor.ts';
+import {
+  generateCurriculumCsv,
+  generateOpenSourceJson,
+  computePacingSummary,
+} from '../lib/curriculum-export.ts';
+import { evaluateBadges, BADGE_DEFINITIONS } from '../lib/badges-data.ts';
 import assert from 'assert';
 
 let totalTests = 0;
@@ -299,6 +326,214 @@ for i in range(50000):
     assert.strictEqual(sshConcurrencyLimiter.tryAcquire(testIp), true);
     sshConcurrencyLimiter.release(testIp);
     sshConcurrencyLimiter.release(testIp);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 7. Toolchain Detection, C Sandbox & Tutor Rate Limits ---');
+  // --------------------------------------------------------------------------
+
+  await test('Detects local Python and GCC toolchain capabilities without throwing', async () => {
+    const caps = await detectToolchainCapabilities();
+    assert.strictEqual(typeof caps.platform, 'string');
+    assert.strictEqual(typeof caps.python.available, 'boolean');
+    assert.strictEqual(typeof caps.gcc.available, 'boolean');
+  });
+
+  await test('Compiles and runs C11 sandbox code when GCC is installed (or returns clean missing hint)', async () => {
+    const cResult = await executeCodeSecurely({
+      language: 'c',
+      code: '#include <stdio.h>\nint main(void) { printf("C_OK:%d\\n", 6 * 7); return 0; }\n',
+    });
+    if (cResult.toolchainMissing) {
+      assert(cResult.stderr.includes('GCC/Clang'));
+    } else {
+      assert.strictEqual(cResult.success, true);
+      assert(cResult.stdout.includes('C_OK:42'));
+    }
+  });
+
+  await test('Enforces tutor rate limiter token exhaustion', () => {
+    const testIp = '198.51.100.77';
+    for (let i = 0; i < 30; i++) {
+      assert.strictEqual(tutorRateLimiter.tryConsume(testIp).allowed, true);
+    }
+    assert.strictEqual(tutorRateLimiter.tryConsume(testIp).allowed, false);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 8. Curriculum, Sources, Offline Mentor & 16-Stage Quizzes ---');
+  // --------------------------------------------------------------------------
+
+  await test('Provides complete 5-question verified quiz banks for all 16 stages (stage-0..stage-15)', () => {
+    assert.strictEqual(STAGES_DATA.length, 16);
+    assert.strictEqual(PORTFOLIO_PROJECTS.length, 16);
+    assert.strictEqual(ADVANCED_HERO_TOPICS.length, 10);
+    for (const stage of STAGES_DATA) {
+      assert(stage.topics.length >= 3, `${stage.id} must have >= 3 topics`);
+      assert(stage.exitChecklist.length >= 3, `${stage.id} must have >= 3 exit checks`);
+      const bank = STAGE_FALLBACK_QUIZZES[stage.id];
+      assert(Array.isArray(bank) && bank.length === 5, `Missing 5-question quiz bank for ${stage.id}`);
+      const validated = validateQuizItems(bank);
+      assert(validated && validated.length === 5, `Quiz bank validation failed for ${stage.id}`);
+    }
+  });
+
+  await test('Provides A-to-Z glossary coverage across all 26 initial letters (A-Z)', () => {
+    const initialLetters = new Set(
+      GLOSSARY_TERMS.map((g) => g.term.trim().charAt(0).toUpperCase())
+    );
+    const missing = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      .split('')
+      .filter((ch) => !initialLetters.has(ch));
+    assert.deepStrictEqual(missing, [], `Glossary missing letters: ${missing.join(', ')}`);
+  });
+
+  await test('Verifies all curated external sources reference valid HTTPS URLs and stage IDs', () => {
+    const validStageIds = new Set(STAGES_DATA.map((s) => s.id));
+    assert(CURATED_CS_SOURCES.length >= 60);
+    for (const src of CURATED_CS_SOURCES) {
+      assert(src.url.startsWith('https://'), `Source URL must use HTTPS: ${src.url}`);
+      assert(src.stageIds.length >= 1, `Source ${src.id} must link to at least one stage`);
+      for (const sid of src.stageIds) {
+        assert(validStageIds.has(sid), `Invalid stage reference ${sid} in source ${src.id}`);
+      }
+    }
+  });
+
+  await test('Synthesizes grounded offline mentor answers for ELI9, Debug, and Lab Review', () => {
+    const eli9 = buildLocalEli9Response('stage-6', 'How do pointers and memory allocation work in C?');
+    assert(eli9.includes('Stage') && eli9.length > 80);
+
+    const debug = buildLocalDebugResponse('Segmentation fault (core dumped)', 'My C array crashed');
+    assert(debug.includes('Segmentation Fault') && debug.includes('malloc'));
+
+    const review = buildLocalLabReviewResponse('Stage 3: Linux', 'Ran `ls -la` and verified exit 0 output.');
+    assert(review.includes('Lab Write-Up Review'));
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 9. Achievement Badges Engine & State Validation ---');
+  // --------------------------------------------------------------------------
+
+  await test('Awards milestone, project, shell, and curriculum badges accurately', () => {
+    const evalZero = evaluateBadges({
+      completedTopics: {},
+      solvedBanditLevels: [0],
+      projectStatuses: {},
+      userMilestones: [],
+      savedSnippets: [],
+      studyLogs: [],
+      currentStreak: 0,
+    });
+    assert.strictEqual(evalZero.totalCount, BADGE_DEFINITIONS.length);
+    assert.strictEqual(evalZero.unlockedCount, 0);
+
+    const todayKey = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split('T')[0];
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setUTCDate(twoDaysAgo.getUTCDate() - 2);
+    const twoDaysAgoKey = twoDaysAgo.toISOString().split('T')[0];
+
+    const stage0Topics = Object.fromEntries(STAGES_DATA[0].topics.map((t) => [t.id, true]));
+
+    const evalHero = evaluateBadges({
+      completedTopics: stage0Topics,
+      solvedBanditLevels: [0, 1, 2, 3, 4, 5, 6, 7],
+      projectStatuses: { 'proj-1': 'completed', 'proj-2': 'completed', 'proj-3': 'completed' },
+      userMilestones: [
+        { completed: true },
+        { completed: true },
+        { completed: true },
+      ],
+      savedSnippets: [{ id: 's1' }],
+      studyLogs: [
+        { date: todayKey, minutes: 45 },
+        { date: yesterdayKey, minutes: 45 },
+        { date: twoDaysAgoKey, minutes: 45 },
+      ],
+      currentStreak: 3,
+    });
+
+    const earnedIds = new Set(evalHero.badges.filter((b) => b.unlocked).map((b) => b.id));
+    assert(earnedIds.has('milestone-spark'));
+    assert(earnedIds.has('milestone-hunter'));
+    assert(earnedIds.has('daily-cadence'));
+    assert(earnedIds.has('first-blueprint'));
+    assert(earnedIds.has('shipping-engineer'));
+    assert(earnedIds.has('portfolio-builder'));
+    assert(earnedIds.has('shell-operator'));
+    assert(earnedIds.has('citadel-breacher'));
+    assert(earnedIds.has('bitwise-initiate'));
+  });
+
+  await test('Sanitizes earnedBadges timestamps and rejects invalid keys', () => {
+    const cleaned = sanitizeOdysseyStoreState({
+      earnedBadges: {
+        'milestone-spark': '2026-11-14T10:00:00.000Z',
+        'INVALID KEY!!': '2026-11-14T10:00:00.000Z',
+      },
+    });
+    assert.strictEqual(cleaned.earnedBadges['milestone-spark'], '2026-11-14T10:00:00.000Z');
+    assert.strictEqual(cleaned.earnedBadges['INVALID KEY!!'], undefined);
+  });
+
+  await test('Sanitizes stageTargetDates, autoLogTopicPractice, and generates local study plans + exports', () => {
+    const cleaned = sanitizeOdysseyStoreState({
+      stageTargetDates: {
+        'stage-0': '2026-12-01',
+        'stage-15': '2027-03-15',
+        'stage-99': '2026-12-01',
+        'stage-1': 'not-a-date',
+      },
+      autoLogTopicPractice: false,
+    });
+    assert.strictEqual(cleaned.stageTargetDates['stage-0'], '2026-12-01');
+    assert.strictEqual(cleaned.stageTargetDates['stage-15'], '2027-03-15');
+    assert.strictEqual(cleaned.stageTargetDates['stage-99'], undefined);
+    assert.strictEqual(cleaned.stageTargetDates['stage-1'], undefined);
+    assert.strictEqual(cleaned.autoLogTopicPractice, false);
+
+    const plan = buildLocalStudyPlanResponse('stage-14', 42, 60);
+    assert(plan.includes('Stage 14') && plan.includes('60 minutes/day'));
+
+    const pacing = computePacingSummary(12);
+    assert.strictEqual(pacing.rows.length, 16);
+    assert(pacing.totalWeeks > 0);
+
+    const csv = generateCurriculumCsv();
+    assert(csv.includes('Stage Number,Stage ID,Stage Title') && csv.includes('stage-15'));
+
+    const parsedJson = JSON.parse(generateOpenSourceJson());
+    assert.strictEqual(parsedJson.summary.totalStages, 16);
+    assert.strictEqual(parsedJson.summary.totalPortfolioProjects, 16);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 10. Search Grounding Sanitization & Offline Research Index ---');
+  // --------------------------------------------------------------------------
+
+  await test('Filters malicious URL protocols from groundingMetadata citations and deduplicates valid HTTPS URLs', () => {
+    const cleaned = sanitizeGroundingSources([
+      { web: { uri: 'javascript:alert(1)', title: 'XSS' } },
+      { web: { uri: 'file:///etc/passwd', title: 'LFI' } },
+      { web: { uri: 'https://datatracker.ietf.org/doc/html/rfc9110', title: 'RFC 9110 HTTP Semantics' } },
+      { web: { uri: 'https://datatracker.ietf.org/doc/html/rfc9110', title: 'Duplicate RFC' } },
+    ]);
+    assert.strictEqual(cleaned.length, 1);
+    assert.strictEqual(cleaned[0].title, 'RFC 9110 HTTP Semantics');
+    assert.strictEqual(cleaned[0].uri, 'https://datatracker.ietf.org/doc/html/rfc9110');
+  });
+
+  await test('Synthesizes grounded offline search references from verified CS catalog', () => {
+    const res = buildLocalSearchGroundingResponse('stage-2', 'TCP 3-way handshake and DNS sockets');
+    assert(res.result.includes('Grounded Technical References'));
+    assert(res.sources.length >= 2);
+    for (const s of res.sources) {
+      assert(s.uri.startsWith('https://'));
+      assert(s.title.length > 0);
+    }
   });
 
   // --------------------------------------------------------------------------

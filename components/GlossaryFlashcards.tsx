@@ -14,22 +14,29 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
   const [mode, setMode] = useState<'dictionary' | 'flashcards'>('flashcards');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedLetter, setSelectedLetter] = useState<string>('All');
 
   // Flashcard state
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
   const categories = ['All', 'Network', 'Security', 'System', 'Dev', 'Hardware', 'Web', 'Database', 'Theory'];
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
   const filtered = GLOSSARY_TERMS.filter((item) => {
     const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
+    const matchesLetter =
+      mode !== 'dictionary' ||
+      selectedLetter === 'All' ||
+      item.term.trim().toUpperCase().startsWith(selectedLetter);
     const matchesSearch =
       item.term.toLowerCase().includes(search.toLowerCase()) ||
       item.simpleEnglish.toLowerCase().includes(search.toLowerCase());
-    return matchesCat && matchesSearch;
+    return matchesCat && matchesLetter && matchesSearch;
   });
 
-  const card = filtered[currentIdx] || filtered[0] || GLOSSARY_TERMS[0];
+  const safeIdx = filtered.length > 0 ? currentIdx % filtered.length : 0;
+  const card = filtered[safeIdx] || GLOSSARY_TERMS[0];
 
   const handleNext = () => {
     setIsFlipped(false);
@@ -204,6 +211,41 @@ export function GlossaryFlashcards({ onOpenAiMentor }: GlossaryFlashcardsProps) 
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* A-Z Index Bar */}
+          <div className="optical-panel rounded-xl p-2 flex flex-wrap items-center gap-1 font-mono text-[11px]">
+            <button
+              type="button"
+              onClick={() => setSelectedLetter('All')}
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                selectedLetter === 'All'
+                  ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-400/35 font-semibold'
+                  : 'text-slate-400 hover:text-white border border-transparent'
+              }`}
+            >
+              All ({GLOSSARY_TERMS.length})
+            </button>
+            {alphabet.map((letter) => {
+              const hasMatch = GLOSSARY_TERMS.some((g) => g.term.trim().toUpperCase().startsWith(letter));
+              return (
+                <button
+                  key={letter}
+                  type="button"
+                  disabled={!hasMatch}
+                  onClick={() => setSelectedLetter(letter)}
+                  className={`px-2 py-1 rounded-md transition-colors ${
+                    selectedLetter === letter
+                      ? 'bg-cyan-500/25 text-white border border-cyan-400/45 font-bold cursor-pointer'
+                      : hasMatch
+                      ? 'text-slate-300 hover:bg-white/[0.06] hover:text-white cursor-pointer border border-transparent'
+                      : 'text-slate-600 cursor-not-allowed border border-transparent'
+                  }`}
+                >
+                  {letter}
+                </button>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

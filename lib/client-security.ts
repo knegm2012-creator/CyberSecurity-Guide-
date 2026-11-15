@@ -155,10 +155,88 @@ export function sanitizeOdysseyStoreState(rawState: unknown): Record<string, any
     }
   }
 
+  // Sanitize earnedBadges: safe map of badge ID -> ISO timestamp
+  const earnedBadges: Record<string, string> = {};
+  if (state.earnedBadges && typeof state.earnedBadges === 'object' && !Array.isArray(state.earnedBadges)) {
+    for (const [badgeId, timestamp] of Object.entries(state.earnedBadges)) {
+      if (
+        /^[a-z0-9-]{2,48}$/.test(badgeId) &&
+        typeof timestamp === 'string' &&
+        timestamp.length <= 40
+      ) {
+        earnedBadges[badgeId] = timestamp;
+      }
+    }
+  }
+
+  // Sanitize stageTargetDates: safe map of stage-0..stage-15 -> YYYY-MM-DD
+  const stageTargetDates: Record<string, string> = {};
+  if (state.stageTargetDates && typeof state.stageTargetDates === 'object' && !Array.isArray(state.stageTargetDates)) {
+    for (const [stageId, dateVal] of Object.entries(state.stageTargetDates)) {
+      if (
+        /^stage-([0-9]|1[0-5])$/.test(stageId) &&
+        typeof dateVal === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())
+      ) {
+        stageTargetDates[stageId] = dateVal.trim();
+      }
+    }
+  }
+
+  const autoLogTopicPractice =
+    typeof state.autoLogTopicPractice === 'boolean' ? state.autoLogTopicPractice : true;
+
+  // Helper for boolean map sanitization
+  const sanitizeBoolMap = (raw: unknown): Record<string, boolean> | undefined => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const out: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (/^[a-zA-Z0-9_-]{1,64}$/.test(k) && typeof v === 'boolean') {
+        out[k] = v;
+      }
+    }
+    return out;
+  };
+
+  const completedTopics = sanitizeBoolMap(state.completedTopics);
+  const completedExitChecks = sanitizeBoolMap(state.completedExitChecks);
+  const completedDailyChallenges = sanitizeBoolMap(state.completedDailyChallenges);
+
+  // Sanitize studyLogs array if provided
+  const studyLogs = Array.isArray(state.studyLogs)
+    ? state.studyLogs
+        .filter((l) => l && typeof l === 'object' && !Array.isArray(l))
+        .slice(0, 500)
+        .map((l: Record<string, unknown>, idx: number) => ({
+          id: typeof l.id === 'string' ? l.id.slice(0, 64) : `log-${idx}`,
+          date:
+            typeof l.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(l.date)
+              ? l.date
+              : new Date().toISOString().split('T')[0],
+          minutes:
+            typeof l.minutes === 'number' && Number.isFinite(l.minutes)
+              ? Math.max(1, Math.min(1440, Math.floor(l.minutes)))
+              : 30,
+          stageId:
+            typeof l.stageId === 'string' && /^stage-([0-9]|1[0-5])$/.test(l.stageId)
+              ? l.stageId
+              : 'stage-0',
+          notes: typeof l.notes === 'string' ? l.notes.slice(0, 1000) : '',
+        }))
+    : undefined;
+
   return {
     ...state,
     solvedBanditLevels,
     dailyGoalMinutes,
     banditPasswords,
+    earnedBadges,
+    stageTargetDates,
+    autoLogTopicPractice,
+    ...(completedTopics ? { completedTopics } : {}),
+    ...(completedExitChecks ? { completedExitChecks } : {}),
+    ...(completedDailyChallenges ? { completedDailyChallenges } : {}),
+    ...(studyLogs ? { studyLogs } : {}),
   };
 }
+

@@ -18,7 +18,7 @@ export interface TopicItem {
 export interface CommandItem {
   name: string;
   syntax: string;
-  category: 'Linux' | 'Git' | 'Networking' | 'SQL' | 'C/C++' | 'Security' | 'Dev' | 'System' | 'Docker';
+  category: 'Linux' | 'Git' | 'Networking' | 'SQL' | 'C/C++' | 'Go' | 'Security' | 'Dev' | 'System' | 'Docker';
   explanation: string;
   example: string;
   safeNote?: string;
@@ -788,13 +788,53 @@ for item in test_inputs:
         id: 's2-t1',
         title: 'Bits, Bytes & Powers of 2',
         description: 'Understand 2^0 through 2^16, why 8 bits make a byte, and convert between binary, decimal, and hexadecimal.',
-        eli9: 'Binary counts in powers of 2 (1, 2, 4, 8, 16, 32...) just like decimal counts in powers of 10.'
+        eli9: 'Binary counts in powers of 2 (1, 2, 4, 8, 16, 32...) just like decimal counts in powers of 10.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Generates a clean reference table of powers of 2 and base conversions (dec, bin, hex).',
+          code: `# Powers of 2 & Base Conversion Inspector
+print("Power | Decimal | Binary             | Hex")
+print("-" * 46)
+for exp in range(0, 17, 2):
+    val = 2 ** exp
+    print(f"2^{exp:2d}  | {val:7d} | {val:017b}  | 0x{val:05X}")
+`
+        },
+        externalLinks: [
+          { title: 'Nand2Tetris Project 01', url: 'https://www.nand2tetris.org/project01', type: 'Course' }
+        ]
       },
       {
         id: 's2-t2',
         title: 'Logic Gates & Truth Tables',
         description: 'Model AND, OR, NOT, XOR, NAND gates. Construct half-adders and full-adders from logic gates.',
-        eli9: 'An AND gate is like two light switches in a row: light only turns on if BOTH switches are flipped.'
+        eli9: 'An AND gate is like two light switches in a row: light only turns on if BOTH switches are flipped.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Simulates universal NAND logic building NOT, AND, OR, and XOR gates plus a Full Adder.',
+          code: `def NAND(a, b): return 0 if (a & b) else 1
+def NOT(a):     return NAND(a, a)
+def AND(a, b):  return NOT(NAND(a, b))
+def OR(a, b):   return NAND(NOT(a), NOT(b))
+def XOR(a, b):  return AND(NAND(a, b), OR(a, b))
+
+def full_adder(a, b, cin):
+    s1 = XOR(a, b)
+    sum_bit = XOR(s1, cin)
+    cout = OR(AND(a, b), AND(s1, cin))
+    return sum_bit, cout
+
+print("A B Cin | Sum Cout")
+for a in (0, 1):
+    for b in (0, 1):
+        for cin in (0, 1):
+            s, c = full_adder(a, b, cin)
+            print(f"{a} {b}  {cin}  |  {s}   {c}")
+`
+        },
+        externalLinks: [
+          { title: 'MIT 6.004 Computation Structures', url: 'https://ocw.mit.edu/courses/6-004-computation-structures-spring-2017/', type: 'Course' }
+        ]
       },
       {
         id: 's2-t3',
@@ -806,7 +846,31 @@ for item in test_inputs:
         id: 's2-t4',
         title: 'Algorithms & Big-O Intuition',
         description: 'Compare linear search O(N) with binary search O(log N). Understand why nested loops O(N^2) slow down large datasets.',
-        eli9: 'Looking through a dictionary page-by-page is O(N). Splitting the book in half repeatedly to find a word is O(log N).'
+        eli9: 'Looking through a dictionary page-by-page is O(N). Splitting the book in half repeatedly to find a word is O(log N).',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Empirical comparison of step counts between O(N) linear scan and O(log N) binary search.',
+          code: `def binary_search_steps(arr, target):
+    lo, hi, steps = 0, len(arr) - 1, 0
+    while lo <= hi:
+        steps += 1
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return mid, steps
+        if arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1, steps
+
+data = list(range(1_000_000))
+idx, b_steps = binary_search_steps(data, 987654)
+print(f"Found 987654 at index {idx}: Binary Search took {b_steps} steps vs ~987,654 linear steps!")
+`
+        },
+        externalLinks: [
+          { title: 'VisuAlgo Searching & Sorting', url: 'https://visualgo.net/en/sorting', type: 'Docs' }
+        ]
       }
     ],
     commands: [
@@ -883,19 +947,62 @@ for item in test_inputs:
         id: 's3-t1',
         title: 'Terminal Navigation & File Inspection',
         description: 'Navigate hierarchies with pwd, ls, cd, mkdir, cp, mv, rm, cat, less, head, tail.',
-        eli9: 'pwd tells you where you are standing; ls shows what is around you; cd lets you walk into a new room.'
+        eli9: 'pwd tells you where you are standing; ls shows what is around you; cd lets you walk into a new room.',
+        externalLinks: [
+          { title: 'MIT Missing Semester: The Shell', url: 'https://missing.csail.mit.edu/2020/course-shell/', type: 'Course' }
+        ]
       },
       {
         id: 's3-t2',
         title: 'Text Processing: grep, find, sort, uniq, wc',
         description: 'Filter massive log files using regular expressions, text stream sorting, counting words and lines.',
-        eli9: 'grep is like a search bar that instantly pulls out every line containing a specific word.'
+        eli9: 'grep is like a search bar that instantly pulls out every line containing a specific word.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Reproduces Linux grep + sort | uniq -c telemetry summarization logic cleanly.',
+          code: `import re
+from collections import Counter
+
+logs = [
+    "2026-11-15 Failed password for root from 203.0.113.8 port 51200",
+    "2026-11-15 Accepted publickey for dev from 10.0.0.4 port 44120",
+    "2026-11-15 Failed password for admin from 203.0.113.8 port 51211",
+    "2026-11-15 Failed password for user from 198.51.100.12 port 40200",
+    "2026-11-15 Failed password for root from 203.0.113.8 port 51299",
+]
+
+# Equivalent to: grep "Failed password" | grep -oE '[0-9.]+' | sort | uniq -c
+ips = [
+    m.group(1)
+    for line in logs
+    if "Failed password" in line
+    for m in [re.search(r"from (\\d+\\.\\d+\\.\\d+\\.\\d+)", line)]
+    if m
+]
+for ip, count in Counter(ips).most_common():
+    print(f"{count:4d} failed attempts from {ip}")
+`
+        }
       },
       {
         id: 's3-t3',
         title: 'Linux Permissions (rwx, chmod, chown)',
         description: 'Understand Read (4), Write (2), Execute (1) permissions across User, Group, and Others. Principle of least privilege.',
-        eli9: 'Permissions are like door locks with keys for the owner, their team, and random guests.'
+        eli9: 'Permissions are like door locks with keys for the owner, their team, and random guests.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Converts Linux octal permissions (e.g. 755, 640, 600) into symbolic rwx strings.',
+          code: `def octal_to_rwx(mode_str: str) -> str:
+    table = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"]
+    return "".join(table[int(digit)] for digit in mode_str)
+
+for mode in ["755", "644", "600", "700"]:
+    print(f"chmod {mode} -> {octal_to_rwx(mode)}")
+`
+        },
+        externalLinks: [
+          { title: 'Pro Git Book (Version Control)', url: 'https://git-scm.com/book/en/v2', type: 'Docs' }
+        ]
       },
       {
         id: 's3-t4',
@@ -1010,19 +1117,48 @@ for item in test_inputs:
         id: 's4-t1',
         title: 'The OSI Model & TCP/IP Stack',
         description: 'Understand the 7 layers vs 4 layers: Physical, Data Link (Ethernet/MAC), Network (IP), Transport (TCP/UDP), Application (HTTP/DNS).',
-        eli9: 'Like Russian nesting dolls, each layer wraps your message inside another protective envelope before sending it.'
+        eli9: 'Like Russian nesting dolls, each layer wraps your message inside another protective envelope before sending it.',
+        externalLinks: [
+          { title: 'Cloudflare: What is the OSI Model?', url: 'https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/', type: 'Article' }
+        ]
       },
       {
         id: 's4-t2',
         title: 'IPv4 Addressing & Subnetting by Hand',
         description: 'Private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), CIDR notation (/24, /28), subnet masks, network and broadcast addresses.',
-        eli9: 'Subnetting is like dividing a big school building into private classrooms so students do not scream over each other.'
+        eli9: 'Subnetting is like dividing a big school building into private classrooms so students do not scream over each other.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Uses Python ipaddress stdlib to compute CIDR network address, broadcast address, mask, and usable hosts.',
+          code: `import ipaddress
+
+for cidr in ["192.168.10.42/24", "10.20.30.5/28", "172.16.4.129/26"]:
+    net = ipaddress.IPv4Interface(cidr).network
+    hosts = list(net.hosts())
+    print(f"CIDR: {cidr:18s} | Net: {str(net.network_address):13s} | Bcast: {str(net.broadcast_address):13s} | Usable: {len(hosts)}")
+`
+        },
+        externalLinks: [
+          { title: 'RFC 9110: HTTP Semantics', url: 'https://datatracker.ietf.org/doc/html/rfc9110', type: 'Docs' }
+        ]
       },
       {
         id: 's4-t3',
         title: 'TCP vs UDP & Port Numbers',
         description: 'TCP 3-way handshake (SYN, SYN-ACK, ACK), reliable delivery, sequence numbers vs UDP connectionless speed (DNS, streaming, games).',
-        eli9: 'TCP is a registered certified letter that requires a signature; UDP is like throwing a paper airplane.'
+        eli9: 'TCP is a registered certified letter that requires a signature; UDP is like throwing a paper airplane.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Simulates a deterministic TCP 3-way handshake state machine with ISN sequence numbers.',
+          code: `def simulate_tcp_handshake(client_isn: int, server_isn: int):
+    print(f"1. Client -> Server: SYN (seq={client_isn})")
+    print(f"2. Server -> Client: SYN-ACK (seq={server_isn}, ack={client_isn + 1})")
+    print(f"3. Client -> Server: ACK (seq={client_isn + 1}, ack={server_isn + 1})")
+    print(">>> Connection ESTABLISHED!")
+
+simulate_tcp_handshake(1000, 5000)
+`
+        }
       },
       {
         id: 's4-t4',
@@ -1131,7 +1267,10 @@ for item in test_inputs:
         id: 's5-t1',
         title: 'HTML5, CSS & JavaScript Fundamentals',
         description: 'DOM hierarchy, forms, input fields, client-side validation, HTTP request submissions, and browser DevTools.',
-        eli9: 'HTML gives a web page bones, CSS gives it skin and clothes, JavaScript gives it muscles to move.'
+        eli9: 'HTML gives a web page bones, CSS gives it skin and clothes, JavaScript gives it muscles to move.',
+        externalLinks: [
+          { title: 'MDN Learn Web Development', url: 'https://developer.mozilla.org/en-US/docs/Learn', type: 'Docs' }
+        ]
       },
       {
         id: 's5-t2',
@@ -1143,13 +1282,59 @@ for item in test_inputs:
         id: 's5-t3',
         title: 'Core SQL Queries: SELECT, WHERE, JOIN',
         description: 'Querying data, filtering with WHERE, ordering, aggregating with COUNT/SUM/GROUP BY, and combining tables with INNER/LEFT JOIN.',
-        eli9: 'A JOIN is like matching puzzle pieces from two different spreadsheets based on a shared column.'
+        eli9: 'A JOIN is like matching puzzle pieces from two different spreadsheets based on a shared column.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Creates an in-memory SQLite relational schema, runs an INNER JOIN + GROUP BY query, and prints counts.',
+          code: `import sqlite3
+
+conn = sqlite3.connect(":memory:")
+cur = conn.cursor()
+cur.executescript("""
+CREATE TABLE hosts (id INTEGER PRIMARY KEY, hostname TEXT NOT NULL);
+CREATE TABLE alerts (id INTEGER PRIMARY KEY, host_id INTEGER, severity TEXT, FOREIGN KEY(host_id) REFERENCES hosts(id));
+INSERT INTO hosts VALUES (1, 'edge-fw-01'), (2, 'db-primary');
+INSERT INTO alerts VALUES (1, 1, 'HIGH'), (2, 1, 'HIGH'), (3, 2, 'LOW');
+""")
+
+rows = cur.execute("""
+SELECT h.hostname, COUNT(a.id) AS total_alerts
+FROM hosts h
+JOIN alerts a ON h.id = a.host_id
+WHERE a.severity = ?
+GROUP BY h.hostname
+""", ("HIGH",)).fetchall()
+
+print("Parameterized JOIN query result:", rows)
+`
+        },
+        externalLinks: [
+          { title: 'PostgreSQL Official Tutorial', url: 'https://www.postgresql.org/docs/current/tutorial.html', type: 'Docs' }
+        ]
       },
       {
         id: 's5-t4',
         title: 'SQL Injection Concepts & Parameterized Queries',
         description: 'Understand how string concatenation leads to SQL injection, and why prepared statements with parameters guarantee security.',
-        eli9: 'Never glue user text directly into your SQL instructions; use placeholder slots so the database treats input as raw data, not code.'
+        eli9: 'Never glue user text directly into your SQL instructions; use placeholder slots so the database treats input as raw data, not code.',
+        codeSnippet: {
+          language: 'python',
+          explanation: "Demonstrates why prepared statement placeholders (?) safely neutralize `' OR '1'='1` SQL injection payloads.",
+          code: `import sqlite3
+
+conn = sqlite3.connect(":memory:")
+conn.execute("CREATE TABLE users (username TEXT, role TEXT)")
+conn.execute("INSERT INTO users VALUES ('alice', 'student'), ('admin', 'superuser')")
+
+attacker_input = "' OR '1'='1"
+# SAFE: Prepared statement binds attacker_input as literal text, never SQL syntax!
+rows = conn.execute("SELECT username, role FROM users WHERE username = ?", (attacker_input,)).fetchall()
+print("Safe parameterized query rows returned for payload:", rows)  # []
+`
+        },
+        externalLinks: [
+          { title: 'OWASP SQL Injection Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html', type: 'Docs' }
+        ]
       }
     ],
     commands: [
@@ -1217,14 +1402,38 @@ for item in test_inputs:
       {
         id: 's6-t1',
         title: 'Compilation & Linking (GCC / Clang)',
-        description: 'From source code (.c) $\to$ Preprocessor $\to$ Compiler $\to$ Assembler $\to$ Linker $\to$ ELF binary executable.',
-        eli9: 'The compiler translates your human-readable C text into raw binary machine code that your CPU chip executes.'
+        description: 'From source code (.c) → Preprocessor → Compiler → Assembler → Linker → ELF binary executable.',
+        eli9: 'The compiler translates your human-readable C text into raw binary machine code that your CPU chip executes.',
+        externalLinks: [
+          { title: 'Beej’s Guide to C Programming', url: 'https://beej.us/guide/bgc/', type: 'Docs' }
+        ]
       },
       {
         id: 's6-t2',
         title: 'Pointers & Memory Addresses (& and *)',
         description: 'Memory as a giant array of bytes. Pointer variables holding memory addresses. Dereferencing values.',
-        eli9: 'A variable holds a value. A pointer holds the house address of where that variable lives.'
+        eli9: 'A variable holds a value. A pointer holds the house address of where that variable lives.',
+        codeSnippet: {
+          language: 'c',
+          explanation: 'Demonstrates address-of (&), pointer dereferencing (*), and contiguous pointer arithmetic in C11.',
+          code: `#include <stdio.h>
+
+int main(void) {
+    int score = 42;
+    int *ptr = &score;
+    printf("Initial score: %d at address %p\\n", score, (void *)ptr);
+
+    *ptr = 99;
+    printf("After *ptr = 99 -> score is %d\\n", score);
+
+    int arr[3] = {10, 20, 30};
+    for (int i = 0; i < 3; i++) {
+        printf("arr[%d] = %d (addr %p)\\n", i, *(arr + i), (void *)(arr + i));
+    }
+    return 0;
+}
+`
+        }
       },
       {
         id: 's6-t3',
@@ -1236,7 +1445,29 @@ for item in test_inputs:
         id: 's6-t4',
         title: 'Stack vs Heap (malloc and free)',
         description: 'Automatic stack variables tied to function scope vs dynamic heap allocations requiring explicit free() calls. Memory leaks.',
-        eli9: 'The stack is a stack of plates: fast and clean. The heap is an open field where you can set up a tent, but you must take it down when done.'
+        eli9: 'The stack is a stack of plates: fast and clean. The heap is an open field where you can set up a tent, but you must take it down when done.',
+        codeSnippet: {
+          language: 'c',
+          explanation: 'Safely allocates a dynamic heap buffer with malloc, checks for NULL, populates it, and frees it.',
+          code: `#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    size_t n = 5;
+    int *buf = malloc(n * sizeof(int));
+    if (buf == NULL) {
+        return 1;
+    }
+    for (size_t i = 0; i < n; i++) {
+        buf[i] = (int)((i + 1) * 10);
+        printf("buf[%zu] = %d\\n", i, buf[i]);
+    }
+    free(buf);
+    buf = NULL; // Avoid dangling pointer
+    return 0;
+}
+`
+        }
       },
       {
         id: 's6-t5',
@@ -1319,13 +1550,35 @@ for item in test_inputs:
         id: 's7-t1',
         title: 'Modern C++ vs C & Standard Library',
         description: 'Why modern C++ avoids owning raw pointers. Using std::string, std::vector, std::unordered_map, and range-based for loops.',
-        eli9: 'std::vector is a smart list that grows and shrinks automatically without you having to calculate byte sizes.'
+        eli9: 'std::vector is a smart list that grows and shrinks automatically without you having to calculate byte sizes.',
+        externalLinks: [
+          { title: 'LearnCpp: Modern C++ Guide', url: 'https://www.learncpp.com/', type: 'Course' },
+          { title: 'cppreference Standard Library', url: 'https://en.cppreference.com/w/', type: 'Docs' }
+        ]
       },
       {
         id: 's7-t2',
         title: 'RAII (Resource Acquisition Is Initialization)',
         description: 'Resource management tied to object lifetime and stack scope. Destructors run automatically when leaving scope.',
-        eli9: 'RAII is like an automatic door that closes itself the second you walk out of the room.'
+        eli9: 'RAII is like an automatic door that closes itself the second you walk out of the room.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Models C++ RAII deterministic resource cleanup using Python context managers (__enter__ / __exit__).',
+          code: `# Conceptual Model of C++ RAII Scope Guard
+class ScopedResource:
+    def __init__(self, name):
+        self.name = name
+    def __enter__(self):
+        print(f"[ACQUIRE] Allocated buffer '{self.name}' on scope entry")
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print(f"[RELEASE] Automatically destroyed '{self.name}' on scope exit")
+
+with ScopedResource("telemetry_fd") as res:
+    print(f"Using {res.name} safely inside scope...")
+print("Back outside scope — zero leaks guaranteed.")
+`
+        }
       },
       {
         id: 's7-t3',
@@ -1392,13 +1645,38 @@ for item in test_inputs:
         id: 's8-t1',
         title: 'Go Basics, Packages & go.mod',
         description: 'Installation, go run/build/test, package management, explicit error checking (if err != nil).',
-        eli9: 'Go insists that you handle every error immediately so your program never silently fails.'
+        eli9: 'Go insists that you handle every error immediately so your program never silently fails.',
+        externalLinks: [
+          { title: 'A Tour of Go', url: 'https://go.dev/tour/', type: 'Course' }
+        ]
       },
       {
         id: 's8-t2',
         title: 'Structs, Slices, Maps & Interfaces',
         description: 'Typed data structures, slice manipulation, JSON struct tags for serialization and deserialization.',
-        eli9: 'Struct tags tell Go how to convert Go code into JSON for websites and web servers.'
+        eli9: 'Struct tags tell Go how to convert Go code into JSON for websites and web servers.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Demonstrates explicit (value, error) tuple returns and bounded JSON event serialization inspired by Go services.',
+          code: `import json
+
+def parse_event(raw_line: str):
+    parts = raw_line.split("|")
+    if len(parts) != 3:
+        return None, ValueError(f"malformed event: {raw_line}")
+    return {"host": parts[0], "severity": parts[1], "msg": parts[2]}, None
+
+for sample in ["api-01|INFO|boot_ok", "corrupt_line"]:
+    event, err = parse_event(sample)
+    if err is not None:
+        print(f"Handled error explicitly: {err}")
+    else:
+        print("Serialized JSON:", json.dumps(event))
+`
+        },
+        externalLinks: [
+          { title: 'Go by Example', url: 'https://gobyexample.com/', type: 'Docs' }
+        ]
       },
       {
         id: 's8-t3',
@@ -1466,13 +1744,38 @@ for item in test_inputs:
         id: 's9-t1',
         title: 'x86-64 Architecture: Registers & Flags',
         description: 'General purpose registers (RAX, RBX, RCX, RDX, RSI, RDI, RSP, RBP, R8-R15), RIP (instruction pointer), and RFLAGS (ZF, CF, SF).',
-        eli9: 'Registers are tiny, ultra-fast scratchpads right on the CPU chip where calculations happen.'
+        eli9: 'Registers are tiny, ultra-fast scratchpads right on the CPU chip where calculations happen.',
+        externalLinks: [
+          { title: 'OpenSecurityTraining2: Architecture 1001', url: 'https://ost2.fyi/', type: 'Course' }
+        ]
       },
       {
         id: 's9-t2',
         title: 'Common Instructions & Stack Frames',
         description: 'mov, add, sub, cmp, jmp, jne, je, push, pop, call, ret. System V calling conventions (RDI, RSI, RDX, RCX, R8, R9).',
-        eli9: 'cmp checks if two numbers are equal; jne jumps to a different instruction if they are not.'
+        eli9: 'cmp checks if two numbers are equal; jne jumps to a different instruction if they are not.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Miniature x86-64 register & RFLAGS simulator tracing MOV, ADD, CMP, JNE, and RET.',
+          code: `# Miniature x86-64 Register & Zero-Flag (ZF) Tracer
+regs = {"RAX": 0, "RDI": 7, "RSI": 5}
+zf = False
+
+def execute(ins):
+    global zf
+    op = ins[0]
+    if op == "MOV":   regs[ins[1]] = regs[ins[2]] if isinstance(ins[2], str) else ins[2]
+    elif op == "ADD": regs[ins[1]] += regs[ins[2]] if isinstance(ins[2], str) else ins[2]
+    elif op == "CMP": zf = (regs[ins[1]] == ins[2])
+    print(f"{str(ins):22s} -> RAX={regs['RAX']:2d} ZF={int(zf)}")
+
+for instruction in [("MOV", "RAX", "RDI"), ("ADD", "RAX", "RSI"), ("CMP", "RAX", 12)]:
+    execute(instruction)
+`
+        },
+        externalLinks: [
+          { title: 'Compiler Explorer (Godbolt)', url: 'https://godbolt.org/', type: 'Docs' }
+        ]
       },
       {
         id: 's9-t3',
@@ -1572,13 +1875,36 @@ for item in test_inputs:
         id: 's10-t2',
         title: 'Cryptography: Hashing vs Encryption vs Encoding',
         description: 'Encoding (base64 representation) vs Hashing (one-way SHA-256 integrity digests) vs Encryption (reversible with secret key AES/RSA).',
-        eli9: 'Encoding is translating to Spanish. Hashing is shredding paper into a unique dust fingerprint. Encryption is locking a box with a key.'
+        eli9: 'Encoding is translating to Spanish. Hashing is shredding paper into a unique dust fingerprint. Encryption is locking a box with a key.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Compares reversible Base64 encoding, one-way SHA-256 hashing, and salted PBKDF2 key derivation.',
+          code: `import base64
+import hashlib
+
+payload = b"cs-odyssey-secret-2026"
+encoded = base64.b64encode(payload).decode("ascii")
+sha_digest = hashlib.sha256(payload).hexdigest()
+salted_kdf = hashlib.pbkdf2_hmac("sha256", payload, b"unique-salt-91", 100_000).hex()
+
+print(f"1. Base64 (Reversible Encoding): {encoded} -> {base64.b64decode(encoded).decode()}")
+print(f"2. SHA-256 (One-Way Integrity):  {sha_digest}")
+print(f"3. PBKDF2-HMAC (Password KDF):   {salted_kdf[:32]}...")
+`
+        },
+        externalLinks: [
+          { title: 'CryptoHack Interactive Platform', url: 'https://cryptohack.org/', type: 'Course' }
+        ]
       },
       {
         id: 's10-t3',
         title: 'Web Application Security (OWASP Top 10: 2025)',
         description: 'Broken Access Control, Cryptographic Failures, Injection (SQLi, Command), Cross-Site Scripting (XSS), and Insecure Design.',
-        eli9: 'OWASP Top 10 is the global leaderboard of the most common mistakes web developers make.'
+        eli9: 'OWASP Top 10 is the global leaderboard of the most common mistakes web developers make.',
+        externalLinks: [
+          { title: 'PortSwigger Web Security Academy', url: 'https://portswigger.net/web-security', type: 'Course' },
+          { title: 'OWASP Top 10 Reference', url: 'https://owasp.org/Top10/', type: 'Docs' }
+        ]
       },
       {
         id: 's10-t4',
@@ -1661,7 +1987,27 @@ for item in test_inputs:
         id: 's11-t1',
         title: 'The 3-Project Minimum Portfolio',
         description: 'Publish: (1) A Python utility, (2) A networking/log analysis report, and (3) A systems project (C/C++/Go/SQL) with tests and clear README.',
-        eli9: 'Three finished, clean projects beat 50 half-finished copied tutorials every single time.'
+        eli9: 'Three finished, clean projects beat 50 half-finished copied tutorials every single time.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Writes a tiny self-verifying unit test harness using Python unittest so any portfolio repo runs automated checks.',
+          code: `import unittest
+
+def normalize_slug(title: str) -> str:
+    return "-".join(title.lower().strip().split())
+
+class TestPortfolioUtils(unittest.TestCase):
+    def test_slugify(self):
+        self.assertEqual(normalize_slug("  CS Odyssey Project  "), "cs-odyssey-project")
+
+suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestPortfolioUtils)
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+print("Portfolio tests passed:", result.wasSuccessful())
+`
+        },
+        externalLinks: [
+          { title: 'GitHub Skills', url: 'https://skills.github.com/', type: 'Course' }
+        ]
       },
       {
         id: 's11-t2',
@@ -1995,6 +2341,286 @@ for sample in ['3 + 4 * 5', '(3 + 4) * 5', '100 / (2 + 3) - 6']:
       'I can contrast B+ Tree read amplification against LSM-Tree write/compaction trade-offs.'
     ],
     safetyWarning: 'Concurrent and distributed bugs often appear only under contention or packet loss; always test with randomized fault injection and race detectors.'
+  },
+  {
+    id: 'stage-14',
+    number: 14,
+    title: 'Cloud Native Systems, Containers, Observability & CI/CD',
+    subtitle: 'Linux namespaces, multi-stage containers, declarative orchestrators, SLOs & supply-chain security',
+    timeEstimate: '6-8 weeks',
+    sprintMonth: 'Hero Track A',
+    goal: 'Master Linux container primitives (namespaces, cgroups, overlayfs), deterministic CI/CD quality gates, structured OpenTelemetry observability, and SRE error-budget reliability.',
+    eli9Metaphor: 'Instead of running ten chefs in one messy kitchen sharing one stove, containers give each chef their own locked modular station with capped electricity (cgroups), strict wall visibility (namespaces), and automated health monitors.',
+    topics: [
+      {
+        id: 's14-t1',
+        title: 'Container Internals: Namespaces, Cgroups & OverlayFS',
+        description: 'How Linux isolates processes without hypervisors using PID/NET/MNT namespaces, enforces CPU/RAM quotas via cgroups v2, and stacks copy-on-write image layers.',
+        eli9: 'A container is not a tiny computer—it is a normal Linux process wearing blinders (namespaces) and an allowance card (cgroups).',
+        externalLinks: [
+          { title: 'Docker Container Reference', url: 'https://docs.docker.com/get-started/', type: 'Docs' },
+          { title: 'Google Site Reliability Engineering Book', url: 'https://sre.google/sre-book/table-of-contents/', type: 'Docs' }
+        ]
+      },
+      {
+        id: 's14-t2',
+        title: 'Declarative Control Loops & Kubernetes Architecture',
+        description: 'Understand desired-state vs observed-state reconciliation loops, Pods, Services, readiness probes, rolling deployments, and graceful SIGTERM draining.',
+        eli9: 'A thermostat checks room temperature and adjusts the heater automatically; an orchestrator constantly nudges servers until live containers match your blueprint.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Models a declarative control loop reconciling desired replicas against healthy live instances.',
+          code: `# Declarative Control Loop Simulator (Desired vs Observed State)
+desired_replicas = 3
+live_pods = ["pod-a", "pod-b"]  # Simulating one crashed pod
+
+def reconcile(desired: int, current: list[str]) -> list[str]:
+    next_id = len(current) + 1
+    while len(current) < desired:
+        new_pod = f"pod-new-{next_id}"
+        print(f"[RECONCILE] Deficit detected -> Scheduling {new_pod}")
+        current.append(new_pod)
+        next_id += 1
+    while len(current) > desired:
+        victim = current.pop()
+        print(f"[RECONCILE] Surplus detected -> Draining SIGTERM {victim}")
+    return current
+
+print("Initial live pods:", live_pods)
+live_pods = reconcile(desired_replicas, live_pods)
+print("Converged cluster:", live_pods)
+`
+        },
+        externalLinks: [
+          { title: 'Kubernetes Official Documentation', url: 'https://kubernetes.io/docs/home/', type: 'Docs' }
+        ]
+      },
+      {
+        id: 's14-t3',
+        title: 'Observability: Structured Logs, Metrics, Traces & SLOs',
+        description: 'Combine structured JSON logs, RED metrics (Rate, Errors, Duration percentiles p95/p99), distributed trace context IDs, and SRE error budgets.',
+        eli9: 'Averages lie: calculating p99 latency checks the slowest 1% of rides so tail bottlenecks never stay invisible.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Computes p50, p95, p99 tail latencies and SRE error budget burn from request telemetry.',
+          code: `# SRE Tail-Latency (p95 / p99) & Error Budget Evaluator
+latencies_ms = [12, 14, 15, 18, 22, 19, 11, 25, 31, 45, 14, 16, 210, 17, 13, 19, 28, 340, 15, 16]
+sorted_lat = sorted(latencies_ms)
+
+def percentile(sorted_vals, pct):
+    idx = min(len(sorted_vals) - 1, max(0, int(round((pct / 100.0) * (len(sorted_vals) - 1)))))
+    return sorted_vals[idx]
+
+print(f"p50 Median Latency: {percentile(sorted_lat, 50)} ms")
+print(f"p95 Tail Latency:   {percentile(sorted_lat, 95)} ms")
+print(f"p99 Tail Latency:   {percentile(sorted_lat, 99)} ms (Mean={sum(sorted_lat)/len(sorted_lat):.1f} ms)")
+`
+        }
+      },
+      {
+        id: 's14-t4',
+        title: 'CI/CD Quality Gates, SBOM & Supply-Chain Hardening',
+        description: 'Automate lint, static typechecks, security tests, lockfile integrity (package-lock.json), multi-stage non-root images, and reproducible release artifacts.',
+        eli9: 'CI/CD is an automated assembly-line inspector that blocks broken code or unverified parts before reaching users.'
+      }
+    ],
+    commands: [
+      {
+        name: 'docker build & run',
+        syntax: 'docker build -t cs-odyssey:v1 . && docker run --rm -p 3000:3000 cs-odyssey:v1',
+        category: 'Docker',
+        explanation: 'Builds an isolated Linux container image from Dockerfile and runs it cleanly with port forwarding.',
+        example: 'docker build -t my-api:1.0 .'
+      },
+      {
+        name: 'npm ci',
+        syntax: 'npm ci --ignore-scripts',
+        category: 'Dev',
+        explanation: 'Performs deterministic clean installation directly from package-lock.json in CI pipelines.',
+        example: 'npm ci'
+      }
+    ],
+    resources: [
+      {
+        title: 'Google Site Reliability Engineering (Free Online Book)',
+        url: 'https://sre.google/sre-book/table-of-contents/',
+        type: 'Book',
+        isFree: true,
+        notes: 'Canonical engineering manual on SLIs, SLOs, error budgets, automation, and blameless postmortems.'
+      },
+      {
+        title: 'Kubernetes Official Interactive Docs',
+        url: 'https://kubernetes.io/docs/tutorials/kubernetes-basics/',
+        type: 'Docs',
+        isFree: true,
+        notes: 'Step-by-step official documentation on pods, reconciliation, rolling updates, and declarative architecture.'
+      }
+    ],
+    practiceTask: {
+      title: 'Multi-Stage Containerized Service + CI Pipeline',
+      description: 'Containerize an HTTP API using a minimal non-root Dockerfile, expose /api/health telemetry, compute p95 latency metrics, and wire a GitHub Actions CI workflow.',
+      deliverable: 'Repository containing Dockerfile, .github/workflows/ci.yml, automated tests, and SLO design note.'
+    },
+    exitChecklist: [
+      'I can explain how Linux namespaces and cgroups isolate containers without separate OS kernels.',
+      'I understand why p95/p99 tail latency captures user experience far better than mean latency.',
+      'I can author a multi-stage Dockerfile and deterministic lockfile-backed GitHub Actions CI pipeline.',
+      'I can define concrete SLIs, SLOs, and error budgets for an online API.'
+    ],
+    safetyWarning: 'Never run containers as root with --privileged or bake .env secrets directly into Docker image layers.'
+  },
+  {
+    id: 'stage-15',
+    number: 15,
+    title: 'Linear Algebra, Neural Networks & High-Performance Computing',
+    subtitle: 'Vectors, backpropagation from scratch, transformers intuition & cache-aware compute',
+    timeEstimate: '8-12 weeks',
+    sprintMonth: 'Hero Track B (Mastery)',
+    goal: 'Build deep intuition for matrix operations, automatic differentiation, neural training loops from pure math, scaled dot-product attention, and cache-friendly C optimization.',
+    eli9Metaphor: 'Modern AI is just linear algebra on fast silicon: billions of tiny weighted knobs nudged step-by-step down a hill (gradient descent) organized in contiguous RAM rows so the CPU never waits.',
+    topics: [
+      {
+        id: 's15-t1',
+        title: 'Vectors, Dot Products & Matrix Multiplication',
+        description: 'Geometric intuition of dot products (similarity & projection), matrix-vector transformations, basis changes, and O(N^3) compute density.',
+        eli9: 'A dot product asks how strongly two arrows point in the same direction; stacking dot products builds every layer of AI and 3D graphics.',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Computes vector dot products, cosine similarity, and dense matrix multiplication from pure Python.',
+          code: `import math
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+def cosine_sim(a, b):
+    return dot(a, b) / (math.sqrt(dot(a, a)) * math.sqrt(dot(b, b)))
+
+def matmul(A, B):
+    cols_B = list(zip(*B))
+    return [[dot(row, col) for col in cols_B] for row in A]
+
+v1, v2 = [1.0, 2.0, 3.0], [2.0, 4.0, 6.0]
+print(f"Cosine similarity (parallel vectors): {cosine_sim(v1, v2):.4f}")
+print("MatMul 2x2:", matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]]))
+`
+        },
+        externalLinks: [
+          { title: 'Mathematics for Machine Learning (Cambridge Free PDF)', url: 'https://mml-book.github.io/', type: 'Docs' },
+          { title: '3Blue1Brown Essence of Linear Algebra', url: 'https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab', type: 'Video' }
+        ]
+      },
+      {
+        id: 's15-t2',
+        title: 'Gradient Descent, Chain Rule & Backpropagation from Scratch',
+        description: 'Compute derivatives using the chain rule, propagate loss gradients backward through computational graphs, and converge weights iteratively.',
+        eli9: 'Imagine standing blindfolded on a foggy mountain trying to reach the valley: check which way slopes downward and take a steady step (learning rate).',
+        codeSnippet: {
+          language: 'python',
+          explanation: 'Trains a linear neuron using analytical backpropagation and gradient descent in 18 lines of Python.',
+          code: `# Pure-Python Gradient Descent Learning y = 3x + 2
+xs = [1.0, 2.0, 3.0, 4.0]
+ys = [5.0, 8.0, 11.0, 14.0]
+
+w, b, lr = 0.0, 0.0, 0.05
+for epoch in range(250):
+    dw, db, loss = 0.0, 0.0, 0.0
+    for x, y in zip(xs, ys):
+        pred = w * x + b
+        err = pred - y
+        loss += err * err
+        dw += 2.0 * err * x / len(xs)
+        db += 2.0 * err / len(xs)
+    w -= lr * dw
+    b -= lr * db
+
+print(f"Learned model: y = {w:.3f}x + {b:.3f} (Final MSE Loss={loss/len(xs):.6f})")
+`
+        },
+        externalLinks: [
+          { title: 'Andrej Karpathy: Neural Networks Zero to Hero', url: 'https://karpathy.ai/zero-to-hero.html', type: 'Course' }
+        ]
+      },
+      {
+        id: 's15-t3',
+        title: 'Softmax, Embeddings & Scaled Dot-Product Attention',
+        description: 'How tokens become dense vectors, Query-Key compatibility scores scale by 1/sqrt(d_k), and softmax probability weights mix Value vectors.',
+        eli9: 'Attention lets each word look across a sentence with three questions: What am I looking for (Query), what do I offer (Key), and what meaning do I carry (Value)?',
+        externalLinks: [
+          { title: 'Stanford CS231n Deep Learning Notes', url: 'https://cs231n.github.io/', type: 'Docs' }
+        ]
+      },
+      {
+        id: 's15-t4',
+        title: 'Data-Oriented HPC: Cache Lines, Spatial Locality & SIMD in C',
+        description: 'Bridge algorithms to silicon: keep arrays contiguous for L1 hardware prefetchers, avoid pointer chasing, and understand int8 quantization speedups.',
+        eli9: 'Even the smartest formula runs slowly if RAM keeps stalling; packing numbers side-by-side feeds CPU vector lanes at full speed.',
+        codeSnippet: {
+          language: 'c',
+          explanation: 'Computes dense vector dot product over contiguous memory in C11 cleanly.',
+          code: `#include <stdio.h>
+
+double dot_product(const double *a, const double *b, int n) {
+    double acc = 0.0;
+    for (int i = 0; i < n; i++) {
+        acc += a[i] * b[i];
+    }
+    return acc;
+}
+
+int main(void) {
+    double q[4] = {0.8, 0.2, 0.5, 0.1};
+    double k[4] = {0.9, 0.1, 0.4, 0.2};
+    printf("Contiguous Dot Product Score: %.4f\\n", dot_product(q, k, 4));
+    return 0;
+}
+`
+        }
+      }
+    ],
+    commands: [
+      {
+        name: 'gcc -O3 -march=native',
+        syntax: 'gcc -O3 -march=native -ffast-math kernel.c -o kernel',
+        category: 'C/C++',
+        explanation: 'Unlocks auto-vectorized SIMD instructions (AVX2/NEON) for dense numerical loops.',
+        example: 'gcc -O3 -march=native dot.c -o dot'
+      }
+    ],
+    resources: [
+      {
+        title: 'Andrej Karpathy: Neural Networks: Zero to Hero',
+        url: 'https://karpathy.ai/zero-to-hero.html',
+        type: 'Course',
+        isFree: true,
+        notes: 'Builds autograd (micrograd), character models, and GPT from pure math and Python without magic abstractions.'
+      },
+      {
+        title: 'Mathematics for Machine Learning (Cambridge)',
+        url: 'https://mml-book.github.io/',
+        type: 'Book',
+        isFree: true,
+        notes: 'Free university textbook covering linear algebra, vector calculus, probability, and optimization.'
+      },
+      {
+        title: 'Stanford CS231n Lecture Notes',
+        url: 'https://cs231n.github.io/',
+        type: 'Docs',
+        isFree: true,
+        notes: 'Clear visual derivations of backpropagation, activations, regularization, and optimization.'
+      }
+    ],
+    practiceTask: {
+      title: 'Pure-Python Scalar Autograd & C SIMD Dot-Product Kernel',
+      description: 'Implement reverse-mode autodiff supporting addition, multiplication, and ReLU in Python, paired with a cache-aligned matrix multiply benchmark in C11.',
+      deliverable: 'GitHub repository with finite-difference gradient unit checks and O(N^3) loop-order timing report.'
+    },
+    exitChecklist: [
+      'I can compute matrix products and explain dot-product cosine similarity geometrically.',
+      'I can implement gradient descent and backpropagation using the chain rule without ML frameworks.',
+      'I can explain Query, Key, Value scaling and Softmax inside attention layers.',
+      'I understand why contiguous row-major layouts unlock L1 cache hits and SIMD vectorization in C.'
+    ],
+    safetyWarning: 'Always validate numerical gradients against finite-difference checks and inspect quantized precision errors before trusting model outputs.'
   }
 ];
 
@@ -2371,6 +2997,36 @@ export const PORTFOLIO_PROJECTS: PortfolioProject[] = [
       'Unit tests verifying aggregation logic'
     ],
     learningOutcome: 'Modern C++, standard template library, RAII object lifetime, and type safety.'
+  },
+  {
+    id: 'proj-15',
+    number: 15,
+    title: 'Containerized Observable Service + CI Quality Gate',
+    tools: ['Docker', 'CI/CD', 'HTTP', 'JSON'],
+    difficulty: 'Hard',
+    brief: 'Package a lightweight service inside a multi-stage non-root container with structured JSON telemetry, p95/p99 health metrics, and an automated GitHub Actions verification workflow.',
+    acceptanceCriteria: [
+      'Multi-stage Dockerfile drops root privileges cleanly',
+      'Exposes deterministic /health telemetry reporting latency and uptime',
+      'GitHub Actions workflow enforces lint, typecheck, and automated test gates',
+      'Zero embedded credentials or `.env` files inside image layers'
+    ],
+    learningOutcome: 'Cloud-native packaging, SRE tail-latency instrumentation, and supply-chain CI automation.'
+  },
+  {
+    id: 'proj-16',
+    number: 16,
+    title: 'Micrograd Autodiff & Cache-Friendly Matrix Engine',
+    tools: ['Python', 'C', 'Linear Algebra'],
+    difficulty: 'Hard',
+    brief: 'Build a reverse-mode automatic differentiation engine in pure Python alongside a cache-conscious row-major matrix multiplication kernel in C11.',
+    acceptanceCriteria: [
+      'Forward and backward pass passes finite-difference gradient verification tests',
+      'Trains a small nonlinear decision boundary end-to-end without third-party ML libraries',
+      'C matrix benchmark measures runtime across optimization levels (-O0 vs -O3)',
+      'Documents memory layout and floating-point precision caveats'
+    ],
+    learningOutcome: 'Computational graphs, chain-rule backpropagation, numerical accuracy, and CPU cache efficiency.'
   }
 ];
 
@@ -2438,6 +3094,22 @@ export const SPECIALIZATION_TRACKS: SpecializationTrack[] = [
     whatItDoes: 'Translates technical risks into organizational policies, compliance audits (ISO 27001, NIST CSF), and privacy protections.',
     foundations: 'Risk assessment methodologies, data classification, privacy principles (GDPR), audit evidence collection.',
     beginnerProof: 'A lightweight risk register and privacy policy drafted for a fictional student mobile app.'
+  },
+  {
+    id: 'spec-sre',
+    name: 'Cloud Native & Site Reliability Engineering (SRE)',
+    role: 'Distributed Infrastructure & Uptime',
+    whatItDoes: 'Architects resilient containerized microservices, SLO error budgets, CI/CD release gates, and automated observability pipelines.',
+    foundations: 'Linux namespaces & cgroups, Docker multi-stage builds, Go/Python services, Prometheus metrics, and Kubernetes reconciliation.',
+    beginnerProof: 'Multi-stage non-root Dockerized API with structured JSON logs, p95/p99 latency probes, and GitHub Actions CI gates.'
+  },
+  {
+    id: 'spec-ai-hpc',
+    name: 'AI Systems, ML Infrastructure & HPC',
+    role: 'Numerical Compute & Autodiff Kernels',
+    whatItDoes: 'Builds training pipelines, automatic differentiation graphs, quantized inference engines, and cache-tiled matrix kernels.',
+    foundations: 'Linear algebra, reverse-mode autodiff, numerical stability (Softmax/LayerNorm), CPU cache lines, and SIMD vectorization.',
+    beginnerProof: 'Pure Python autograd MLP + row-major tiled matrix multiplication benchmark in C11.'
   }
 ];
 
@@ -2525,6 +3197,27 @@ export const ESSENTIAL_BOOKS = [
     url: 'https://git-scm.com/book/en/v2',
     why: 'Free official Git handbook demystifying commits, DAG pointers, branching, rebasing, and internal object hashes.',
     level: 'Beginner to Intermediate'
+  },
+  {
+    title: 'The C Programming Language (2nd Edition)',
+    author: 'Brian Kernighan & Dennis Ritchie',
+    url: 'https://www.bell-labs.com/usr/dmr/www/chist.html',
+    why: 'The timeless, concise systems classic teaching pointers, memory layout, structs, and UNIX I/O directly from C creators.',
+    level: 'Intermediate'
+  },
+  {
+    title: 'Mathematics for Computer Science (MIT 6.042J)',
+    author: 'Eric Lehman, Tom Leighton & Albert Meyer',
+    url: 'https://courses.csail.mit.edu/6.042/spring18/mcs.pdf',
+    why: 'Free open MIT textbook covering formal proofs, discrete math, modular number theory, graphs, and probability.',
+    level: 'Intermediate to Advanced'
+  },
+  {
+    title: 'Site Reliability Engineering: How Google Runs Production Systems',
+    author: 'Beyer, Jones, Petoff & Murphy (Google)',
+    url: 'https://sre.google/sre-book/table-of-contents/',
+    why: 'Free definitive production manual covering SLOs, error budgets, monitoring, cascading failures, and incident command.',
+    level: 'Advanced'
   }
 ];
 
@@ -2533,6 +3226,8 @@ export const YOUTUBE_CHANNELS = [
   { name: 'CS50 (Harvard)', url: 'https://www.youtube.com/@cs50', focus: 'World-class introductory programming and CS lectures', level: 'Beginner' },
   { name: 'freeCodeCamp.org', url: 'https://www.youtube.com/@freecodecamp', focus: 'Full multi-hour video courses on Python, C++, Linux, SQL, and networking', level: 'Beginner' },
   { name: 'MIT OpenCourseWare', url: 'https://www.youtube.com/@mitocw', focus: 'Full university lectures in Algorithms (6.006), Discrete Math, and Systems', level: 'Intermediate to Advanced' },
+  { name: 'MIT Missing Semester', url: 'https://www.youtube.com/@missingsemester', focus: 'Master shells, vim, Git internals, debugging, profilers, and security tooling', level: 'Beginner to Intermediate' },
+  { name: 'Andrej Karpathy', url: 'https://www.youtube.com/@AndrejKarpathy', focus: 'Neural Networks Zero to Hero: backpropagation, GPT transformers, and tokenizers from scratch', level: 'Intermediate to Advanced' },
   { name: 'Ben Eater', url: 'https://www.youtube.com/@BenEater', focus: 'Building an 8-bit computer and networking hardware from transistors up', level: 'Beginner to Intermediate' },
   { name: 'Neso Academy', url: 'https://www.youtube.com/@nesoacademy', focus: 'Digital logic, C programming, operating systems, and computer networks', level: 'Beginner' },
   { name: 'Professor Messer', url: 'https://www.youtube.com/@professormesser', focus: 'CompTIA Network+ and Security+ modular concept videos', level: 'Beginner to Intermediate' },
@@ -2634,14 +3329,26 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
   { term: 'Binary Search', simpleEnglish: 'An efficient O(log N) algorithm finding an item in a sorted array by repeatedly dividing the search interval in half.', category: 'Theory' },
   { term: 'Hash Table', simpleEnglish: 'A data structure associating keys with values via a hash function, providing average O(1) constant-time lookups.', category: 'Theory' },
 
-  // Web & Databases
+  // Web, Cloud & Databases (Complete A–Z Coverage)
   { term: 'HTTP / HTTPS', simpleEnglish: 'Hypertext Transfer Protocol for web communication; HTTPS adds TLS encryption for confidentiality and authentication.', category: 'Web' },
   { term: 'Cookie vs Session', simpleEnglish: 'Cookies are stored on client browsers; sessions maintain server-side user state mapped by a session ID cookie.', category: 'Web' },
   { term: 'JWT (JSON Web Token)', simpleEnglish: 'A compact, URL-safe means of representing digitally signed claims between two parties.', category: 'Web' },
   { term: 'REST API', simpleEnglish: 'Representational State Transfer: an architectural style using standard HTTP verbs (GET, POST, PUT, DELETE) on resource URLs.', category: 'Web' },
   { term: 'Relational Database (RDBMS)', simpleEnglish: 'A structured database organizing data into tables with rows and columns, linked via primary and foreign keys.', category: 'Database' },
   { term: 'SQL Prepared Statement', simpleEnglish: 'A precompiled query separating SQL syntax from untrusted parameters, completely eliminating SQL injection.', category: 'Database' },
-  { term: 'ACID Properties', simpleEnglish: 'Atomicity, Consistency, Isolation, and Durability: guarantees ensuring reliable database transactions.', category: 'Database' }
+  { term: 'ACID Properties', simpleEnglish: 'Atomicity, Consistency, Isolation, and Durability: guarantees ensuring reliable database transactions.', category: 'Database' },
+  { term: 'Encryption', simpleEnglish: 'Reversible mathematical scrambling of readable plaintext into ciphertext unlocked only with an authorized cryptographic key.', category: 'Security' },
+  { term: 'Event Loop', simpleEnglish: 'A single-threaded asynchronous scheduler (used in Node.js and epoll servers) handling thousands of concurrent I/O callbacks without blocking.', category: 'System' },
+  { term: 'Gradient Descent', simpleEnglish: 'An iterative optimization algorithm adjusting model weights opposite the loss slope to minimize prediction error.', category: 'Theory' },
+  { term: 'Kubernetes', simpleEnglish: 'An open-source container orchestrator automating deployment, scaling, health checks, and self-healing across server clusters.', category: 'System' },
+  { term: 'OAuth 2.0', simpleEnglish: 'An open authorization standard granting limited scoped access tokens to applications without sharing raw user passwords.', category: 'Security' },
+  { term: 'Query Optimizer', simpleEnglish: 'The database planner choosing between sequential scans, index lookups, and join strategies to minimize disk and CPU cost.', category: 'Database' },
+  { term: 'Quantization', simpleEnglish: 'Compressing floating-point weights or signals into compact integer representations (e.g. int8) to cut memory bandwidth and latency.', category: 'Theory' },
+  { term: 'UTF-8 Encoding', simpleEnglish: 'Variable-width Unicode encoding preserving 1-byte ASCII compatibility while supporting every global script and emoji.', category: 'Dev' },
+  { term: 'Write-Ahead Log (WAL)', simpleEnglish: 'An append-only crash recovery journal recording mutations on disk before modifying main database B+ Tree pages.', category: 'Database' },
+  { term: 'x86-64 ISA', simpleEnglish: 'The 64-bit CISC instruction set architecture powering desktop and server CPUs, extending 32-bit x86 with 16 general registers.', category: 'Hardware' },
+  { term: 'XOR (Exclusive OR)', simpleEnglish: 'A fundamental bitwise gate outputting 1 only when its two input bits differ—used in CPU adders and stream ciphers.', category: 'Hardware' },
+  { term: 'YAML', simpleEnglish: 'Human-friendly hierarchical data serialization format commonly used for CI/CD workflows and container manifests.', category: 'Dev' }
 ];
 
 export const ALL_GLOBAL_COMMANDS: CommandItem[] = [
@@ -2766,7 +3473,18 @@ export const ALL_GLOBAL_COMMANDS: CommandItem[] = [
   { name: 'docker ps', syntax: 'docker ps -a', category: 'Docker', explanation: 'Lists active and stopped (-a) container processes, status, and ports.', example: 'docker ps -a' },
   { name: 'docker build', syntax: 'docker build -t <tag> .', category: 'Docker', explanation: 'Builds an isolated container image from a Dockerfile.', example: 'docker build -t lab-sandbox:1.0 .' },
   { name: 'docker exec', syntax: 'docker exec -it <container> /bin/bash', category: 'Docker', explanation: 'Runs an interactive command or bash shell inside a live container.', example: 'docker exec -it web-app sh' },
-  { name: 'docker stop', syntax: 'docker stop <container>', category: 'Docker', explanation: 'Gracefully terminates a running container.', example: 'docker stop web-app' }
+  { name: 'docker stop', syntax: 'docker stop <container>', category: 'Docker', explanation: 'Gracefully terminates a running container.', example: 'docker stop web-app' },
+  { name: 'kubectl get', syntax: 'kubectl get pods -o wide', category: 'Docker', explanation: 'Lists Kubernetes pods, nodes, deployments, or services with IP and node placement.', example: 'kubectl get pods -A' },
+  { name: 'kubectl logs', syntax: 'kubectl logs -f <pod> [--previous]', category: 'Docker', explanation: 'Streams container logs from Kubernetes pods or inspects prior crashed instance logs.', example: 'kubectl logs deploy/api --tail=100' },
+
+  // Go (Golang) Systems & Microservices
+  { name: 'go test -race', syntax: 'go test -race -v ./...', category: 'Go', explanation: 'Runs Go unit tests with the dynamic data-race detector enabled across goroutines.', example: 'go test -race ./internal/...' },
+  { name: 'go build', syntax: 'go build -trimpath -ldflags="-s -w" -o <bin> .', category: 'Go', explanation: 'Compiles a standalone static Go binary stripped of debug symbols and local paths.', example: 'go build -o server ./cmd/server' },
+  { name: 'go mod tidy', syntax: 'go mod tidy', category: 'Go', explanation: 'Synchronizes go.mod and go.sum cryptographic checksums with actual source imports.', example: 'go mod tidy' },
+
+  // System Profiling & Tracing
+  { name: 'strace', syntax: 'strace -e trace=openat,read,write <cmd>', category: 'System', explanation: 'Intercepts and logs Linux kernel system calls executed by a target binary.', example: 'strace -f -e trace=network curl -s https://example.com' },
+  { name: 'perf stat', syntax: 'perf stat <binary>', category: 'System', explanation: 'Samples hardware CPU performance counters: cycles, IPC, branch misses, and L1 cache misses.', example: 'perf stat ./matrix_bench' }
 ];
 
 export const CERT_STATUS_TABLE = [
@@ -2903,6 +3621,14 @@ export const TROUBLESHOOTING_GUIDE: TroubleshootingItem[] = [
   {
     problem: 'I am bored with pure theory.',
     solution: 'Build a small real-world project that forces the concept to be used (e.g. build a binary bit flipper or password checker), then return to theory to understand the result.'
+  },
+  {
+    problem: 'I want to use my own Gemini API key or local Ollama model with the AI Mentor.',
+    solution: 'Copy .env.example to .env.local on your local machine, set GEMINI_API_KEY (or LLM_BASE_URL=http://localhost:11434/v1 and LLM_MODEL=llama3.2 for Ollama), then restart the dev server. Never commit .env.local to GitHub.'
+  },
+  {
+    problem: 'A GitHub Actions CI build fails on "npm ci" or lint.',
+    solution: 'Run "npm install --package-lock-only && npm run typecheck && npm run lint && npm test && npm run build" locally before committing so package-lock.json and TypeScript types stay synchronized.'
   }
 ];
 
@@ -2927,7 +3653,8 @@ export interface AdvancedHeroTopic {
     | 'Distributed Systems & Cloud Architecture'
     | 'Systems Security & Cryptography'
     | 'Compilers & Programming Languages'
-    | 'Computer Architecture & Hardware';
+    | 'Computer Architecture & Hardware'
+    | 'Applied Math, AI Systems & HPC';
   title: string;
   badge: string;
   overview: string;
@@ -3633,6 +4360,67 @@ int main(void) {
 }
 `
     }
+  },
+  {
+    id: 'hero-ml-hpc',
+    subjectArea: 'Applied Math, AI Systems & HPC',
+    title: 'Linear Algebra, Reverse-Mode Autodiff & Data-Oriented Computing',
+    badge: 'Hero Capstone',
+    overview: 'Unifying mathematics and systems engineering. Learn how gradient descent and scaled dot-product attention reduce to dense matrix multiplications, and how memory layout, cache blocking, and SIMD vector instructions unlock order-of-magnitude speedups.',
+    keyConcepts: [
+      'Vectors, Cosine Similarity, Matrix Rank & Orthogonal Projections',
+      'Computational Graphs & Reverse-Mode Automatic Differentiation (Backpropagation)',
+      'Scaled Dot-Product Attention: Query/Key/Value Mechanics & Softmax Numerical Stability',
+      'Cache Blocking (Loop Tiling) & Contiguous Row-Major Memory Layouts for Tensor Compute',
+      'Model Quantization Trade-offs: FP32 vs BF16 vs INT8 Dynamic Range'
+    ],
+    keyCommands: [
+      { command: 'gcc -O3 -march=native -funroll-loops kernel.c -o kernel', purpose: 'Enables SIMD auto-vectorization tailored to host CPU extensions' },
+      { command: 'python3 -m cProfile -s tottime train.py', purpose: 'Profiles tensor training loop bottlenecks across epochs' }
+    ],
+    recommendedSources: [
+      {
+        title: 'Neural Networks: Zero to Hero',
+        authorOrPlatform: 'Andrej Karpathy',
+        type: 'Course',
+        url: 'https://karpathy.ai/zero-to-hero.html',
+        isClassic: true,
+        notes: 'Builds autograd and transformer blocks directly from math without black-box wrappers.'
+      },
+      {
+        title: 'Mathematics for Machine Learning',
+        authorOrPlatform: 'Deisenroth, Faisal, Ong (Cambridge University Press)',
+        type: 'Book',
+        url: 'https://mml-book.github.io/',
+        isClassic: true,
+        notes: 'Open-access university textbook uniting linear algebra, calculus, and optimization.'
+      }
+    ],
+    essentialTips: [
+      'Subtract max(x) before taking exp(x) in Softmax to prevent floating-point overflow.',
+      'Check analytical gradients against small numerical finite differences on toy tensors first.'
+    ],
+    sampleCodeSnippet: {
+      language: 'python',
+      description: 'Numerically stable Softmax & Scaled Dot-Product Attention on 3 tokens',
+      code: `import math
+
+def softmax(logits):
+    m = max(logits)
+    exps = [math.exp(v - m) for v in logits]
+    s = sum(exps)
+    return [e / s for e in exps]
+
+Q = [1.0, 0.5]
+keys = [[1.0, 0.4], [0.0, 1.0], [-0.5, 0.2]]
+scale = math.sqrt(len(Q))
+scores = [sum(q * k for q, k in zip(Q, key)) / scale for key in keys]
+weights = softmax(scores)
+
+print("Attention weights across 3 tokens:", [round(w, 4) for w in weights])
+`
+    }
   }
 ];
+
 

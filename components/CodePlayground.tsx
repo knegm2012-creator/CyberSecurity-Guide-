@@ -755,7 +755,7 @@ export function CodePlayground({
 
           {/* Console Footer Status */}
           <div className="border-t border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-[10px] font-mono text-slate-500 flex items-center justify-between shrink-0">
-            <span>Isolation: Linux tmp container · Timeout: 5.0s</span>
+            <span>Isolation: Sandboxed tmp workspace · Timeout: 5.0s</span>
             <button
               onClick={() => {
                 setOutput('');
@@ -773,7 +773,7 @@ export function CodePlayground({
 
       {/* MODAL 1: Save Snippet */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
@@ -840,7 +840,7 @@ export function CodePlayground({
 
       {/* MODAL 2: Snippets Library */}
       {showLibraryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#03050b]/92 p-4">
           <div className="optical-panel w-full max-w-xl rounded-2xl p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between shrink-0">
               <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">

@@ -12,12 +12,15 @@ import {
   Gauge,
   Grid3X3,
   Orbit,
+  Film,
+  Gamepad2,
 } from 'lucide-react';
 import { CodePlayground } from '@/components/CodePlayground';
 import { FoundationsStudio } from '@/components/FoundationsStudio';
 import { GitSandbox } from '@/components/GitSandbox';
 import { AlgorithmVisualizerLab } from '@/components/AlgorithmVisualizerLab';
 import { FuturisticStudio } from '@/components/FuturisticStudio';
+import { CreativeMediaStudio } from '@/components/CreativeMediaStudio';
 import { SavedCodeSnippet } from '@/hooks/use-odyssey-store';
 import { SoapBubbleButton, SoapBubbleSlider } from '@/components/soap-bubble';
 
@@ -29,7 +32,8 @@ export type SystemsLabTab =
   | 'memory'
   | 'packet'
   | 'complexity'
-  | 'studio';
+  | 'studio'
+  | 'media';
 
 interface SystemsLabWorkspaceProps {
   activeLab: SystemsLabTab;
@@ -50,6 +54,7 @@ interface SystemsLabWorkspaceProps {
   onNavigateToStage?: () => void;
   onNavigateToShell?: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenGame?: () => void;
   onOpenAiMentor: (prompt?: string) => void;
 }
 
@@ -132,6 +137,7 @@ export function SystemsLabWorkspace({
   onNavigateToStage,
   onNavigateToShell,
   onOpenCommandPalette,
+  onOpenGame,
   onOpenAiMentor,
 }: SystemsLabWorkspaceProps) {
   const [ramData, setRamData] = useState(INITIAL_RAM_CELLS);
@@ -170,6 +176,7 @@ export function SystemsLabWorkspace({
     { id: 'packet', label: 'Packet Tracer', icon: Network },
     { id: 'complexity', label: 'Big-O & Cache', icon: Gauge },
     { id: 'studio', label: 'Spatial Studio', icon: Orbit },
+    { id: 'media', label: 'Diagram & Motion', icon: Film },
   ];
 
   const curPacket = PACKET_STEPS[currentPacketStep];
@@ -187,25 +194,36 @@ export function SystemsLabWorkspace({
           </h1>
         </div>
 
-        <div className="optical-subnav flex items-center gap-1 rounded-xl p-1 overflow-x-auto no-scrollbar">
-          {subTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeLab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onSelectLab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                    : 'text-slate-400 hover:text-slate-100 border border-transparent hover:bg-white/[0.04]'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <div className="optical-subnav flex items-center gap-1 rounded-xl p-1 overflow-x-auto no-scrollbar">
+            {subTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeLab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onSelectLab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                      : 'text-slate-400 hover:text-slate-100 border border-transparent hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {onOpenGame && (
+            <button
+              onClick={onOpenGame}
+              className="optical-card shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-300 hover:text-white cursor-pointer"
+            >
+              <Gamepad2 className="h-3.5 w-3.5" />
+              <span>Kernel Defense</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -246,6 +264,8 @@ export function SystemsLabWorkspace({
           onOpenCommandPalette={onOpenCommandPalette}
         />
       )}
+
+      {activeLab === 'media' && <CreativeMediaStudio onAwardXp={onAwardXp} />}
 
       {activeLab === 'memory' && (
         <div className="optical-panel rounded-2xl p-6 space-y-6">

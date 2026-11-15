@@ -23,7 +23,7 @@ const WORKSPACE_TABS: Array<{ id: PrimaryWorkspace; label: string }> = [
 
 export function Navbar({ activeWorkspace, setActiveWorkspace, openAiMentor }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#03050b]/80 backdrop-blur-2xl shadow-[0_8px_30px_-18px_rgba(0,0,0,0.9)]">
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#03050b]/92 shadow-[0_8px_30px_-18px_rgba(0,0,0,0.9)]">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
         {/* Zone 1: Minimal Optical Brand Wordmark */}
         <button

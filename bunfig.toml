@@ -1,0 +1,5 @@
+[install]
+# Skip optional native C++ lifecycle builds (e.g., ssh2 / cpu-features node-gyp rebuilds)
+# so container boots and local installs stay fast and deterministic while ssh2 uses Node's
+# built-in crypto module and prebuilt optional platform binaries still install normally.
+ignoreScripts = true

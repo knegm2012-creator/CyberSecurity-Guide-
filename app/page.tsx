@@ -13,7 +13,9 @@ import { AiMentorPanel } from '@/components/AiMentorPanel';
 import { QuickQuizModal } from '@/components/QuickQuizModal';
 import { CheatSheetModal } from '@/components/CheatSheetModal';
 import { CommandPalette } from '@/components/CommandPalette';
+import { SystemsArcadeGame } from '@/components/SystemsArcadeGame';
 import { SoapBubbleMaterial, SoapBubbleButton } from '@/components/soap-bubble';
+import { SpatialBackdrop3D } from '@/components/SpatialBackdrop3D';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import { Terminal, RotateCcw, AlertTriangle, X } from 'lucide-react';
 
@@ -31,10 +33,13 @@ export default function HomePage() {
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [arcadeGameOpen, setArcadeGameOpen] = useState(false);
+  const [inspectMode, setInspectMode] = useState(false);
 
   const [playgroundKey, setPlaygroundKey] = useState(0);
   const [playgroundCode, setPlaygroundCode] = useState<string | undefined>(undefined);
   const [playgroundLang, setPlaygroundLang] = useState<'python' | 'c' | undefined>(undefined);
+  const [pendingTerminalCmd, setPendingTerminalCmd] = useState<{ id: number; command: string } | null>(null);
 
   useEffect(() => {
     const onGlobalKeyDown = (e: KeyboardEvent) => {
@@ -51,7 +56,11 @@ export default function HomePage() {
     data,
     isLoaded,
     stats,
+    stageProgressList,
+    cadenceMetrics,
+    badgesSummary,
     toggleTopic,
+    completeTopicWithHabit,
     markStageTopicsComplete,
     toggleExitCheck,
     toggleBanditLevel,
@@ -65,6 +74,9 @@ export default function HomePage() {
     toggleMilestone,
     deleteMilestone,
     setDailyGoalMinutes,
+    setStageTargetDate,
+    setAutoLogTopicPractice,
+    generatePersonalizedPlan,
     saveCodeSnippet,
     deleteCodeSnippet,
     exportBackup,
@@ -79,8 +91,13 @@ export default function HomePage() {
         return stage.id;
       }
     }
-    return STAGES_DATA[STAGES_DATA.length - 1]?.id || 'stage-13';
+    return STAGES_DATA[STAGES_DATA.length - 1]?.id || 'stage-15';
   }, [data.completedTopics]);
+
+  const completedStageFlags = useMemo(
+    () => stageProgressList.map((s) => s.isComplete),
+    [stageProgressList]
+  );
 
   const effectiveSelectedStageId = userSelectedStageId ?? currentStageId;
   const todayDateKey = new Date().toISOString().split('T')[0];
@@ -107,7 +124,7 @@ export default function HomePage() {
     setActiveWorkspace(workspace);
 
     if (workspace === 'curriculum') {
-      if (subTab === 'stages' || subTab === 'hero' || subTab === 'projects' || subTab === 'export') {
+      if (subTab === 'atlas' || subTab === 'stages' || subTab === 'hero' || subTab === 'projects' || subTab === 'export') {
         setCurriculumTab(subTab);
       }
       if (stageId) {
@@ -122,7 +139,8 @@ export default function HomePage() {
         subTab === 'memory' ||
         subTab === 'packet' ||
         subTab === 'complexity' ||
-        subTab === 'studio'
+        subTab === 'studio' ||
+        subTab === 'media'
       ) {
         setLabTab(subTab);
       }
@@ -161,93 +179,118 @@ export default function HomePage() {
     <div
       ref={appShellRef}
       data-theme="dark"
-      className="optical-canvas min-h-screen text-slate-100 flex flex-col font-sans"
+      className="optical-canvas relative min-h-screen text-slate-100 flex flex-col font-sans"
     >
-      <SoapBubbleMaterial
-        backdrop={appShellRef}
-        glass={0.95}
-        iridescence={2}
-        filmScale={4.85}
-        oilOpacity={1}
-        oilCoverage={1}
-        oilEdge={18}
-        oilEdgeFade={1}
-        clearCenter={0.73}
-        thickness={480}
-        drainage={0.35}
-        swirl={0.5}
-        reflectivity={1.3}
-        refraction={0.15}
-        dispersion={1}
-        bevel={14}
+      <SpatialBackdrop3D
+        activeWorkspace={activeWorkspace}
+        stageProgressRatio={stats.topicPercent / 100}
+        completedStageFlags={completedStageFlags}
+        inspectMode={inspectMode}
+        onToggleInspectMode={setInspectMode}
+      />
+
+      <div
+        className={`relative z-10 flex-1 flex flex-col transition-opacity duration-300 ${
+          inspectMode ? 'opacity-0 pointer-events-none select-none' : 'opacity-100'
+        }`}
       >
-        <Navbar
-          activeWorkspace={activeWorkspace}
-          setActiveWorkspace={setActiveWorkspace}
-          openAiMentor={() =>
-            handleOpenAiWithPrompt(
-              'Give me a focused breakdown of what I should study next based on my current stage.'
-            )
-          }
-        />
+        <SoapBubbleMaterial
+          backdrop={appShellRef}
+          glass={0.95}
+          iridescence={2}
+          filmScale={4.85}
+          oilOpacity={1}
+          oilCoverage={1}
+          oilEdge={18}
+          oilEdgeFade={1}
+          clearCenter={0.73}
+          thickness={480}
+          drainage={0.35}
+          swirl={0.5}
+          reflectivity={1.3}
+          refraction={0.15}
+          dispersion={1}
+          bevel={14}
+        >
+          <Navbar
+            activeWorkspace={activeWorkspace}
+            setActiveWorkspace={setActiveWorkspace}
+            openAiMentor={() =>
+              handleOpenAiWithPrompt(
+                'Give me a focused breakdown of what I should study next based on my current stage.'
+              )
+            }
+          />
 
-        <main className="flex-1 pb-16">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeWorkspace}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {activeWorkspace === 'overview' && (
-                <OverviewWorkspace
-                  stats={stats}
-                  currentStageId={currentStageId}
-                  completedTopics={data.completedTopics}
-                  userMilestones={data.userMilestones || []}
-                  studyLogs={data.studyLogs}
-                  isDailyChallengeCompleted={Boolean(data.completedDailyChallenges?.[todayDateKey])}
-                  onCompleteDailyChallenge={completeDailyChallenge}
-                  onToggleMilestone={toggleMilestone}
-                  onAddMilestone={addMilestone}
-                  onDeleteMilestone={deleteMilestone}
-                  onSetDailyGoal={setDailyGoalMinutes}
-                  onLogStudy={(minutes, stageId, notes) => addStudyLog(minutes, stageId, notes)}
-                  onNavigate={handleNavigate}
-                  onOpenAiMentor={handleOpenAiWithPrompt}
-                  onOpenQuickQuiz={() => setQuickQuizOpen(true)}
-                  onOpenCheatSheet={() => setCheatSheetOpen(true)}
-                  onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-                />
-              )}
+          <main className="flex-1 pb-16">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeWorkspace}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {activeWorkspace === 'overview' && (
+                  <OverviewWorkspace
+                    stats={stats}
+                    currentStageId={currentStageId}
+                    completedTopics={data.completedTopics}
+                    userMilestones={data.userMilestones || []}
+                    studyLogs={data.studyLogs}
+                    stageProgressList={stageProgressList}
+                    cadenceMetrics={cadenceMetrics}
+                    autoLogTopicPractice={data.autoLogTopicPractice !== false}
+                    badgesSummary={badgesSummary}
+                    isDailyChallengeCompleted={Boolean(data.completedDailyChallenges?.[todayDateKey])}
+                    onCompleteDailyChallenge={completeDailyChallenge}
+                    onToggleMilestone={toggleMilestone}
+                    onAddMilestone={addMilestone}
+                    onDeleteMilestone={deleteMilestone}
+                    onSetDailyGoal={setDailyGoalMinutes}
+                    onSetAutoLogTopicPractice={setAutoLogTopicPractice}
+                    onCompleteTopicWithHabit={completeTopicWithHabit}
+                    onSetStageTargetDate={setStageTargetDate}
+                    onGeneratePersonalizedPlan={generatePersonalizedPlan}
+                    onLogStudy={(minutes, stageId, notes) => addStudyLog(minutes, stageId, notes)}
+                    onNavigate={handleNavigate}
+                    onOpenAiMentor={handleOpenAiWithPrompt}
+                    onOpenQuickQuiz={() => setQuickQuizOpen(true)}
+                    onOpenCheatSheet={() => setCheatSheetOpen(true)}
+                    onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                    onOpenGame={() => setArcadeGameOpen(true)}
+                  />
+                )}
 
-              {activeWorkspace === 'curriculum' && (
-                <CurriculumWorkspace
-                  activeSubTab={curriculumTab}
-                  onChangeSubTab={setCurriculumTab}
-                  selectedStageId={effectiveSelectedStageId}
-                  onSelectStage={(stageId) => setUserSelectedStageId(stageId)}
-                  completedTopics={data.completedTopics}
-                  completedExitChecks={data.completedExitChecks}
-                  projectStatuses={data.projectStatuses}
-                  projectNotes={data.projectNotes}
-                  onToggleTopic={toggleTopic}
-                  onToggleExitCheck={toggleExitCheck}
-                  onMarkStageComplete={markStageTopicsComplete}
-                  onAddMilestone={addMilestone}
-                  onUpdateProjectStatus={updateProjectStatus}
-                  onUpdateProjectNotes={updateProjectNotes}
-                  onOpenAiMentor={handleOpenAiWithPrompt}
-                  onOpenShell={() => setActiveWorkspace('shell')}
-                  onOpenNotes={handleOpenNotes}
-                  onOpenPlayground={handleOpenPlaygroundWithCode}
-                  onOpenLab={(tab) => {
-                    setLabTab(tab);
-                    setActiveWorkspace('lab');
-                  }}
-                />
-              )}
+                {activeWorkspace === 'curriculum' && (
+                  <CurriculumWorkspace
+                    activeSubTab={curriculumTab}
+                    onChangeSubTab={setCurriculumTab}
+                    selectedStageId={effectiveSelectedStageId}
+                    onSelectStage={(stageId) => setUserSelectedStageId(stageId)}
+                    completedTopics={data.completedTopics}
+                    completedExitChecks={data.completedExitChecks}
+                    projectStatuses={data.projectStatuses}
+                    projectNotes={data.projectNotes}
+                    stageTargetDates={data.stageTargetDates}
+                    onToggleTopic={toggleTopic}
+                    onCompleteTopicWithHabit={completeTopicWithHabit}
+                    onSetStageTargetDate={setStageTargetDate}
+                    onToggleExitCheck={toggleExitCheck}
+                    onMarkStageComplete={markStageTopicsComplete}
+                    onAddMilestone={addMilestone}
+                    onUpdateProjectStatus={updateProjectStatus}
+                    onUpdateProjectNotes={updateProjectNotes}
+                    onOpenAiMentor={handleOpenAiWithPrompt}
+                    onOpenShell={() => setActiveWorkspace('shell')}
+                    onOpenNotes={handleOpenNotes}
+                    onOpenPlayground={handleOpenPlaygroundWithCode}
+                    onOpenLab={(tab) => {
+                      setLabTab(tab);
+                      setActiveWorkspace('lab');
+                    }}
+                  />
+                )}
 
               {activeWorkspace === 'lab' && (
                 <SystemsLabWorkspace
@@ -266,6 +309,7 @@ export default function HomePage() {
                   onNavigateToStage={() => handleNavigate('curriculum', 'stages', currentStageId)}
                   onNavigateToShell={() => handleNavigate('shell')}
                   onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                  onOpenGame={() => setArcadeGameOpen(true)}
                   onOpenAiMentor={handleOpenAiWithPrompt}
                 />
               )}
@@ -278,6 +322,7 @@ export default function HomePage() {
                   onSaveBanditPassword={saveBanditPassword}
                   onToggleLevel={toggleBanditLevel}
                   onOpenAiMentor={handleOpenAiWithPrompt}
+                  pendingCommand={pendingTerminalCmd}
                 />
               )}
 
@@ -315,7 +360,8 @@ export default function HomePage() {
         <CheatSheetModal
           isOpen={cheatSheetOpen}
           onClose={() => setCheatSheetOpen(false)}
-          onInsertCommand={() => {
+          onInsertCommand={(cmd) => {
+            setPendingTerminalCmd({ id: Date.now(), command: cmd });
             setCheatSheetOpen(false);
             setActiveWorkspace('shell');
           }}
@@ -328,10 +374,17 @@ export default function HomePage() {
           onOpenAiMentor={handleOpenAiWithPrompt}
           onOpenQuickQuiz={() => setQuickQuizOpen(true)}
           onOpenCheatSheet={() => setCheatSheetOpen(true)}
+          onOpenGame={() => setArcadeGameOpen(true)}
+        />
+
+        <SystemsArcadeGame
+          isOpen={arcadeGameOpen}
+          onClose={() => setArcadeGameOpen(false)}
+          onAwardXp={(xp, summary) => addStudyLog(15, currentStageId, `${summary} (+${xp} XP)`)}
         />
 
         {resetConfirmOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/80 p-4 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/92 p-4">
             <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -381,7 +434,7 @@ export default function HomePage() {
           </div>
         )}
 
-        <footer className="border-t border-white/[0.08] bg-[#03050b]/85 backdrop-blur-xl py-7 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
+        <footer className="border-t border-white/[0.08] bg-[#03050b]/94 py-7 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
           <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-display font-semibold text-slate-200">CS Odyssey</span>
@@ -409,7 +462,8 @@ export default function HomePage() {
             </div>
           </div>
         </footer>
-      </SoapBubbleMaterial>
+        </SoapBubbleMaterial>
+      </div>
     </div>
   );
 }

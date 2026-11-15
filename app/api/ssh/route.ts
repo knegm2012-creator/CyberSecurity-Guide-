@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from 'ssh2';
 import {
-  resolveAndValidateSshTarget,
-  sshRateLimiter,
-  sshConcurrencyLimiter,
+  apiSecurityHeaders,
   getClientIp,
+  parseJsonBodySafe,
+  RequestBodyError,
+  resolveAndValidateSshTarget,
   sanitizeTerminalOutput,
+  sshConcurrencyLimiter,
+  sshRateLimiter,
 } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface SshRequest {
-  action: 'test' | 'exec';
+  action?: 'test' | 'exec';
   host?: string;
   port?: number;
-  username: string;
+  username?: string;
   password?: string;
   command?: string;
   cwd?: string;
@@ -28,6 +31,7 @@ const MAX_TIMEOUT_MS = 20000;
 const MIN_TIMEOUT_MS = 2000;
 
 export async function POST(req: NextRequest) {
+  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
 
   // 1. Rate Limiting Check
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest) {
         error: 'Too Many Requests: SSH rate limit exceeded. Please wait a moment before sending more commands.',
         rateLimited: true,
       },
-      { status: 429 }
+      { status: 429, headers }
     );
   }
 
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
         error: 'Too Many Concurrent Requests: You have too many active SSH connections running. Please wait for previous commands to complete.',
         concurrencyLimited: true,
       },
-      { status: 429 }
+      { status: 429, headers }
     );
   }
 
@@ -62,18 +66,18 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const body = (await req.json()) as SshRequest;
-    const rawHost = body.host;
-    const rawPort = body.port;
-    const username = body.username?.trim();
-    const password = body.password ?? '';
-    const command = body.command;
-    const cwd = body.cwd || `/home/${username}`;
-    const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, body.timeoutMs || 12000));
+    const body = await parseJsonBodySafe<SshRequest>(req, 32 * 1024);
+    const rawHost = typeof body.host === 'string' ? body.host : undefined;
+    const rawPort = typeof body.port === 'number' ? body.port : Number(body.port) || undefined;
+    const username = typeof body.username === 'string' ? body.username.trim() : '';
+    const password = typeof body.password === 'string' ? body.password.slice(0, 256) : '';
+    const command = typeof body.command === 'string' ? body.command.slice(0, 2048) : undefined;
+    const cwd = typeof body.cwd === 'string' ? body.cwd : `/home/${username}`;
+    const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Number(body.timeoutMs) || 12000));
 
     if (!username) {
       releaseConcurrency();
-      return NextResponse.json({ error: 'Username is required (e.g. bandit0)' }, { status: 400 });
+      return NextResponse.json({ error: 'Username is required (e.g. bandit0)' }, { status: 400, headers });
     }
 
     // Validate username syntax strictly: alphanumeric and underscore/hyphen only (e.g. bandit0)
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
       releaseConcurrency();
       return NextResponse.json(
         { error: 'Invalid username format. Must be 1-32 alphanumeric characters.' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -89,11 +93,11 @@ export async function POST(req: NextRequest) {
     let validatedTarget;
     try {
       validatedTarget = await resolveAndValidateSshTarget(rawHost, rawPort);
-    } catch (ssrfErr: any) {
+    } catch (ssrfErr) {
       releaseConcurrency();
       return NextResponse.json(
-        { error: ssrfErr.message || 'Forbidden destination host or port.' },
-        { status: 403 }
+        { error: ssrfErr instanceof Error ? ssrfErr.message : 'Forbidden destination host or port.' },
+        { status: 403, headers }
       );
     }
 
@@ -121,7 +125,7 @@ export async function POST(req: NextRequest) {
           cleanupAndResolve(
             NextResponse.json(
               { error: `Connection timed out connecting to ${host}:${port}` },
-              { status: 504 }
+              { status: 504, headers }
             )
           );
         }, timeoutMs);
@@ -131,7 +135,7 @@ export async function POST(req: NextRequest) {
             conn.exec('uname -a && pwd', (err, stream) => {
               if (err) {
                 cleanupAndResolve(
-                  NextResponse.json({ error: sanitizeTerminalOutput(err.message) }, { status: 500 })
+                  NextResponse.json({ error: sanitizeTerminalOutput(err.message) }, { status: 500, headers })
                 );
                 return;
               }
@@ -146,15 +150,18 @@ export async function POST(req: NextRequest) {
               stream.on('close', () => {
                 const cleanInfo = sanitizeTerminalOutput(infoOut).trim();
                 cleanupAndResolve(
-                  NextResponse.json({
-                    success: true,
-                    message: `Successfully connected to ${host}:${port} as ${username}`,
-                    host,
-                    port,
-                    username,
-                    systemInfo: cleanInfo,
-                    defaultDir: `/home/${username}`,
-                  })
+                  NextResponse.json(
+                    {
+                      success: true,
+                      message: `Successfully connected to ${host}:${port} as ${username}`,
+                      host,
+                      port,
+                      username,
+                      systemInfo: cleanInfo,
+                      defaultDir: `/home/${username}`,
+                    },
+                    { headers }
+                  )
                 );
               });
             });
@@ -167,7 +174,7 @@ export async function POST(req: NextRequest) {
                     ? 'SSH Authentication failed. Check your password or flag!'
                     : `SSH Connection error: ${sanitizeTerminalOutput(err.message)}`,
                 },
-                { status: 401 }
+                { status: 401, headers }
               )
             );
           })
@@ -186,7 +193,7 @@ export async function POST(req: NextRequest) {
     if (body.action === 'exec') {
       if (!command || !command.trim()) {
         releaseConcurrency();
-        return NextResponse.json({ error: 'No command provided' }, { status: 400 });
+        return NextResponse.json({ error: 'No command provided' }, { status: 400, headers });
       }
 
       return new Promise<NextResponse>((resolve) => {
@@ -212,7 +219,7 @@ export async function POST(req: NextRequest) {
                 error: 'Command timed out on remote server (exceeded timeout threshold).',
                 timedOut: true,
               },
-              { status: 504 }
+              { status: 504, headers }
             )
           );
         }, timeoutMs);
@@ -220,7 +227,7 @@ export async function POST(req: NextRequest) {
         conn
           .on('ready', () => {
             // Sanitize safeCwd - restrict to safe path characters
-            const sanitizedCwd = (cwd || `/home/${username}`).replace(/[^a-zA-Z0-9_\-\.\/]/g, '');
+            const sanitizedCwd = (cwd || `/home/${username}`).replace(/[^a-zA-Z0-9_\-./]/g, '');
             const trimmedCmd = command.trim();
 
             // Delimiters for remote state inspection
@@ -229,7 +236,7 @@ export async function POST(req: NextRequest) {
             conn.exec(fullRemoteCmd, (err, stream) => {
               if (err) {
                 cleanupAndResolve(
-                  NextResponse.json({ error: sanitizeTerminalOutput(err.message) }, { status: 500 })
+                  NextResponse.json({ error: sanitizeTerminalOutput(err.message) }, { status: 500, headers })
                 );
                 return;
               }
@@ -250,7 +257,6 @@ export async function POST(req: NextRequest) {
               });
 
               stream.on('close', (code: number | null) => {
-                // Parse out ___REMOTE_PWD___ and ___REMOTE_EXIT___
                 let newCwd = cwd;
                 let remoteExitCode = typeof code === 'number' ? code : 0;
                 let cleanStdout = rawStdout;
@@ -271,23 +277,24 @@ export async function POST(req: NextRequest) {
                   .replace(/___REMOTE_PWD___:.*?(?:\r?\n|$)/g, '')
                   .replace(/___REMOTE_EXIT___:.*?(?:\r?\n|$)/g, '');
 
-                // Sanitize ANSI control sequences & terminal injection vectors
                 cleanStdout = sanitizeTerminalOutput(cleanStdout);
                 const cleanStderr = sanitizeTerminalOutput(rawStderr);
 
-                // Detect possible Bandit password / flag (32-character alphanumeric string)
                 const flagRegex = /\b[A-Za-z0-9]{32}\b/g;
                 const detectedFlags = Array.from(new Set(cleanStdout.match(flagRegex) || []));
 
                 cleanupAndResolve(
-                  NextResponse.json({
-                    success: true,
-                    stdout: cleanStdout.replace(/\n+$/, ''),
-                    stderr: cleanStderr.trim(),
-                    newCwd,
-                    exitCode: remoteExitCode,
-                    detectedFlags,
-                  })
+                  NextResponse.json(
+                    {
+                      success: true,
+                      stdout: cleanStdout.replace(/\n+$/, ''),
+                      stderr: cleanStderr.trim(),
+                      newCwd,
+                      exitCode: remoteExitCode,
+                      detectedFlags,
+                    },
+                    { headers }
+                  )
                 );
               });
             });
@@ -300,7 +307,7 @@ export async function POST(req: NextRequest) {
                     ? 'Authentication failed: Incorrect password for this Bandit level.'
                     : `SSH Connection error: ${sanitizeTerminalOutput(err.message)}`,
                 },
-                { status: 401 }
+                { status: 401, headers }
               )
             );
           })
@@ -316,12 +323,15 @@ export async function POST(req: NextRequest) {
     }
 
     releaseConcurrency();
-    return NextResponse.json({ error: 'Invalid action. Supported: "test" or "exec"' }, { status: 400 });
-  } catch (error: any) {
+    return NextResponse.json({ error: 'Invalid action. Supported: "test" or "exec"' }, { status: 400, headers });
+  } catch (error) {
     releaseConcurrency();
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status, headers });
+    }
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Internal Server Error' },
+      { status: 500, headers }
     );
   }
 }

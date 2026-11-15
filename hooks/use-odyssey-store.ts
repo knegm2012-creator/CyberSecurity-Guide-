@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from 'react';
 import { STAGES_DATA, PORTFOLIO_PROJECTS } from '@/lib/curriculum-data';
 import { sanitizeOdysseyStoreState } from '@/lib/client-security';
+import { evaluateBadges, type EvaluatedBadge } from '@/lib/badges-data';
 
 export interface StudyLogEntry {
   id: string;
@@ -45,6 +46,31 @@ export interface SavedCodeSnippet {
   tags?: string[];
 }
 
+export interface StageProgressSummary {
+  stageId: string;
+  stageNumber: number;
+  title: string;
+  shortTitle: string;
+  sprintMonth: string;
+  topicsDone: number;
+  topicsTotal: number;
+  topicPercent: number;
+  exitDone: number;
+  exitTotal: number;
+  exitPercent: number;
+  targetDate?: string;
+  isComplete: boolean;
+  nextTopicId?: string;
+  nextTopicTitle?: string;
+}
+
+export interface CadenceDayCell {
+  dateStr: string;
+  minutes: number;
+  isToday: boolean;
+  goalMet: boolean;
+}
+
 export interface OdysseyStoreData {
   completedTopics: Record<string, boolean>;
   completedExitChecks: Record<string, boolean>;
@@ -60,9 +86,13 @@ export interface OdysseyStoreData {
   dailyGoalMinutes: number;
   userMilestones: UserMilestone[];
   savedSnippets: SavedCodeSnippet[];
+  earnedBadges?: Record<string, string>;
+  stageTargetDates?: Record<string, string>;
+  autoLogTopicPractice?: boolean;
 }
 
 const STORAGE_KEY = 'cs_odyssey_state_v1';
+const STORAGE_META_KEY = 'cs_odyssey_meta_v1';
 
 const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -71,6 +101,30 @@ const getYesterdayKey = () => {
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().split('T')[0];
 };
+
+function computeStudyStreak(studyLogs: StudyLogEntry[]): number {
+  const todayStr = getTodayKey();
+  const yesterdayStr = getYesterdayKey();
+  const dates = Array.from(new Set(studyLogs.map((l) => l.date)))
+    .filter(Boolean)
+    .sort()
+    .reverse();
+  if (dates.length === 0 || (dates[0] !== todayStr && dates[0] !== yesterdayStr)) {
+    return 0;
+  }
+  let streak = 1;
+  let checkDate = new Date(`${dates[0]}T00:00:00Z`);
+  for (let i = 1; i < dates.length; i++) {
+    const expectedPrev = new Date(checkDate.getTime() - 86400000).toISOString().split('T')[0];
+    if (dates[i] === expectedPrev) {
+      streak++;
+      checkDate = new Date(`${expectedPrev}T00:00:00Z`);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
 
 const DEFAULT_STATE: OdysseyStoreData = {
   completedTopics: {
@@ -111,7 +165,7 @@ const DEFAULT_STATE: OdysseyStoreData = {
       title: 'Solve Wargame Levels 0 through 5 in Shell',
       category: 'bandit',
       completed: false,
-      stageId: 'stage-1',
+      stageId: 'stage-3',
       xpReward: 100,
     },
     {
@@ -119,11 +173,16 @@ const DEFAULT_STATE: OdysseyStoreData = {
       title: 'Master Big-O Asymptotics & Sorting Algorithms',
       category: 'algorithms',
       completed: false,
-      stageId: 'stage-4',
+      stageId: 'stage-12',
       xpReward: 100,
     },
   ],
   savedSnippets: [],
+  earnedBadges: {
+    'first-blueprint': new Date().toISOString(),
+  },
+  stageTargetDates: {},
+  autoLogTopicPractice: true,
   stageNotes: {
     'stage-0': `# Stage 0 Engineering Notes
 - Configured local Python 3 and GCC toolchain.
@@ -173,26 +232,280 @@ export function useOdysseyStore() {
   });
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const diskSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveState = useCallback((newData: OdysseyStoreData) => {
-    setData(newData);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
-      setLastSaved(new Date());
-    } catch (e) {
-      console.error('Failed to save state to localStorage', e);
-    }
+  const pushToDisk = useCallback((payload: OdysseyStoreData) => {
+    if (typeof window === 'undefined') return;
+    if (diskSyncTimerRef.current) clearTimeout(diskSyncTimerRef.current);
+    diskSyncTimerRef.current = setTimeout(() => {
+      fetch('/api/progress', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: payload }),
+      }).catch(() => {});
+    }, 600);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const controller = new AbortController();
+
+    let localHasSaved = false;
+    let localUpdatedAtMs = 0;
+    try {
+      localHasSaved = Boolean(localStorage.getItem(STORAGE_KEY));
+      const metaRaw = localStorage.getItem(STORAGE_META_KEY);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw) as { updatedAt?: string };
+        if (meta.updatedAt) {
+          localUpdatedAtMs = Date.parse(meta.updatedAt) || 0;
+        }
+      }
+    } catch {
+      // Ignore storage inspection issues
+    }
+
+    fetch('/api/progress', { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!payload || !payload.exists || !payload.state) return;
+        const diskUpdatedAtMs = payload.updatedAt ? Date.parse(payload.updatedAt) || 0 : 0;
+        if (!localHasSaved || diskUpdatedAtMs > localUpdatedAtMs) {
+          const sanitized = sanitizeOdysseyStoreState(payload.state);
+          const merged: OdysseyStoreData = {
+            ...DEFAULT_STATE,
+            ...sanitized,
+          };
+          setData(merged);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            localStorage.setItem(
+              STORAGE_META_KEY,
+              JSON.stringify({ updatedAt: payload.updatedAt || new Date().toISOString() })
+            );
+          } catch {
+            // Ignore localStorage quota issues
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      controller.abort();
+      if (diskSyncTimerRef.current) clearTimeout(diskSyncTimerRef.current);
+    };
+  }, []);
+
+  const saveState = useCallback(
+    (newData: OdysseyStoreData) => {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const streak = computeStudyStreak(newData.studyLogs || []);
+      const evaluation = evaluateBadges({
+        completedTopics: newData.completedTopics || {},
+        solvedBanditLevels: newData.solvedBanditLevels || [],
+        projectStatuses: newData.projectStatuses || {},
+        userMilestones: newData.userMilestones || [],
+        savedSnippets: newData.savedSnippets || [],
+        completedDailyChallenges: newData.completedDailyChallenges,
+        studyLogs: newData.studyLogs || [],
+        earnedBadges: newData.earnedBadges,
+        currentStreak: streak,
+      });
+
+      const finalData: OdysseyStoreData =
+        evaluation.newlyUnlockedIds.length > 0
+          ? {
+              ...newData,
+              earnedBadges: {
+                ...(newData.earnedBadges || {}),
+                ...Object.fromEntries(evaluation.newlyUnlockedIds.map((id) => [id, nowIso])),
+              },
+            }
+          : newData;
+
+      setData(finalData);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+        localStorage.setItem(STORAGE_META_KEY, JSON.stringify({ updatedAt: nowIso }));
+        setLastSaved(now);
+      } catch (e) {
+        console.error('Failed to save state to localStorage', e);
+      }
+      pushToDisk(finalData);
+    },
+    [pushToDisk]
+  );
 
   const toggleTopic = useCallback(
     (topicId: string) => {
+      const nextChecked = !data.completedTopics[topicId];
+      let nextLogs = data.studyLogs;
+
+      if (nextChecked && data.autoLogTopicPractice !== false) {
+        const matchedStage = STAGES_DATA.find((s) => s.topics.some((t) => t.id === topicId));
+        const matchedTopic = matchedStage?.topics.find((t) => t.id === topicId);
+        if (matchedStage && matchedTopic) {
+          nextLogs = [
+            {
+              id: 'log-topic-' + Date.now(),
+              date: getTodayKey(),
+              minutes: 15,
+              stageId: matchedStage.id,
+              notes: `Mastered topic: "${matchedTopic.title}" (Stage ${matchedStage.number})`,
+            },
+            ...data.studyLogs,
+          ];
+        }
+      }
+
       saveState({
         ...data,
         completedTopics: {
           ...data.completedTopics,
-          [topicId]: !data.completedTopics[topicId],
+          [topicId]: nextChecked,
         },
+        studyLogs: nextLogs,
       });
+    },
+    [data, saveState]
+  );
+
+  const completeTopicWithHabit = useCallback(
+    (topicId: string, stageId: string, logMinutes = 15) => {
+      const stage = STAGES_DATA.find((s) => s.id === stageId);
+      const topic = stage?.topics.find((t) => t.id === topicId);
+      const validMinutes = Math.max(0, Math.min(240, Math.floor(logMinutes)));
+      const nextLogs =
+        validMinutes > 0 && stage && topic
+          ? [
+              {
+                id: 'log-habit-' + Date.now(),
+                date: getTodayKey(),
+                minutes: validMinutes,
+                stageId: stage.id,
+                notes: `Completed topic "${topic.title}" with ${validMinutes}m deliberate practice`,
+              },
+              ...data.studyLogs,
+            ]
+          : data.studyLogs;
+
+      saveState({
+        ...data,
+        completedTopics: {
+          ...data.completedTopics,
+          [topicId]: true,
+        },
+        studyLogs: nextLogs,
+      });
+    },
+    [data, saveState]
+  );
+
+  const setStageTargetDate = useCallback(
+    (stageId: string, targetDate: string) => {
+      if (!/^stage-([0-9]|1[0-5])$/.test(stageId)) return;
+      const clean = targetDate.trim();
+      const nextDates = { ...(data.stageTargetDates || {}) };
+      if (!clean) {
+        delete nextDates[stageId];
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+        nextDates[stageId] = clean;
+      } else {
+        return;
+      }
+
+      // Sync target date onto matching open stage milestones if present
+      const nextMilestones = (data.userMilestones || []).map((m) =>
+        m.stageId === stageId && !m.completed && m.title.startsWith('Complete Stage ')
+          ? { ...m, targetDate: clean || undefined }
+          : m
+      );
+
+      saveState({
+        ...data,
+        stageTargetDates: nextDates,
+        userMilestones: nextMilestones,
+      });
+    },
+    [data, saveState]
+  );
+
+  const setAutoLogTopicPractice = useCallback(
+    (enabled: boolean) => {
+      saveState({
+        ...data,
+        autoLogTopicPractice: Boolean(enabled),
+      });
+    },
+    [data, saveState]
+  );
+
+  const generatePersonalizedPlan = useCallback(
+    (horizonWeeks: 12 | 24 | 36 = 24) => {
+      const remainingStages = STAGES_DATA.filter((stage) =>
+        stage.topics.some((t) => !data.completedTopics[t.id])
+      );
+      if (remainingStages.length === 0) {
+        return { datesUpdated: 0, milestonesAdded: 0 };
+      }
+
+      const totalDays = horizonWeeks * 7;
+      const totalTopicWeight = remainingStages.reduce((sum, st) => {
+        const unchecked = st.topics.filter((t) => !data.completedTopics[t.id]).length;
+        return sum + Math.max(2, unchecked);
+      }, 0);
+
+      const now = new Date();
+      let accumulatedDays = 0;
+      const nextDates: Record<string, string> = { ...(data.stageTargetDates || {}) };
+      const existingStageMilestones = new Set(
+        (data.userMilestones || []).filter((m) => m.stageId && !m.completed).map((m) => m.stageId as string)
+      );
+
+      const categoryForStage = (num: number): UserMilestone['category'] => {
+        if (num <= 2) return 'basics';
+        if (num === 3 || num === 9 || num === 10) return 'bandit';
+        if (num === 11) return 'projects';
+        if (num === 12) return 'algorithms';
+        return 'systems';
+      };
+
+      const newMilestones: UserMilestone[] = [];
+      let datesUpdated = 0;
+
+      remainingStages.forEach((stage, idx) => {
+        const unchecked = stage.topics.filter((t) => !data.completedTopics[t.id]).length;
+        const shareDays = Math.max(
+          3,
+          Math.round((Math.max(2, unchecked) / totalTopicWeight) * totalDays)
+        );
+        accumulatedDays += shareDays;
+        const targetObj = new Date(now.getTime() + Math.min(totalDays, accumulatedDays) * 86400000);
+        const targetDate = targetObj.toISOString().split('T')[0];
+        nextDates[stage.id] = targetDate;
+        datesUpdated++;
+
+        if (!existingStageMilestones.has(stage.id)) {
+          newMilestones.push({
+            id: `ms-plan-${stage.number}-${Date.now() + idx}`,
+            title: `Complete Stage ${stage.number}: ${stage.title.split(':')[0]}`,
+            category: categoryForStage(stage.number),
+            targetDate,
+            completed: false,
+            stageId: stage.id,
+            xpReward: stage.number >= 10 ? 125 : 90,
+          });
+        }
+      });
+
+      saveState({
+        ...data,
+        stageTargetDates: nextDates,
+        userMilestones: [...newMilestones, ...(data.userMilestones || [])],
+      });
+
+      return { datesUpdated, milestonesAdded: newMilestones.length };
     },
     [data, saveState]
   );
@@ -556,25 +869,7 @@ export function useOdysseyStore() {
     const heroTitle = levelTitles[levelNumber - 1] || 'Principal Systems Engineer';
 
     // Accurate streak: only active if latest study log is today or yesterday
-    const dates = Array.from(new Set(data.studyLogs.map((l) => l.date)))
-      .filter(Boolean)
-      .sort()
-      .reverse();
-    let currentStreak = 0;
-
-    if (dates.length > 0 && (dates[0] === todayStr || dates[0] === yesterdayStr)) {
-      currentStreak = 1;
-      let checkDate = new Date(`${dates[0]}T00:00:00Z`);
-      for (let i = 1; i < dates.length; i++) {
-        const expectedPrev = new Date(checkDate.getTime() - 86400000).toISOString().split('T')[0];
-        if (dates[i] === expectedPrev) {
-          currentStreak++;
-          checkDate = new Date(`${expectedPrev}T00:00:00Z`);
-        } else {
-          break;
-        }
-      }
-    }
+    const currentStreak = computeStudyStreak(data.studyLogs);
 
     return {
       totalTopicsCount,
@@ -595,6 +890,100 @@ export function useOdysseyStore() {
       currentStreak,
     };
   }, [data]);
+
+  const stageProgressList = useMemo<StageProgressSummary[]>(() => {
+    const targetDates = data.stageTargetDates || {};
+    return STAGES_DATA.map((stage) => {
+      const topicsTotal = stage.topics.length;
+      const topicsDone = stage.topics.filter((t) => data.completedTopics[t.id]).length;
+      const topicPercent = topicsTotal > 0 ? Math.round((topicsDone / topicsTotal) * 100) : 0;
+
+      const exitTotal = stage.exitChecklist.length;
+      const exitDone = stage.exitChecklist.filter(
+        (_, idx) => Boolean(data.completedExitChecks[`${stage.id}-${idx}`])
+      ).length;
+      const exitPercent = exitTotal > 0 ? Math.round((exitDone / exitTotal) * 100) : 0;
+
+      const nextTopic = stage.topics.find((t) => !data.completedTopics[t.id]);
+
+      return {
+        stageId: stage.id,
+        stageNumber: stage.number,
+        title: stage.title,
+        shortTitle: stage.title.split(':')[0],
+        sprintMonth: stage.sprintMonth,
+        topicsDone,
+        topicsTotal,
+        topicPercent,
+        exitDone,
+        exitTotal,
+        exitPercent,
+        targetDate: targetDates[stage.id],
+        isComplete: topicsDone === topicsTotal && topicsTotal > 0,
+        nextTopicId: nextTopic?.id,
+        nextTopicTitle: nextTopic?.title,
+      };
+    });
+  }, [data.completedTopics, data.completedExitChecks, data.stageTargetDates]);
+
+  const cadenceMetrics = useMemo(() => {
+    const todayStr = getTodayKey();
+    const goalMins = data.dailyGoalMinutes || 30;
+    const dayMap = new Map<string, number>();
+
+    for (const entry of data.studyLogs) {
+      if (!entry.date) continue;
+      dayMap.set(entry.date, (dayMap.get(entry.date) || 0) + (entry.minutes || 0));
+    }
+
+    const last28Days: CadenceDayCell[] = Array.from({ length: 28 }, (_, i) => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - (27 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const minutes = dayMap.get(dateStr) || 0;
+      return {
+        dateStr,
+        minutes,
+        isToday: dateStr === todayStr,
+        goalMet: minutes >= goalMins,
+      };
+    });
+
+    const last7 = last28Days.slice(-7);
+    const weeklyMinutes = last7.reduce((sum, c) => sum + c.minutes, 0);
+    const daysGoalMet7 = last7.filter((c) => c.goalMet).length;
+    const activeDays28 = last28Days.filter((c) => c.minutes > 0).length;
+
+    return {
+      last28Days,
+      weeklyMinutes,
+      daysGoalMet7,
+      activeDays28,
+    };
+  }, [data.studyLogs, data.dailyGoalMinutes]);
+
+  const badgesSummary = useMemo<{
+    badges: EvaluatedBadge[];
+    unlockedCount: number;
+    totalCount: number;
+  }>(() => {
+    const evaluated = evaluateBadges({
+      completedTopics: data.completedTopics || {},
+      solvedBanditLevels: data.solvedBanditLevels || [],
+      projectStatuses: data.projectStatuses || {},
+      userMilestones: data.userMilestones || [],
+      savedSnippets: data.savedSnippets || [],
+      completedDailyChallenges: data.completedDailyChallenges,
+      studyLogs: data.studyLogs || [],
+      earnedBadges: data.earnedBadges,
+      currentStreak: stats.currentStreak,
+    });
+    return {
+      badges: evaluated.badges,
+      unlockedCount: evaluated.unlockedCount,
+      totalCount: evaluated.totalCount,
+    };
+  }, [data, stats.currentStreak]);
 
   const exportBackup = useCallback(() => {
     const jsonStr = JSON.stringify(data, null, 2);
@@ -629,6 +1018,8 @@ export function useOdysseyStore() {
 
   // Pure state reset; UI handles user confirmation dialog before invoking
   const resetAll = useCallback(() => {
+    if (diskSyncTimerRef.current) clearTimeout(diskSyncTimerRef.current);
+    fetch('/api/progress', { method: 'DELETE' }).catch(() => {});
     saveState(DEFAULT_STATE);
   }, [saveState]);
 
@@ -637,7 +1028,11 @@ export function useOdysseyStore() {
     isLoaded,
     lastSaved,
     stats,
+    stageProgressList,
+    cadenceMetrics,
+    badgesSummary,
     toggleTopic,
+    completeTopicWithHabit,
     markStageTopicsComplete,
     toggleExitCheck,
     toggleBanditLevel,
@@ -652,6 +1047,9 @@ export function useOdysseyStore() {
     toggleMilestone,
     deleteMilestone,
     setDailyGoalMinutes,
+    setStageTargetDate,
+    setAutoLogTopicPractice,
+    generatePersonalizedPlan,
     saveCodeSnippet,
     deleteCodeSnippet,
     exportBackup,

@@ -289,6 +289,9 @@ export const sshConcurrencyLimiter = new ConcurrencyLimiter(2); // max 2 concurr
 export const codeExecRateLimiter = new TokenBucketRateLimiter(20, 0.4); // 20 bursts, 1 every 2.5s
 export const codeExecConcurrencyLimiter = new ConcurrencyLimiter(2); // max 2 concurrent executions per IP
 
+export const tutorRateLimiter = new TokenBucketRateLimiter(30, 0.5); // 30 bursts, 1 every 2s
+export const progressRateLimiter = new TokenBucketRateLimiter(60, 2); // 60 bursts, 2/s for local persistence sync
+
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
@@ -298,6 +301,65 @@ export function getClientIp(req: Request): string {
   const realIp = req.headers.get('x-real-ip');
   if (realIp) return realIp.trim();
   return '127.0.0.1';
+}
+
+export function apiSecurityHeaders(): Record<string, string> {
+  return {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+  };
+}
+
+export class RequestBodyError extends Error {
+  public readonly status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = 'RequestBodyError';
+    this.status = status;
+  }
+}
+
+export async function parseJsonBodySafe<T = Record<string, unknown>>(
+  req: Request,
+  maxBytes = 256 * 1024
+): Promise<T> {
+  const contentLengthHeader = req.headers.get('content-length');
+  if (contentLengthHeader) {
+    const declaredSize = Number(contentLengthHeader);
+    if (!Number.isNaN(declaredSize) && declaredSize > maxBytes) {
+      throw new RequestBodyError(`Request payload exceeds maximum limit (${maxBytes} bytes).`, 413);
+    }
+  }
+
+  let rawText = '';
+  try {
+    rawText = await req.text();
+  } catch {
+    throw new RequestBodyError('Unable to read request body.', 400);
+  }
+
+  if (Buffer.byteLength(rawText, 'utf-8') > maxBytes) {
+    throw new RequestBodyError(`Request payload exceeds maximum limit (${maxBytes} bytes).`, 413);
+  }
+
+  if (!rawText.trim()) {
+    throw new RequestBodyError('Request body must be valid JSON.', 400);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new RequestBodyError('Malformed JSON in request body.', 400);
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new RequestBodyError('JSON request body must be an object.', 400);
+  }
+
+  return parsed as T;
 }
 
 export * from './client-security.ts';

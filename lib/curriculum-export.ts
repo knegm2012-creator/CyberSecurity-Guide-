@@ -5,9 +5,9 @@ import {
   ESSENTIAL_BOOKS,
   YOUTUBE_CHANNELS,
   WEEKLY_SCHEDULE_ROUTINE,
-  StageData,
-} from './curriculum-data';
-import { CURATED_CS_SOURCES, CuratedSource } from './sources-catalog';
+  type StageData,
+} from './curriculum-data.ts';
+import { CURATED_CS_SOURCES, type CuratedSource } from './sources-catalog.ts';
 
 export type ExportAudienceMode = 'student' | 'teacher' | 'github';
 
@@ -37,6 +37,8 @@ const STAGE_ESTIMATED_HOURS: Record<number, number> = {
   11: 20,
   12: 24,
   13: 24,
+  14: 22,
+  15: 24,
 };
 
 export function computePacingSummary(hoursPerWeek: number) {
@@ -221,10 +223,10 @@ export function generateFullCurriculumMarkdown(options: CurriculumExportOptions)
     lines.push('# CS Odyssey: Complete Open-Source Computer Science Curriculum (Zero to Systems Engineer)');
     lines.push('');
     lines.push('[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)');
-    lines.push('[![Curriculum: 14 Stages](https://img.shields.io/badge/Stages-0%20to%2013-0284c7.svg)](#stage-by-stage-curriculum)');
+    lines.push('[![Curriculum: 16 Stages](https://img.shields.io/badge/Stages-0%20to%2015-0284c7.svg)](#stage-by-stage-curriculum)');
     lines.push('[![Open Education](https://img.shields.io/badge/Open%20Education-Students%20%26%20Teachers-059669.svg)](#how-to-use-this-repository)');
     lines.push('');
-    lines.push('An open-source, self-paced & classroom-ready **14-Stage Computer Science and Systems Engineering Curriculum** taking learners from electrical switches, binary, and Python fundamentals all the way to operating systems, C memory safety, x86-64 reverse engineering, algorithms, compilers, and distributed consensus.');
+    lines.push('An open-source, self-paced & classroom-ready **16-Stage A-to-Z Computer Science and Systems Engineering Curriculum** taking learners from electrical switches, binary, and Python fundamentals all the way to operating systems, C memory safety, x86-64 reverse engineering, algorithms, compilers, distributed consensus, cloud native SRE, and AI/HPC systems.');
     lines.push('');
     lines.push('## How to Use This Repository');
     lines.push('- **Students**: Fork this repository and check off `[x]` topic boxes and Exit Gate items as you complete each stage.');
@@ -233,7 +235,7 @@ export function generateFullCurriculumMarkdown(options: CurriculumExportOptions)
   } else if (options.mode === 'teacher') {
     lines.push('# CS Odyssey — Educator Syllabus, Lab Pacing & Assessment Guide');
     lines.push('');
-    lines.push('**Academic Track:** Foundations through Systems Architecture (14 Sequential Modules)  ');
+    lines.push('**Academic Track:** Zero-to-Hero A–Z Foundations through Cloud & AI Systems (16 Sequential Modules)  ');
     lines.push('**Instructional Format:** 10–12 hours/week lecture + guided sandbox labs + portfolio artifacts  ');
     lines.push('**License:** MIT Open Educational Resource (free to remix, print, distribute, and adapt for classrooms)');
     lines.push('');
@@ -250,7 +252,7 @@ export function generateFullCurriculumMarkdown(options: CurriculumExportOptions)
   } else {
     lines.push('# CS Odyssey — Student Self-Study Master Roadmap');
     lines.push('');
-    lines.push('Track every concept from **Stage 0 (Binary & Hardware Foundations)** through **Stage 13 (Compilers & Distributed Consensus)**. Do not rush—verify each Exit Gate item independently before moving forward.');
+    lines.push('Track every concept from **Stage 0 (Binary & Hardware Foundations)** through **Stage 15 (Linear Algebra, Neural Networks & HPC)**. Do not rush—verify each Exit Gate item independently before moving forward.');
     lines.push('');
     lines.push('## Suggested Weekly Rhythm (10–12 Hours / Week)');
     WEEKLY_SCHEDULE_ROUTINE.forEach((row) => {
@@ -360,7 +362,7 @@ export function generateFullCurriculumMarkdown(options: CurriculumExportOptions)
     lines.push('');
     lines.push('---');
     lines.push('');
-    lines.push('## 14 Capstone Engineering Portfolio Projects');
+    lines.push(`## ${PORTFOLIO_PROJECTS.length} Capstone Engineering Portfolio Projects`);
     PORTFOLIO_PROJECTS.forEach((proj) => {
       lines.push('');
       lines.push(`### Project ${proj.number}: ${proj.title} (${proj.difficulty})`);
@@ -472,7 +474,7 @@ export function generateContributingMarkdown(): string {
     '',
     '1. **Verify Primary Sources**: Every external course, video series, textbook, paper, or interactive lab must point directly to its authoritative source (e.g., MIT OCW, Stanford Online, CMU, OSTEP, Beej, MDN, IETF RFCs). Never submit pirated mirrors or link aggregators.',
     '2. **State Access & Cost Clearly**: Label every submission explicitly as `Free`, `Free Audit`, `Open Source`, or `Paid Book`. Free and open-licensed resources take priority.',
-    '3. **Map to Stages (0–13)**: Every resource should indicate which stage(s) (`stage-0` through `stage-13`) and mastery prerequisite it serves.',
+    '3. **Map to Stages (0–15)**: Every resource should indicate which stage(s) (`stage-0` through `stage-15`) and mastery prerequisite it serves.',
     '4. **Safety & Legal Compliance**: Security modules must only reference authorized local VMs or designated public educational wargame arenas (such as picoCTF, PortSwigger Web Security Academy, OverTheWire, or CryptoHack).',
     '',
     '## Suggested Pull Request Checklist',
@@ -556,7 +558,7 @@ export function generatePrintableHtmlSyllabus(hoursPerWeek = 10): string {
 <body>
   <header>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-      <h1>CS Odyssey: Complete 14-Stage Computer Science Syllabus</h1>
+      <h1>CS Odyssey: Complete 16-Stage A–Z Computer Science Syllabus</h1>
       <button class="no-print" onclick="window.print()" style="padding:8px 14px;background:#0f172a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Print / Save PDF</button>
     </div>
     <div class="meta">Pacing Plan: <strong>${pacing.hoursPerWeek} hrs/week</strong> · Estimated Total: <strong>${pacing.totalHours} hours (${pacing.totalWeeks} weeks)</strong> · License: MIT Open Educational Resource</div>

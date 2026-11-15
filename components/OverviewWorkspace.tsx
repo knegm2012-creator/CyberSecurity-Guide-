@@ -19,14 +19,24 @@ import {
   Terminal,
   Download,
   Orbit,
+  Gamepad2,
+  Film,
 } from 'lucide-react';
 import { STAGES_DATA } from '@/lib/curriculum-data';
-import { StudyLogEntry, UserMilestone } from '@/hooks/use-odyssey-store';
+import {
+  StudyLogEntry,
+  UserMilestone,
+  type StageProgressSummary,
+  type CadenceDayCell,
+} from '@/hooks/use-odyssey-store';
 import { DailyChallengeWidget } from './DailyChallengeWidget';
 import { CurriculumSkillGraph } from './CurriculumSkillGraph';
+import { ProgressAnalyticsDeck } from './ProgressAnalyticsDeck';
 import { LiquidGlassLogo } from './liquid-glass-logo';
 import { ChromaticButton } from './chromatic-button';
 import { SoapBubbleButton } from './soap-bubble';
+import { BadgesCollection } from './BadgesCollection';
+import type { EvaluatedBadge } from '@/lib/badges-data';
 import type { PrimaryWorkspace } from './Navbar';
 
 interface OverviewWorkspaceProps {
@@ -52,6 +62,19 @@ interface OverviewWorkspaceProps {
   completedTopics: Record<string, boolean>;
   userMilestones: UserMilestone[];
   studyLogs: StudyLogEntry[];
+  stageProgressList: StageProgressSummary[];
+  cadenceMetrics: {
+    last28Days: CadenceDayCell[];
+    weeklyMinutes: number;
+    daysGoalMet7: number;
+    activeDays28: number;
+  };
+  autoLogTopicPractice: boolean;
+  badgesSummary: {
+    badges: EvaluatedBadge[];
+    unlockedCount: number;
+    totalCount: number;
+  };
   isDailyChallengeCompleted: boolean;
   onCompleteDailyChallenge: (dateKey: string, xp: number, title: string, stageId: string) => void;
   onToggleMilestone: (id: string) => void;
@@ -64,19 +87,27 @@ interface OverviewWorkspaceProps {
   ) => void;
   onDeleteMilestone: (id: string) => void;
   onSetDailyGoal: (minutes: number) => void;
+  onSetAutoLogTopicPractice: (enabled: boolean) => void;
+  onCompleteTopicWithHabit: (topicId: string, stageId: string, logMinutes?: number) => void;
+  onSetStageTargetDate: (stageId: string, targetDate: string) => void;
+  onGeneratePersonalizedPlan: (horizonWeeks: 12 | 24 | 36) => {
+    datesUpdated: number;
+    milestonesAdded: number;
+  };
   onLogStudy: (minutes: number, stageId: string, notes: string) => void;
   onNavigate: (workspace: PrimaryWorkspace, subTab?: string, stageId?: string) => void;
   onOpenAiMentor: (prompt?: string) => void;
   onOpenQuickQuiz: () => void;
   onOpenCheatSheet: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenGame?: () => void;
 }
 
 const PRESET_MILESTONES = [
   { title: 'Master 8-Bit Binary, Hex & Two\'s Complement', category: 'basics' as const, stageId: 'stage-0' },
-  { title: 'Complete Wargame Levels 0-5 via Shell', category: 'bandit' as const, stageId: 'stage-1' },
-  { title: 'Write & Run C Pointer Program in Playground', category: 'systems' as const, stageId: 'stage-4' },
-  { title: 'Build First Documented GitHub Portfolio Project', category: 'projects' as const, stageId: 'stage-2' },
+  { title: 'Complete Wargame Levels 0-5 via Shell', category: 'bandit' as const, stageId: 'stage-3' },
+  { title: 'Write & Run C Pointer Program in Playground', category: 'systems' as const, stageId: 'stage-6' },
+  { title: 'Build First Documented GitHub Portfolio Project', category: 'projects' as const, stageId: 'stage-11' },
 ];
 
 export function OverviewWorkspace({
@@ -85,18 +116,27 @@ export function OverviewWorkspace({
   completedTopics,
   userMilestones,
   studyLogs,
+  stageProgressList,
+  cadenceMetrics,
+  autoLogTopicPractice,
+  badgesSummary,
   isDailyChallengeCompleted,
   onCompleteDailyChallenge,
   onToggleMilestone,
   onAddMilestone,
   onDeleteMilestone,
   onSetDailyGoal,
+  onSetAutoLogTopicPractice,
+  onCompleteTopicWithHabit,
+  onSetStageTargetDate,
+  onGeneratePersonalizedPlan,
   onLogStudy,
   onNavigate,
   onOpenAiMentor,
   onOpenQuickQuiz,
   onOpenCheatSheet,
   onOpenCommandPalette,
+  onOpenGame,
 }: OverviewWorkspaceProps) {
   const [filterMilestones, setFilterMilestones] = useState<'all' | 'active' | 'completed'>('all');
   const [showLogModal, setShowLogModal] = useState(false);
@@ -203,6 +243,19 @@ export function OverviewWorkspace({
               <Orbit className="h-3.5 w-3.5 text-sky-400" />
               <span>Open Spatial Studio</span>
             </SoapBubbleButton>
+
+            {onOpenGame && (
+              <SoapBubbleButton
+                onClick={onOpenGame}
+                tint="rgb(245 158 11)"
+                opacity={0.86}
+                style={{ fontSize: 12.5 }}
+                className="!min-h-[38px] !px-4 text-xs font-medium text-amber-100"
+              >
+                <Gamepad2 className="h-3.5 w-3.5 text-amber-300" />
+                <span>Play Kernel Defense</span>
+              </SoapBubbleButton>
+            )}
           </div>
         </div>
 
@@ -339,15 +392,31 @@ export function OverviewWorkspace({
         </div>
       </div>
 
-      {/* 3. Interactive 14-Stage Dependency Skill Graph */}
+      {/* 3. Interactive 16-Stage Dependency Skill Graph */}
       <CurriculumSkillGraph
         completedTopics={completedTopics}
         currentStageId={currentStageId}
         onOpenStage={(stageId) => onNavigate('curriculum', 'stages', stageId)}
       />
 
+      {/* 3b. Learning Progress Visualization, Personalized Stage Milestones & Topic Completion System */}
+      <ProgressAnalyticsDeck
+        currentStageId={currentStageId}
+        stageProgressList={stageProgressList}
+        cadenceMetrics={cadenceMetrics}
+        stats={stats}
+        completedTopics={completedTopics}
+        autoLogTopicPractice={autoLogTopicPractice}
+        onSetAutoLogTopicPractice={onSetAutoLogTopicPractice}
+        onCompleteTopicWithHabit={onCompleteTopicWithHabit}
+        onSetStageTargetDate={onSetStageTargetDate}
+        onGeneratePersonalizedPlan={onGeneratePersonalizedPlan}
+        onNavigate={onNavigate}
+        onOpenAiMentor={onOpenAiMentor}
+      />
+
       {/* 4. Interactive Workbench Launch Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[
           {
             title: 'Spatial & Optical Studio',
@@ -376,6 +445,13 @@ export function OverviewWorkspace({
             icon: Terminal,
             accent: 'text-amber-400',
             onClick: () => onNavigate('shell'),
+          },
+          {
+            title: 'Diagram & Motion Studio',
+            desc: 'Create CS blueprints, edit uploaded photos & export WebM animations',
+            icon: Film,
+            accent: 'text-cyan-400',
+            onClick: () => onNavigate('lab', 'media'),
           },
           {
             title: 'Open-Source Syllabus Pack',
@@ -702,25 +778,33 @@ export function OverviewWorkspace({
 
             <div className="pt-3 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
               <button
-                onClick={() => onNavigate('reference', 'sources')}
+                onClick={() => onNavigate('curriculum', 'atlas')}
                 className="text-sky-400 hover:underline cursor-pointer"
               >
-                Browse Source Library -&gt;
+                Open A–Z Atlas -&gt;
               </button>
               <button
                 onClick={() => onNavigate('curriculum', 'projects')}
                 className="text-emerald-400 hover:underline cursor-pointer"
               >
-                View 14 Capstone Builds -&gt;
+                View 16 Capstone Builds -&gt;
               </button>
             </div>
           </div>
         </div>
       </div>
 
+      {/* 7. Engineering Badges Collection */}
+      <BadgesCollection
+        badges={badgesSummary.badges}
+        unlockedCount={badgesSummary.unlockedCount}
+        totalCount={badgesSummary.totalCount}
+        onNavigate={onNavigate}
+      />
+
       {/* Log Study Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/80 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/92 p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
               <h3 className="font-display text-base font-semibold text-white">Log Study Session</h3>

@@ -356,9 +356,9 @@ export function CurriculumExportHub() {
                 </h3>
                 <div className="space-y-2 text-xs text-slate-300">
                   {[
-                    { label: 'All 14 Stage Syllabi & Topics', state: includeStages, setter: setIncludeStages },
+                    { label: 'All 16 Stage Syllabi & Topics', state: includeStages, setter: setIncludeStages },
                     { label: 'Hero Collegiate Systems Modules', state: includeHeroModules, setter: setIncludeHeroModules },
-                    { label: '14 Capstone Portfolio Projects', state: includeProjects, setter: setIncludeProjects },
+                    { label: '16 Capstone Portfolio Projects', state: includeProjects, setter: setIncludeProjects },
                     { label: 'Full Curated Source Directory', state: includeSourcesCatalog, setter: setIncludeSourcesCatalog },
                     { label: 'Assignments & Exit Gate Rubrics', state: includeRubrics, setter: setIncludeRubrics },
                     { label: 'Embed Python & C Code Listings', state: includeCodeSnippets, setter: setIncludeCodeSnippets },

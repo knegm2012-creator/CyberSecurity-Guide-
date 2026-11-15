@@ -37,7 +37,7 @@ export function CommandVault({ onOpenAiMentor }: CommandVaultProps) {
     return list;
   }, []);
 
-  const categories = ['All', 'Linux', 'Git', 'Networking', 'Security', 'SQL', 'C/C++', 'Dev', 'System', 'Docker'];
+  const categories = ['All', 'Linux', 'Git', 'Networking', 'Security', 'SQL', 'C/C++', 'Go', 'Dev', 'System', 'Docker'];
 
   const filtered = allCommands.filter((cmd) => {
     const matchesCat = selectedCat === 'All' || cmd.category === selectedCat;

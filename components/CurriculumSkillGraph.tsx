@@ -48,6 +48,10 @@ const GRAPH_LAYOUT: GraphNodeLayout[] = [
   // Column 6: Graduate Systems & Capstone
   { stageNumber: 13, x: 1090, y: 105, track: 'Theory & Capstone', prereqs: [7, 8, 12] },
   { stageNumber: 11, x: 1090, y: 205, track: 'Theory & Capstone', prereqs: [10, 12] },
+
+  // Column 7: Cloud SRE & AI / HPC Frontiers
+  { stageNumber: 14, x: 1255, y: 105, track: 'Infrastructure', prereqs: [4, 8, 13] },
+  { stageNumber: 15, x: 1255, y: 205, track: 'Theory & Capstone', prereqs: [2, 6, 12] },
 ];
 
 export function CurriculumSkillGraph({
@@ -92,7 +96,7 @@ export function CurriculumSkillGraph({
         <div className="flex items-center gap-2">
           <Compass className="h-4 w-4 text-sky-400" />
           <h2 className="font-display text-sm font-semibold text-white">
-            Curriculum Competency Graph (Stages 0–13)
+            Curriculum Competency Graph (Stages 0–15)
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-slate-400">
@@ -105,10 +109,10 @@ export function CurriculumSkillGraph({
       {/* Interactive SVG DAG Viewport */}
       <div className="bg-[#03050b]/90 border-b border-white/[0.08] overflow-x-auto">
         <svg
-          viewBox="0 0 1160 300"
-          className="w-full min-w-[820px] h-[270px] select-none"
+          viewBox="0 0 1330 300"
+          className="w-full min-w-[920px] h-[270px] select-none"
           role="img"
-          aria-label="Interactive 14-Stage Computer Science Prerequisite Graph"
+          aria-label="Interactive 16-Stage Computer Science Prerequisite Graph"
         >
           {/* Track Band Labels */}
           <text x="70" y="24" className="fill-slate-500 text-[10px] font-mono" textAnchor="middle">
@@ -130,7 +134,10 @@ export function CurriculumSkillGraph({
             06. SECURITY &amp; DSA
           </text>
           <text x="1090" y="24" className="fill-slate-500 text-[10px] font-mono" textAnchor="middle">
-            07. CAPSTONE
+            07. COMPILERS &amp; CAPSTONE
+          </text>
+          <text x="1255" y="24" className="fill-slate-500 text-[10px] font-mono" textAnchor="middle">
+            08. CLOUD &amp; AI/HPC
           </text>
 
           {/* Prerequisite Connectors */}

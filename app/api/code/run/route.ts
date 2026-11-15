@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeCodeSecurely } from '@/lib/code-runner';
 import {
-  codeExecRateLimiter,
+  apiSecurityHeaders,
   codeExecConcurrencyLimiter,
+  codeExecRateLimiter,
   getClientIp,
+  parseJsonBodySafe,
+  RequestBodyError,
 } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+interface CodeRunPayload {
+  language?: string;
+  code?: string;
+  stdin?: string;
+  timeoutMs?: number;
+}
+
 export async function POST(req: NextRequest) {
+  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
 
-  // 1. Rate Limiting Check
   const rateCheck = codeExecRateLimiter.tryConsume(clientIp);
   if (!rateCheck.allowed) {
     return NextResponse.json(
@@ -20,38 +30,51 @@ export async function POST(req: NextRequest) {
         error: 'Too Many Requests: Code execution rate limit exceeded. Please wait a few seconds.',
         rateLimited: true,
       },
-      { status: 429 }
+      { status: 429, headers }
     );
   }
 
-  // 2. Concurrency Check
   if (!codeExecConcurrencyLimiter.tryAcquire(clientIp)) {
     return NextResponse.json(
       {
         error: 'Too Many Concurrent Runs: Another execution is already running for your session.',
         concurrencyLimited: true,
       },
-      { status: 429 }
+      { status: 429, headers }
     );
   }
 
   try {
-    const body = await req.json();
+    const body = await parseJsonBodySafe<CodeRunPayload>(req, 256 * 1024);
+    const language = body.language === 'python' || body.language === 'c' ? body.language : null;
+    if (!language) {
+      return NextResponse.json(
+        { error: 'Unsupported language. Allowed: "python" or "c".', success: false },
+        { status: 400, headers }
+      );
+    }
+
     const result = await executeCodeSecurely({
-      language: body.language,
-      code: body.code,
-      stdin: body.stdin,
-      timeoutMs: body.timeoutMs,
+      language,
+      code: typeof body.code === 'string' ? body.code : '',
+      stdin: typeof body.stdin === 'string' ? body.stdin : '',
+      timeoutMs: typeof body.timeoutMs === 'number' ? body.timeoutMs : undefined,
     });
 
-    return NextResponse.json(result);
-  } catch (err: any) {
+    return NextResponse.json(result, { headers });
+  } catch (err) {
+    if (err instanceof RequestBodyError) {
+      return NextResponse.json(
+        { error: err.message, success: false },
+        { status: err.status, headers }
+      );
+    }
     return NextResponse.json(
       {
-        error: err?.message || 'Code execution failed.',
+        error: err instanceof Error ? err.message : 'Code execution failed.',
         success: false,
       },
-      { status: 400 }
+      { status: 400, headers }
     );
   } finally {
     codeExecConcurrencyLimiter.release(clientIp);

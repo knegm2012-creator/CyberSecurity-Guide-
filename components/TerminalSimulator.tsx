@@ -56,6 +56,7 @@ interface TerminalSimulatorProps {
   onToggleLevel: (level: number) => void;
   onOpenAiMentor: (context?: string) => void;
   isActive?: boolean;
+  pendingCommand?: { id: number; command: string } | null;
 }
 
 interface FileSystemNode {
@@ -127,6 +128,7 @@ export function TerminalSimulator({
   onToggleLevel,
   onOpenAiMentor,
   isActive = true,
+  pendingCommand = null,
 }: TerminalSimulatorProps) {
   const [selectedLevelIndex, setSelectedLevelIndex] = useState(0);
   const [showHint, setShowHint] = useState(false);
@@ -172,7 +174,7 @@ export function TerminalSimulator({
   // Local Terminal state
   const [history, setHistory] = useState<Array<{ type: 'input' | 'output'; text: string; isError?: boolean; isSuccess?: boolean }>>([
     { type: 'output', text: 'Cyber Citadel Wargame & Linux Terminal Engine [v6.4.0-hardened]' },
-    { type: 'output', text: '[SANDBOX] 100% Offline Virtual Filesystem loaded. All 20 levels playable locally.' },
+    { type: 'output', text: `[SANDBOX] 100% Offline Virtual Filesystem loaded. All ${BANDIT_LEVELS.length} levels playable locally.` },
     { type: 'output', text: '[SSH] External gateway bridge available for bandit.labs.overthewire.org:2220.' },
     { type: 'output', text: 'Commands: Type "help", "cheat", or click "Quick-Ref" to browse commands with audio feedback.' },
     { type: 'output', text: 'Logged in as: citadel-agent@cyber-box:~$' },
@@ -193,6 +195,17 @@ export function TerminalSimulator({
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastAppliedCommandIdRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (pendingCommand && pendingCommand.id !== lastAppliedCommandIdRef.current) {
+      lastAppliedCommandIdRef.current = pendingCommand.id;
+      Promise.resolve().then(() => {
+        setInputVal(pendingCommand.command);
+        inputRef.current?.focus();
+      });
+    }
+  }, [pendingCommand]);
 
   // --- INTERACTIVE FILE SYSTEM & SPLIT-VIEW READER STATE ---
   const [showFsView, setShowFsView] = useState(true);
@@ -1301,7 +1314,7 @@ export function TerminalSimulator({
       <div className="optical-panel rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div
-            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border backdrop-blur-sm ${
+            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border ${
               isLiveSshMode
                 ? 'bg-emerald-500/15 border-emerald-400/35 text-emerald-300'
                 : 'bg-cyan-500/12 border-cyan-400/30 text-cyan-300'
