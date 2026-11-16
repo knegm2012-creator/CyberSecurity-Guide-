@@ -8,6 +8,7 @@
         "@base-ui/react": "^1.9.0",
         "@google/genai": "^2.4.0",
         "@hookform/resolvers": "^5.2.1",
+        "@micropython/micropython-webassembly-pyscript": "^1.29.0-6",
         "@types/ssh2": "^1.15.6",
         "@types/three": "^0.187.0",
         "autoprefixer": "^10.4.21",
@@ -226,6 +227,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@micropython/micropython-webassembly-pyscript": ["@micropython/micropython-webassembly-pyscript@1.29.0-6", "", {}, "sha512-kLwGPJFsLY/2aUPmzZxpvauFSmKc0SlJWVvvEttULR0poVQ6W9HV//1fUJyxrGWAxCVDw9aYqJ0LAog0ZLjYVA=="],
 
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.4.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q=="],
 

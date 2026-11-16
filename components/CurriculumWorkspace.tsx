@@ -8,6 +8,8 @@ import { ProjectsStudio } from './ProjectsStudio';
 import { CurriculumExportHub } from './CurriculumExportHub';
 import { CurriculumSkillGraph } from './CurriculumSkillGraph';
 import { CurriculumAtoZAtlas } from './CurriculumAtoZAtlas';
+import type { OdysseyStoreData } from '@/hooks/use-odyssey-store';
+import type { MasteryReportInput } from '@/lib/mastery-report-pdf';
 
 export type CurriculumSubTab = 'atlas' | 'stages' | 'hero' | 'projects' | 'export';
 
@@ -40,6 +42,9 @@ interface CurriculumWorkspaceProps {
   onOpenNotes: (stageId: string) => void;
   onOpenPlayground: (language: 'python' | 'c', code: string) => void;
   onOpenLab: (labTab: 'foundations' | 'git') => void;
+  exportData?: OdysseyStoreData;
+  exportStats?: MasteryReportInput['stats'];
+  onDownloadMasteryPdf?: () => void;
 }
 
 export function CurriculumWorkspace({
@@ -65,6 +70,9 @@ export function CurriculumWorkspace({
   onOpenNotes,
   onOpenPlayground,
   onOpenLab,
+  exportData,
+  exportStats,
+  onDownloadMasteryPdf,
 }: CurriculumWorkspaceProps) {
   const [stageViewMode, setStageViewMode] = useState<'handbook' | 'graph'>('handbook');
 
@@ -202,7 +210,13 @@ export function CurriculumWorkspace({
         />
       )}
 
-      {activeSubTab === 'export' && <CurriculumExportHub />}
+      {activeSubTab === 'export' && (
+        <CurriculumExportHub
+          data={exportData}
+          stats={exportStats}
+          onDownloadMasteryPdf={onDownloadMasteryPdf}
+        />
+      )}
     </div>
   );
 }

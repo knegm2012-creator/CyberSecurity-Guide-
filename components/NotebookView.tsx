@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Download, Upload, FileText, Sparkles } from 'lucide-react';
+import { Download, Upload, FileText, Sparkles, FileDown, FolderGit2 } from 'lucide-react';
 import { SoapBubbleButton } from '@/components/soap-bubble';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 
@@ -11,6 +11,8 @@ interface NotebookViewProps {
   onExportBackup: () => void;
   onImportBackup: (jsonStr: string) => boolean;
   onOpenAiMentor: (context?: string) => void;
+  onDownloadMasteryPdf?: () => void;
+  onOpenGitHubSync?: () => void;
 }
 
 export function NotebookView({
@@ -19,6 +21,8 @@ export function NotebookView({
   onExportBackup,
   onImportBackup,
   onOpenAiMentor,
+  onDownloadMasteryPdf,
+  onOpenGitHubSync,
 }: NotebookViewProps) {
   const [activeStageId, setActiveStageId] = useState<string>('stage-0');
   const [saveStatus, setSaveStatus] = useState<string>('All changes auto-saved');
@@ -133,9 +137,31 @@ export function NotebookView({
 
         {/* Cloud & Backup Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {onDownloadMasteryPdf && (
+            <button
+              type="button"
+              onClick={onDownloadMasteryPdf}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-emerald-500/20 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Mastery PDF</span>
+            </button>
+          )}
+
+          {onOpenGitHubSync && (
+            <button
+              type="button"
+              onClick={onOpenGitHubSync}
+              className="flex items-center gap-1.5 rounded-xl border border-sky-400/30 bg-sky-500/12 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <FolderGit2 className="h-3.5 w-3.5 text-sky-400" />
+              <span>GitHub Sync</span>
+            </button>
+          )}
+
           <button
             onClick={onExportBackup}
-            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer whitespace-nowrap"
           >
             <Download className="h-3.5 w-3.5 text-cyan-400" />
             <span>Export JSON</span>
@@ -143,7 +169,7 @@ export function NotebookView({
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#040710]/80 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.07] transition-colors cursor-pointer whitespace-nowrap"
           >
             <Upload className="h-3.5 w-3.5 text-amber-400" />
             <span>Import JSON</span>
@@ -161,7 +187,7 @@ export function NotebookView({
             tint="rgb(56 189 248)"
             opacity={0.92}
             style={{ fontSize: 12 }}
-            className="!min-h-[34px] !px-4 font-semibold text-white"
+            className="!min-h-[34px] !px-4 font-semibold text-white whitespace-nowrap"
           >
             <span className="inline-flex items-center gap-1.5">
               <FileText className="h-3.5 w-3.5" />

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
-import { STAGES_DATA, PORTFOLIO_PROJECTS } from './curriculum-data';
-import type { EvaluatedBadge } from './badges-data';
+import { STAGES_DATA, PORTFOLIO_PROJECTS } from './curriculum-data.ts';
+import type { EvaluatedBadge } from './badges-data.ts';
 import type {
   OdysseyStoreData,
   StageProgressSummary,
@@ -223,7 +223,7 @@ export function buildMasteryReportPdfDocument(input: MasteryReportInput): {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.setTextColor(...kpi.accent);
+    doc.setTextColor(kpi.accent[0], kpi.accent[1], kpi.accent[2]);
     doc.text(cleanPdfText(kpi.value), x + 10, y + 36);
 
     doc.setFont('helvetica', 'normal');
@@ -327,9 +327,10 @@ export function buildMasteryReportPdfDocument(input: MasteryReportInput): {
       const rowH = Math.max(18, wrappedTitle.length * 11 + 6);
       ensureSpace(rowH);
 
+      const milestoneColor = m.completed ? COLORS.emerald : COLORS.amber;
       doc.setFont('courier', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(...(m.completed ? COLORS.emerald : COLORS.amber));
+      doc.setTextColor(milestoneColor[0], milestoneColor[1], milestoneColor[2]);
       doc.text(m.completed ? '[DONE]' : '[OPEN]', marginX + 8, y + 10);
 
       doc.setFont('helvetica', m.completed ? 'bold' : 'normal');

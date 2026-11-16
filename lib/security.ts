@@ -291,6 +291,7 @@ export const codeExecConcurrencyLimiter = new ConcurrencyLimiter(2); // max 2 co
 
 export const tutorRateLimiter = new TokenBucketRateLimiter(30, 0.5); // 30 bursts, 1 every 2s
 export const progressRateLimiter = new TokenBucketRateLimiter(60, 2); // 60 bursts, 2/s for local persistence sync
+export const githubSyncRateLimiter = new TokenBucketRateLimiter(20, 0.35); // 20 bursts, ~1 every 3s for GitHub sync
 
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for');

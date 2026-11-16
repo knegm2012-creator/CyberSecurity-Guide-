@@ -12,6 +12,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  FileDown,
 } from 'lucide-react';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import type { StageProgressSummary, CadenceDayCell } from '@/hooks/use-odyssey-store';
@@ -46,6 +47,7 @@ interface ProgressAnalyticsDeckProps {
   };
   onNavigate: (workspace: PrimaryWorkspace, subTab?: string, stageId?: string) => void;
   onOpenAiMentor: (prompt?: string) => void;
+  onDownloadMasteryPdf?: () => void;
 }
 
 const STEP_GUIDE = [
@@ -84,6 +86,7 @@ export function ProgressAnalyticsDeck({
   onGeneratePersonalizedPlan,
   onNavigate,
   onOpenAiMentor,
+  onDownloadMasteryPdf,
 }: ProgressAnalyticsDeckProps) {
   const [selectedHorizon, setSelectedHorizon] = useState<12 | 24 | 36>(24);
   const [planNotice, setPlanNotice] = useState<string | null>(null);
@@ -358,6 +361,17 @@ export function ProgressAnalyticsDeck({
               <TrendingUp className="h-3.5 w-3.5 text-sky-400" />
               <span>{showAllStages ? 'Show Top 8' : `Show All ${stageProgressList.length}`}</span>
             </button>
+
+            {onDownloadMasteryPdf && (
+              <button
+                type="button"
+                onClick={onDownloadMasteryPdf}
+                className="optical-card inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-emerald-300 hover:text-white cursor-pointer whitespace-nowrap"
+              >
+                <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Mastery PDF</span>
+              </button>
+            )}
           </div>
         </div>
 

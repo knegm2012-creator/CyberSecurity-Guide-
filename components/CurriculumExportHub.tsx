@@ -14,6 +14,7 @@ import {
   Printer,
   FileCode2,
   CalendarClock,
+  FileDown,
 } from 'lucide-react';
 import {
   ExportAudienceMode,
@@ -28,6 +29,9 @@ import {
 import { STAGES_DATA, ADVANCED_HERO_TOPICS, PORTFOLIO_PROJECTS } from '@/lib/curriculum-data';
 import { CURATED_CS_SOURCES } from '@/lib/sources-catalog';
 import { SoapBubbleButton, SoapBubbleSlider, SoapBubbleToggle } from './soap-bubble';
+import { GitHubSyncPanel } from './GitHubSyncPanel';
+import type { OdysseyStoreData } from '@/hooks/use-odyssey-store';
+import type { MasteryReportInput } from '@/lib/mastery-report-pdf';
 
 type ExportArtifactType =
   | 'curriculum-md'
@@ -37,7 +41,17 @@ type ExportArtifactType =
   | 'syllabus-csv'
   | 'open-json';
 
-export function CurriculumExportHub() {
+interface CurriculumExportHubProps {
+  data?: OdysseyStoreData;
+  stats?: MasteryReportInput['stats'];
+  onDownloadMasteryPdf?: () => void;
+}
+
+export function CurriculumExportHub({
+  data,
+  stats,
+  onDownloadMasteryPdf,
+}: CurriculumExportHubProps) {
   const [mode, setMode] = useState<ExportAudienceMode>('student');
   const [artifact, setArtifact] = useState<ExportArtifactType>('curriculum-md');
   const [hoursPerWeek, setHoursPerWeek] = useState<number>(10);
@@ -160,7 +174,18 @@ export function CurriculumExportHub() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {onDownloadMasteryPdf && (
+              <button
+                type="button"
+                onClick={onDownloadMasteryPdf}
+                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-emerald-300 hover:text-white cursor-pointer whitespace-nowrap"
+              >
+                <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Mastery Report (.pdf)</span>
+              </button>
+            )}
+
             <button
               onClick={handleCopy}
               className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer whitespace-nowrap"
@@ -227,6 +252,11 @@ export function CurriculumExportHub() {
           </div>
         </div>
       </div>
+
+      {/* GitHub Progress OAuth Sync */}
+      {data && stats && (
+        <GitHubSyncPanel data={data} stats={stats} compact />
+      )}
 
       {/* Two-Column Config & Live Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

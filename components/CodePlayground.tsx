@@ -23,9 +23,18 @@ import {
   ChevronRight,
   Plus,
   BookOpen,
+  Square,
+  HardDrive,
+  Binary,
+  ShieldCheck,
 } from 'lucide-react';
 import { SavedCodeSnippet } from '@/hooks/use-odyssey-store';
 import { SoapBubbleButton } from '@/components/soap-bubble';
+import {
+  runCodeInBrowserWasm,
+  abortBrowserWasmExecution,
+  type BrowserWasmResult,
+} from '@/lib/wasm/browser-sandbox';
 
 export interface CodePlaygroundProps {
   initialLanguage?: 'python' | 'c';
@@ -301,14 +310,16 @@ export function CodePlayground({
   );
   const [stdin, setStdin] = useState<string>('');
   const [showStdin, setShowStdin] = useState<boolean>(false);
-  const [activeOutputTab, setActiveOutputTab] = useState<'output' | 'errors' | 'stdin'>('output');
+  const [runtimeMode, setRuntimeMode] = useState<'wasm' | 'server'>('wasm');
+  const [activeOutputTab, setActiveOutputTab] = useState<'output' | 'errors' | 'wasm'>('output');
 
   // Execution state
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [output, setOutput] = useState<string>('Press "Run Code" (Ctrl+Enter) to compile and execute.');
+  const [output, setOutput] = useState<string>('Press "Run Code" (Ctrl+Enter) to execute directly in Browser WebAssembly.');
   const [stderr, setStderr] = useState<string>('');
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
+  const [lastWasmMeta, setLastWasmMeta] = useState<BrowserWasmResult | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Snippets modal
@@ -349,16 +360,44 @@ export function CodePlayground({
     }
   };
 
-  // Run code against /api/code/run
+  // Run code via Browser WebAssembly VM or isolated Server Sandbox
   const runCode = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    setOutput('Compiling and executing on server...');
+    setOutput(
+      runtimeMode === 'wasm'
+        ? language === 'c'
+          ? 'Compiling C11 -> WebAssembly (.wasm) and instantiating linear RAM...'
+          : 'Executing Python inside Browser WebAssembly Worker...'
+        : 'Compiling and executing on isolated server sandbox...'
+    );
     setStderr('');
     setExitCode(null);
     setExecutionTime(null);
 
     try {
+      if (runtimeMode === 'wasm') {
+        const res = await runCodeInBrowserWasm({
+          language,
+          code,
+          stdin,
+          timeoutMs: 5000,
+        });
+        setLastWasmMeta(res);
+        setOutput(res.stdout || (res.exitCode === 0 ? '(Process completed with no output)' : ''));
+        setStderr(res.stderr || '');
+        setExitCode(res.exitCode);
+        setExecutionTime(res.executionTimeMs);
+
+        if (res.stderr && !res.stdout) {
+          setActiveOutputTab('errors');
+        } else {
+          setActiveOutputTab('output');
+        }
+        return;
+      }
+
+      setLastWasmMeta(null);
       const res = await fetch('/api/code/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -389,14 +428,22 @@ export function CodePlayground({
       } else {
         setActiveOutputTab('output');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setOutput('');
-      setStderr(`Network or request failure: ${err.message}`);
+      setStderr(`Execution error: ${err instanceof Error ? err.message : String(err)}`);
       setActiveOutputTab('errors');
       setExitCode(1);
     } finally {
       setIsRunning(false);
     }
+  };
+
+  const handleStopWasm = () => {
+    abortBrowserWasmExecution();
+    setIsRunning(false);
+    setExitCode(130);
+    setStderr('Execution interrupted by user.');
+    setActiveOutputTab('errors');
   };
 
   // Copy code to clipboard
@@ -458,17 +505,51 @@ export function CodePlayground({
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h3 className="font-display text-sm font-semibold text-white">Systems Code Playground</h3>
                 <span className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-300">
-                  GCC C11 / Python 3
+                  {runtimeMode === 'wasm'
+                    ? 'Browser WASM · MicroPython + C11->WASM'
+                    : 'Server Sandbox · Python 3 / GCC C11'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Sandboxed server execution with 5s timeout, strict isolation, and stdin streaming.
+                {runtimeMode === 'wasm'
+                  ? 'Client-side WebAssembly runtime running inside an isolated worker & linear RAM with 5s timeout.'
+                  : 'Sandboxed server execution with 5s timeout, strict isolation, and stdin streaming.'}
               </p>
             </div>
           </div>
 
-          {/* Language Selector + Run Button */}
+          {/* Runtime + Language Selector + Run Button */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="optical-subnav flex rounded-xl p-1 text-[11px] font-mono" title="Select Execution Environment">
+              <button
+                onClick={() => {
+                  setRuntimeMode('wasm');
+                  if (activeOutputTab === 'wasm' || exitCode === null) {
+                    setOutput('Ready for client-side WebAssembly execution (Ctrl+Enter).');
+                  }
+                }}
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  runtimeMode === 'wasm'
+                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent'
+                }`}
+              >
+                <Cpu className="h-3 w-3" />
+                <span>Browser WASM</span>
+              </button>
+              <button
+                onClick={() => setRuntimeMode('server')}
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  runtimeMode === 'server'
+                    ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                    : 'text-slate-400 hover:text-slate-100 border border-transparent'
+                }`}
+              >
+                <Layers className="h-3 w-3" />
+                <span>Server</span>
+              </button>
+            </div>
+
             <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium">
               <button
                 onClick={() => {
@@ -498,9 +579,19 @@ export function CodePlayground({
                     : 'text-slate-400 hover:text-slate-100 border border-transparent'
                 }`}
               >
-                C (GCC C11)
+                C11
               </button>
             </div>
+
+            {isRunning && runtimeMode === 'wasm' && (
+              <button
+                onClick={handleStopWasm}
+                className="rounded-xl border border-rose-400/40 bg-rose-500/20 hover:bg-rose-500/30 px-3 py-1.5 text-xs font-mono font-semibold text-rose-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Square className="h-3 w-3 fill-rose-300" />
+                <span>Stop</span>
+              </button>
+            )}
 
             <SoapBubbleButton
               onClick={runCode}
@@ -671,11 +762,11 @@ export function CodePlayground({
         {/* Right: Console Output & Terminal (5 cols) */}
         <div className="lg:col-span-5 optical-panel rounded-2xl flex flex-col h-[500px] overflow-hidden">
           {/* Console Header with Tabs */}
-          <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.03] px-3 py-2 select-none shrink-0">
+          <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.03] px-3 py-2 select-none shrink-0 gap-2 overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-1 text-xs font-mono">
               <button
                 onClick={() => setActiveOutputTab('output')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeOutputTab === 'output'
                     ? 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-300'
                     : 'text-slate-400 hover:text-slate-200 border border-transparent'
@@ -686,7 +777,7 @@ export function CodePlayground({
               </button>
               <button
                 onClick={() => setActiveOutputTab('errors')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeOutputTab === 'errors'
                     ? 'bg-rose-500/15 border border-rose-400/30 text-rose-300'
                     : stderr
@@ -695,12 +786,23 @@ export function CodePlayground({
                 }`}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>stderr / warnings {stderr ? '(!)' : ''}</span>
+                <span>stderr {stderr ? '(!)' : ''}</span>
+              </button>
+              <button
+                onClick={() => setActiveOutputTab('wasm')}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeOutputTab === 'wasm'
+                    ? 'bg-sky-500/15 border border-sky-400/30 text-sky-300'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                }`}
+              >
+                <Binary className="h-3.5 w-3.5" />
+                <span>wasm / ram</span>
               </button>
             </div>
 
             {/* Metrics */}
-            <div className="flex items-center gap-2 font-mono text-[10px]">
+            <div className="flex items-center gap-2 font-mono text-[10px] shrink-0">
               {executionTime !== null && (
                 <span className="flex items-center gap-1 text-slate-400 tabular-nums">
                   <Clock className="h-3 w-3 text-cyan-400" />
@@ -751,17 +853,103 @@ export function CodePlayground({
                 )}
               </div>
             )}
+
+            {activeOutputTab === 'wasm' && (
+              <div className="space-y-3 text-[11px]">
+                <div className="optical-inset rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Active Runtime Engine</span>
+                    <span className="text-emerald-300 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      {lastWasmMeta?.engineLabel ||
+                        (runtimeMode === 'wasm'
+                          ? language === 'c'
+                            ? 'Native C11 -> .wasm · WebAssembly.Memory'
+                            : 'MicroPython 1.29 · WASM (440 KB VM)'
+                          : 'Server Sandbox Subprocess')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span>Execution Isolation</span>
+                    <span className="text-slate-200">
+                      {runtimeMode === 'wasm'
+                        ? language === 'python'
+                          ? 'ES Module Web Worker + VFS /lib'
+                          : 'Browser WebAssembly.instantiate + Linear RAM'
+                        : 'Server tmpdir · Zero shell interpolation'}
+                    </span>
+                  </div>
+                </div>
+
+                {lastWasmMeta?.wasmMetadata ? (
+                  <>
+                    <div className="optical-inset rounded-xl p-3 space-y-2">
+                      <div className="text-sky-300 font-semibold flex items-center gap-1.5">
+                        <Binary className="h-3.5 w-3.5" />
+                        <span>Compiled .wasm Binary &amp; Exports</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-slate-300">
+                        <div>Module Size: <span className="text-white font-semibold tabular-nums">{lastWasmMeta.wasmMetadata.totalBytes} bytes</span></div>
+                        <div>.rodata Strings: <span className="text-white font-semibold tabular-nums">{lastWasmMeta.wasmMetadata.dataBytes} bytes</span></div>
+                      </div>
+                      <div className="text-slate-400">
+                        Functions: <span className="text-cyan-300">{lastWasmMeta.wasmMetadata.functions.join(', ')}</span>
+                      </div>
+                      <div className="rounded-lg bg-black/50 border border-white/[0.06] p-2 text-[10px] text-emerald-300 break-all">
+                        <div className="text-slate-500 mb-0.5">WASM Header Bytes (`\0asm v1`):</div>
+                        {lastWasmMeta.wasmMetadata.hexHeader}
+                      </div>
+                    </div>
+
+                    <div className="optical-inset rounded-xl p-3 space-y-2">
+                      <div className="text-indigo-300 font-semibold flex items-center gap-1.5">
+                        <HardDrive className="h-3.5 w-3.5" />
+                        <span>Linear WebAssembly.Memory &amp; Heap Audit</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-slate-300 tabular-nums">
+                        <div>.rodata Base: <span className="text-white">0x{lastWasmMeta.wasmMetadata.memoryLayout.rodataStart.toString(16).padStart(4, '0')}</span></div>
+                        <div>Heap Base: <span className="text-white">0x{lastWasmMeta.wasmMetadata.memoryLayout.heapStart.toString(16).padStart(4, '0')}</span></div>
+                        <div>Stack Top: <span className="text-white">0x{lastWasmMeta.wasmMetadata.memoryLayout.stackTop.toString(16)}</span></div>
+                        <div>Peak Heap: <span className="text-white">{lastWasmMeta.wasmMetadata.heapStats.peakHeapBytes} B</span></div>
+                        <div>malloc() calls: <span className="text-sky-300">{lastWasmMeta.wasmMetadata.heapStats.allocations}</span></div>
+                        <div>free() calls: <span className="text-emerald-300">{lastWasmMeta.wasmMetadata.heapStats.frees}</span></div>
+                      </div>
+                      <div className={`rounded-lg px-2.5 py-1.5 border ${
+                        lastWasmMeta.wasmMetadata.heapStats.leakedBytes === 0
+                          ? 'bg-emerald-500/10 border-emerald-400/30 text-emerald-300'
+                          : 'bg-amber-500/10 border-amber-400/30 text-amber-300'
+                      }`}>
+                        {lastWasmMeta.wasmMetadata.heapStats.leakedBytes === 0
+                          ? 'Heap Audit: 0 bytes leaked cleanly at program exit.'
+                          : `Heap Audit: ${lastWasmMeta.wasmMetadata.heapStats.leakedBytes} bytes still allocated at exit (call free()).`}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="optical-inset rounded-xl p-3 text-slate-400 leading-relaxed">
+                    {runtimeMode === 'wasm' && language === 'python'
+                      ? 'MicroPython 1.29 WebAssembly VM executes inside an isolated Web Worker with a 16 MB linear heap and preloaded CS Odyssey stdlib VFS (/lib/sqlite3.py, /lib/ipaddress.py, collections.Counter, hashlib, re.findall, unittest, pathlib).'
+                      : 'Run a C or Python program in Browser WASM mode to inspect WebAssembly module size, binary header bytes, linear RAM stack/heap offsets, and malloc()/free() leak diagnostics.'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Console Footer Status */}
           <div className="border-t border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-[10px] font-mono text-slate-500 flex items-center justify-between shrink-0">
-            <span>Isolation: Sandboxed tmp workspace · Timeout: 5.0s</span>
+            <span>
+              {runtimeMode === 'wasm'
+                ? 'Isolation: Client WebAssembly Sandbox · Timeout: 5.0s'
+                : 'Isolation: Sandboxed tmp workspace · Timeout: 5.0s'}
+            </span>
             <button
               onClick={() => {
                 setOutput('');
                 setStderr('');
                 setExitCode(null);
                 setExecutionTime(null);
+                setLastWasmMeta(null);
               }}
               className="text-slate-400 hover:text-white cursor-pointer"
             >

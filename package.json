@@ -17,6 +17,7 @@
     "@base-ui/react": "^1.9.0",
     "@google/genai": "^2.4.0",
     "@hookform/resolvers": "^5.2.1",
+    "@micropython/micropython-webassembly-pyscript": "^1.29.0-6",
     "@types/ssh2": "^1.15.6",
     "@types/three": "^0.187.0",
     "autoprefixer": "^10.4.21",

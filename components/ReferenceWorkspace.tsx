@@ -1,14 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Terminal, BookOpen, Compass, FileText, Library } from 'lucide-react';
+import { Terminal, BookOpen, Compass, FileText, Library, Layers } from 'lucide-react';
 import { CommandVault } from '@/components/CommandVault';
 import { NotebookView } from '@/components/NotebookView';
 import { GlossaryFlashcards } from '@/components/GlossaryFlashcards';
 import { DirectoryView } from '@/components/DirectoryView';
 import { SourceLibraryView } from '@/components/SourceLibraryView';
+import { CheatSheetsReferenceView } from '@/components/CheatSheetsReferenceView';
 
-export type ReferenceSubTab = 'sources' | 'commands' | 'notebook' | 'glossary' | 'directory';
+export type ReferenceSubTab =
+  | 'sources'
+  | 'commands'
+  | 'cheatsheets'
+  | 'notebook'
+  | 'glossary'
+  | 'directory';
 
 interface ReferenceWorkspaceProps {
   activeSubTab: ReferenceSubTab;
@@ -18,6 +25,9 @@ interface ReferenceWorkspaceProps {
   onExportBackup: () => void;
   onImportBackup: (jsonStr: string) => boolean;
   onOpenAiMentor: (context?: string) => void;
+  onRunCommandInShell?: (command: string) => void;
+  onDownloadMasteryPdf?: () => void;
+  onOpenGitHubSync?: () => void;
 }
 
 export function ReferenceWorkspace({
@@ -28,6 +38,9 @@ export function ReferenceWorkspace({
   onExportBackup,
   onImportBackup,
   onOpenAiMentor,
+  onRunCommandInShell,
+  onDownloadMasteryPdf,
+  onOpenGitHubSync,
 }: ReferenceWorkspaceProps) {
   const tabs: Array<{
     id: ReferenceSubTab;
@@ -36,6 +49,7 @@ export function ReferenceWorkspace({
   }> = [
     { id: 'sources', label: 'Source Library', icon: Library },
     { id: 'commands', label: 'Command Vault', icon: Terminal },
+    { id: 'cheatsheets', label: 'Cheat Sheets & Matrices', icon: Layers },
     { id: 'notebook', label: 'Study Notebook', icon: FileText },
     { id: 'glossary', label: 'Glossary & Flashcards', icon: BookOpen },
     { id: 'directory', label: 'Field Directory & Certs', icon: Compass },
@@ -46,7 +60,7 @@ export function ReferenceWorkspace({
       <div className="optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-400">
-            Sources, Commands, Active Recall &amp; Study Logs
+            Sources, Cheat Sheets, Commands, Active Recall &amp; Study Logs
           </p>
           <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 [text-wrap:balance]">
             Reference Library
@@ -79,6 +93,13 @@ export function ReferenceWorkspace({
 
       {activeSubTab === 'commands' && <CommandVault onOpenAiMentor={onOpenAiMentor} />}
 
+      {activeSubTab === 'cheatsheets' && (
+        <CheatSheetsReferenceView
+          onOpenAiMentor={onOpenAiMentor}
+          onOpenShell={onRunCommandInShell}
+        />
+      )}
+
       {activeSubTab === 'notebook' && (
         <NotebookView
           stageNotes={stageNotes}
@@ -86,6 +107,8 @@ export function ReferenceWorkspace({
           onExportBackup={onExportBackup}
           onImportBackup={onImportBackup}
           onOpenAiMentor={onOpenAiMentor}
+          onDownloadMasteryPdf={onDownloadMasteryPdf}
+          onOpenGitHubSync={onOpenGitHubSync}
         />
       )}
 
@@ -95,3 +118,4 @@ export function ReferenceWorkspace({
     </div>
   );
 }
+

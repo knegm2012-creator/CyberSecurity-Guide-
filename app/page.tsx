@@ -16,8 +16,10 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { SystemsArcadeGame } from '@/components/SystemsArcadeGame';
 import { SoapBubbleMaterial, SoapBubbleButton } from '@/components/soap-bubble';
 import { SpatialBackdrop3D } from '@/components/SpatialBackdrop3D';
+import { GitHubSyncModal } from '@/components/GitHubSyncModal';
+import { downloadMasteryReportPdf } from '@/lib/mastery-report-pdf';
 import { STAGES_DATA } from '@/lib/curriculum-data';
-import { Terminal, RotateCcw, AlertTriangle, X } from 'lucide-react';
+import { Terminal, RotateCcw, AlertTriangle, X, FileDown, FolderGit2, CheckCircle2 } from 'lucide-react';
 
 export default function HomePage() {
   const appShellRef = useRef<HTMLDivElement>(null);
@@ -34,7 +36,9 @@ export default function HomePage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [arcadeGameOpen, setArcadeGameOpen] = useState(false);
+  const [gitHubSyncOpen, setGitHubSyncOpen] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
+  const [actionToast, setActionToast] = useState<string | null>(null);
 
   const [playgroundKey, setPlaygroundKey] = useState(0);
   const [playgroundCode, setPlaygroundCode] = useState<string | undefined>(undefined);
@@ -148,6 +152,7 @@ export default function HomePage() {
       if (
         subTab === 'sources' ||
         subTab === 'commands' ||
+        subTab === 'cheatsheets' ||
         subTab === 'notebook' ||
         subTab === 'glossary' ||
         subTab === 'directory'
@@ -155,6 +160,18 @@ export default function HomePage() {
         setReferenceTab(subTab);
       }
     }
+  };
+
+  const handleDownloadMasteryPdf = () => {
+    const res = downloadMasteryReportPdf({
+      stats,
+      stageProgressList,
+      cadenceMetrics,
+      badgesSummary,
+      data,
+    });
+    setActionToast(`Downloaded ${res.filename} (${res.pageCount} pages)`);
+    setTimeout(() => setActionToast(null), 4000);
   };
 
   const handleConfirmReset = () => {
@@ -259,6 +276,8 @@ export default function HomePage() {
                     onOpenCheatSheet={() => setCheatSheetOpen(true)}
                     onOpenCommandPalette={() => setCommandPaletteOpen(true)}
                     onOpenGame={() => setArcadeGameOpen(true)}
+                    onDownloadMasteryPdf={handleDownloadMasteryPdf}
+                    onOpenGitHubSync={() => setGitHubSyncOpen(true)}
                   />
                 )}
 
@@ -289,6 +308,9 @@ export default function HomePage() {
                       setLabTab(tab);
                       setActiveWorkspace('lab');
                     }}
+                    exportData={data}
+                    exportStats={stats}
+                    onDownloadMasteryPdf={handleDownloadMasteryPdf}
                   />
                 )}
 
@@ -335,11 +357,24 @@ export default function HomePage() {
                   onExportBackup={exportBackup}
                   onImportBackup={importBackup}
                   onOpenAiMentor={handleOpenAiWithPrompt}
+                  onRunCommandInShell={(cmd) => {
+                    setPendingTerminalCmd({ id: Date.now(), command: cmd });
+                    setActiveWorkspace('shell');
+                  }}
+                  onDownloadMasteryPdf={handleDownloadMasteryPdf}
+                  onOpenGitHubSync={() => setGitHubSyncOpen(true)}
                 />
               )}
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {actionToast && (
+          <div className="fixed bottom-5 right-5 z-50 optical-panel flex items-center gap-2 rounded-xl border-emerald-400/40 bg-[#07111e]/95 px-4 py-2.5 text-xs font-mono text-emerald-300 shadow-2xl">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span>{actionToast}</span>
+          </div>
+        )}
 
         <QuickQuizModal
           isOpen={quickQuizOpen}
@@ -355,6 +390,8 @@ export default function HomePage() {
           isOpen={aiMentorOpen}
           onClose={() => setAiMentorOpen(false)}
           initialPrompt={aiMentorPrompt}
+          completedTopicsCount={stats.completedTopicsCount}
+          dailyGoalMinutes={stats.dailyGoalMinutes}
         />
 
         <CheatSheetModal
@@ -375,6 +412,15 @@ export default function HomePage() {
           onOpenQuickQuiz={() => setQuickQuizOpen(true)}
           onOpenCheatSheet={() => setCheatSheetOpen(true)}
           onOpenGame={() => setArcadeGameOpen(true)}
+          onDownloadMasteryPdf={handleDownloadMasteryPdf}
+          onOpenGitHubSync={() => setGitHubSyncOpen(true)}
+        />
+
+        <GitHubSyncModal
+          isOpen={gitHubSyncOpen}
+          onClose={() => setGitHubSyncOpen(false)}
+          data={data}
+          stats={stats}
         />
 
         <SystemsArcadeGame
@@ -444,7 +490,23 @@ export default function HomePage() {
               <span className="text-emerald-400 font-mono">Local-First Storage</span>
             </div>
 
-            <div className="flex items-center gap-4 font-mono text-[11px]">
+            <div className="flex flex-wrap items-center gap-4 font-mono text-[11px]">
+              <button
+                onClick={handleDownloadMasteryPdf}
+                className="text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <FileDown className="h-3 w-3" />
+                <span>Mastery PDF</span>
+              </button>
+              <span className="text-slate-700">·</span>
+              <button
+                onClick={() => setGitHubSyncOpen(true)}
+                className="text-sky-400 hover:text-sky-300 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <FolderGit2 className="h-3 w-3" />
+                <span>Push to GitHub</span>
+              </button>
+              <span className="text-slate-700">·</span>
               <button
                 onClick={exportBackup}
                 className="text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"

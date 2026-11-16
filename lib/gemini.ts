@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { isForbiddenIp } from './security';
+import { isForbiddenIp } from './security.ts';
 
 export const DEFAULT_GEMINI_MODEL = 'gemini-4-hydrogen';
 export const GEMINI_TEXT_MODEL = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
@@ -51,12 +51,20 @@ export function validateSafeLlmBaseUrl(rawUrl: string | undefined): string | nul
     return null;
   }
 
+  const bareHost = hostname.replace(/^\[|\]$/g, '');
+  const looksLikeIpLiteral =
+    bareHost.includes(':') ||
+    /^\d+$/.test(bareHost) ||
+    /^0x[0-9a-f]+$/i.test(bareHost) ||
+    /^\d+\.\d+\.\d+\.\d+$/.test(bareHost);
+
   if (
     isLoopbackHost ||
     hostname === 'metadata.google.internal' ||
     hostname.endsWith('.internal') ||
     hostname.endsWith('.local') ||
-    isForbiddenIp(hostname)
+    !hostname.includes('.') ||
+    (looksLikeIpLiteral && isForbiddenIp(bareHost))
   ) {
     return null;
   }

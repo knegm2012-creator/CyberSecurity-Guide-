@@ -21,6 +21,8 @@ import {
   Orbit,
   Gamepad2,
   Film,
+  FileDown,
+  FolderGit2,
 } from 'lucide-react';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import {
@@ -32,6 +34,8 @@ import {
 import { DailyChallengeWidget } from './DailyChallengeWidget';
 import { CurriculumSkillGraph } from './CurriculumSkillGraph';
 import { ProgressAnalyticsDeck } from './ProgressAnalyticsDeck';
+import { DailyHabitTracker } from './DailyHabitTracker';
+import { WeeklyContributionHeatmap } from './WeeklyContributionHeatmap';
 import { LiquidGlassLogo } from './liquid-glass-logo';
 import { ChromaticButton } from './chromatic-button';
 import { SoapBubbleButton } from './soap-bubble';
@@ -65,9 +69,13 @@ interface OverviewWorkspaceProps {
   stageProgressList: StageProgressSummary[];
   cadenceMetrics: {
     last28Days: CadenceDayCell[];
+    last30Days: CadenceDayCell[];
+    last84Days: CadenceDayCell[];
     weeklyMinutes: number;
     daysGoalMet7: number;
     activeDays28: number;
+    goalDays30: number;
+    longestStreak30: number;
   };
   autoLogTopicPractice: boolean;
   badgesSummary: {
@@ -101,6 +109,8 @@ interface OverviewWorkspaceProps {
   onOpenCheatSheet: () => void;
   onOpenCommandPalette?: () => void;
   onOpenGame?: () => void;
+  onDownloadMasteryPdf?: () => void;
+  onOpenGitHubSync?: () => void;
 }
 
 const PRESET_MILESTONES = [
@@ -137,6 +147,8 @@ export function OverviewWorkspace({
   onOpenCheatSheet,
   onOpenCommandPalette,
   onOpenGame,
+  onDownloadMasteryPdf,
+  onOpenGitHubSync,
 }: OverviewWorkspaceProps) {
   const [filterMilestones, setFilterMilestones] = useState<'all' | 'active' | 'completed'>('all');
   const [showLogModal, setShowLogModal] = useState(false);
@@ -327,11 +339,33 @@ export function OverviewWorkspace({
 
           <button
             onClick={onOpenCheatSheet}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 hover:text-white cursor-pointer"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 hover:text-white cursor-pointer whitespace-nowrap"
           >
             <BookOpen className="h-3.5 w-3.5 text-slate-300" />
             <span>Commands</span>
           </button>
+
+          {onDownloadMasteryPdf && (
+            <button
+              type="button"
+              onClick={onDownloadMasteryPdf}
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-300 hover:text-white cursor-pointer whitespace-nowrap"
+            >
+              <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Mastery PDF</span>
+            </button>
+          )}
+
+          {onOpenGitHubSync && (
+            <button
+              type="button"
+              onClick={onOpenGitHubSync}
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-sky-300 hover:text-white cursor-pointer whitespace-nowrap"
+            >
+              <FolderGit2 className="h-3.5 w-3.5 text-sky-400" />
+              <span>Push to GitHub</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -413,6 +447,7 @@ export function OverviewWorkspace({
         onGeneratePersonalizedPlan={onGeneratePersonalizedPlan}
         onNavigate={onNavigate}
         onOpenAiMentor={onOpenAiMentor}
+        onDownloadMasteryPdf={onDownloadMasteryPdf}
       />
 
       {/* 4. Interactive Workbench Launch Strip */}
@@ -488,6 +523,30 @@ export function OverviewWorkspace({
         onCompleteChallenge={onCompleteDailyChallenge}
         isCompletedToday={isDailyChallengeCompleted}
       />
+
+      {/* 5b. 30-Day Daily Habit Tracker & Weekly Contribution Heatmap */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="xl:col-span-6">
+          <DailyHabitTracker
+            last30Days={cadenceMetrics.last30Days}
+            currentStreak={stats.currentStreak}
+            longestStreak30={cadenceMetrics.longestStreak30}
+            goalDays30={cadenceMetrics.goalDays30}
+            dailyGoalMinutes={stats.dailyGoalMinutes}
+            todayMinutesLogged={stats.todayMinutesLogged}
+            currentStageId={currentStageId}
+            onQuickLog={(minutes, stageId, notes) => onLogStudy(minutes, stageId, notes)}
+          />
+        </div>
+
+        <div className="xl:col-span-6">
+          <WeeklyContributionHeatmap
+            studyLogs={studyLogs}
+            last84Days={cadenceMetrics.last84Days}
+            dailyGoalMinutes={stats.dailyGoalMinutes}
+          />
+        </div>
+      </div>
 
       {/* 6. Two-Column Consistency, Milestones & Study Log */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -936,9 +936,9 @@ export function useOdysseyStore() {
       dayMap.set(entry.date, (dayMap.get(entry.date) || 0) + (entry.minutes || 0));
     }
 
-    const last28Days: CadenceDayCell[] = Array.from({ length: 28 }, (_, i) => {
+    const last84Days: CadenceDayCell[] = Array.from({ length: 84 }, (_, i) => {
       const d = new Date();
-      d.setUTCDate(d.getUTCDate() - (27 - i));
+      d.setUTCDate(d.getUTCDate() - (83 - i));
       const dateStr = d.toISOString().split('T')[0];
       const minutes = dayMap.get(dateStr) || 0;
       return {
@@ -949,16 +949,34 @@ export function useOdysseyStore() {
       };
     });
 
-    const last7 = last28Days.slice(-7);
+    const last30Days = last84Days.slice(-30);
+    const last28Days = last84Days.slice(-28);
+    const last7 = last84Days.slice(-7);
     const weeklyMinutes = last7.reduce((sum, c) => sum + c.minutes, 0);
     const daysGoalMet7 = last7.filter((c) => c.goalMet).length;
     const activeDays28 = last28Days.filter((c) => c.minutes > 0).length;
+    const goalDays30 = last30Days.filter((c) => c.goalMet).length;
+
+    let longestStreak30 = 0;
+    let runningStreak = 0;
+    for (const cell of last30Days) {
+      if (cell.minutes > 0) {
+        runningStreak += 1;
+        if (runningStreak > longestStreak30) longestStreak30 = runningStreak;
+      } else {
+        runningStreak = 0;
+      }
+    }
 
     return {
       last28Days,
+      last30Days,
+      last84Days,
       weeklyMinutes,
       daysGoalMet7,
       activeDays28,
+      goalDays30,
+      longestStreak30,
     };
   }, [data.studyLogs, data.dailyGoalMinutes]);
 

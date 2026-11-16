@@ -30,6 +30,8 @@ interface CommandPaletteProps {
   onOpenQuickQuiz: () => void;
   onOpenCheatSheet: () => void;
   onOpenGame?: () => void;
+  onDownloadMasteryPdf?: () => void;
+  onOpenGitHubSync?: () => void;
 }
 
 interface PaletteEntry {
@@ -50,6 +52,8 @@ export function CommandPalette({
   onOpenQuickQuiz,
   onOpenCheatSheet,
   onOpenGame,
+  onDownloadMasteryPdf,
+  onOpenGitHubSync,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -223,9 +227,50 @@ export function CommandPalette({
         },
       },
       {
+        id: 'act-cheatsheets-ref',
+        title: 'Open Master Cheat Sheets & Reference Matrices',
+        subtitle: '13-category encyclopedia (Python, C/C++, Go, SQL, K8s) + Big-O & OSI tables',
+        category: 'Action',
+        keywords: 'cheat sheets matrices python c c++ go sql docker kubernetes big o osi http octal',
+        action: () => {
+          onNavigate('reference', 'cheatsheets');
+          onClose();
+        },
+      },
+      ...(onDownloadMasteryPdf
+        ? [
+            {
+              id: 'act-pdf-report',
+              title: 'Download Official Mastery Report (.pdf)',
+              subtitle: 'Multi-page PDF with milestones, 16-stage breakdown, projects & study logs',
+              category: 'Action' as const,
+              keywords: 'pdf mastery report download export milestones study logs certificate',
+              action: () => {
+                onClose();
+                onDownloadMasteryPdf();
+              },
+            },
+          ]
+        : []),
+      ...(onOpenGitHubSync
+        ? [
+            {
+              id: 'act-github-sync',
+              title: 'Push Progress to GitHub (OAuth Sync)',
+              subtitle: 'Authenticate via GitHub OAuth & push progress JSON to a dedicated repo',
+              category: 'Action' as const,
+              keywords: 'github oauth push sync json backup repository cloud',
+              action: () => {
+                onClose();
+                onOpenGitHubSync();
+              },
+            },
+          ]
+        : []),
+      {
         id: 'act-cheatsheet',
-        title: 'Open Linux & CLI Cheat Sheet',
-        subtitle: 'Quick reference for Unix shell commands',
+        title: 'Open Quick Command Cheat Sheet Modal',
+        subtitle: 'Quick reference for Linux, Pipes, Network, Git, Python, C++, Go, SQL & K8s',
         category: 'Action',
         keywords: 'cheat sheet commands linux unix quick reference',
         action: () => {
@@ -343,7 +388,16 @@ export function CommandPalette({
     });
 
     return list;
-  }, [onNavigate, onClose, onOpenAiMentor, onOpenQuickQuiz, onOpenCheatSheet, onOpenGame]);
+  }, [
+    onNavigate,
+    onClose,
+    onOpenAiMentor,
+    onOpenQuickQuiz,
+    onOpenCheatSheet,
+    onOpenGame,
+    onDownloadMasteryPdf,
+    onOpenGitHubSync,
+  ]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

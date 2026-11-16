@@ -37,26 +37,30 @@ An interactive, self-paced, open-source **Computer Science & Systems Engineering
 
 ## Core Platform Capabilities
 
-### 1. Overview Command Workbench, A–Z Atlas & 3D Studio PBR Hero
+### 1. Overview Command Workbench, A–Z Atlas, Habit Streak & Heatmaps
 - **3D Studio PBR Hero Backdrop (`SpatialBackdrop3D`)**: Three.js composite 3D CS sculptures (Logic ALU Monolith, Memory Bus Lattice, Packet Mesh Relay, **16-Stage Mastery Orrery**) illuminated with `RoomEnvironment` PMREM studio IBL, `ACESFilmicToneMapping`, damped OrbitControls, and a collapsible zero-occlusion inspect mode.
+- **Daily Habit Tracker (`DailyHabitTracker`)**: Visual **30-day streak chart** with daily goal reference line, best 30-day run telemetry, consistency percentage, and one-click `+15m` / `+30m` habit check-ins.
+- **Weekly Contribution Heatmap (`WeeklyContributionHeatmap`)**: Dual-view telemetry featuring a **7-day granular activity intensity breakdown** (`Topics`, `Labs / Quiz`, `Study Log`) and a **rolling 12-week (84-day) GitHub-style calendar heatmap** with session inspection.
 - **A–Z Master Atlas (`CurriculumAtoZAtlas`)**: Visualizes all 16 stages organized into 4 Mastery Tiers (*Zero to Scripting*, *Core Infrastructure*, *Systems & Security*, *Hero Engineering*) with live search, inline `+15m` topic check-offs, and direct **Playground** code launches.
 - **Interactive Prerequisite Skill Graph (`CurriculumSkillGraph`)**: Interactive SVG dependency DAG from `Stage 0` (Hardware) through `Stage 14` (Cloud & SRE) and `Stage 15` (AI & HPC).
 - **Progress Analytics & Personalized Deadlines (`ProgressAnalyticsDeck`)**: 28-day study consistency matrix, 4-step daily completion loop, per-stage target dates, and automatic `12w / 24w / 36w` study schedule generator.
 - **Engineering Badges Collection (`BadgesCollection`)**: Automatically unlocks 13 tiered achievement badges (*Bronze*, *Silver*, *Gold*, *Obsidian*), including **A–Z Odyssey Hero**.
+- **Client-Side PDF Mastery Report (`jsPDF`) & GitHub OAuth Sync**: Generate multi-page `.pdf` Mastery Reports (16-stage breakdown, milestones, portfolio builds, badges & study logs) locally, or authenticate with GitHub OAuth to push progress JSON to a dedicated repository (`cs-odyssey-progress`).
 - **Hybrid Local Persistence**: Instant client `localStorage` synced transparently to atomic local JSON storage (`/api/progress` -> `.data/odyssey-progress.json` with `.bak.json` snapshots) plus full backup export/import.
 
 ### 2. Interactive Systems Lab, Code Playground & Optical Studio
-- **Sandboxed Python 3 & C11 Code Playground (`/api/code/run`)**: Cross-platform isolated subprocess runner (`shell: false`, stripped secrets env, 5s timeout, 1MB cap, custom `stdin`, and saved snippet vault). Runnable scripts are embedded across all 16 curriculum stages.
+- **Browser WebAssembly & Sandboxed Python 3 / C11 Code Playground (`CodePlayground`, `/api/code/run`)**: Switch seamlessly between **Browser WASM** (client-side **MicroPython 1.29 WASM** in an isolated ES Module Web Worker + built-in **C11-to-WebAssembly binary compiler** with native `WebAssembly.Memory`, `malloc`/`free` leak auditing, and `.wasm` header inspection — requiring zero local toolchain!) and **Server Sandbox** (`shell: false`, stripped secrets env, 5s timeout, 1MB cap, custom `stdin`, and saved snippet vault). Runnable scripts are embedded across all 16 curriculum stages.
 - **Cyber Citadel Wargame & Kernel Defense Arcade (`TerminalSimulator`, `SystemsArcadeGame`)**: 16 offline POSIX wargame levels + split 16-byte hex viewer + optional rate-limited SSH bridge to `bandit.labs.overthewire.org:2220` + 60fps Canvas Kernel Defense wave strategy game.
 - **Algorithms, Git DAG, Foundations, Memory & Packet Visualizers**: Step through Merge/Quick Sort, Dijkstra/BFS/DFS, Git 3-Trees commits, 8-bit registers, pointer memory cells, TCP 3-way handshakes, and Big-O curves live.
 - **Local Diagram & Motion Animator (`CreativeMediaStudio`)**: Design CS blueprints and export `16:9` / `9:16` animated WebM clips locally in the browser.
 
-### 3. Complete A–Z Dictionary, Curated Sources & Open-Source Exporter
+### 3. Master Cheat Sheets, Complete A–Z Dictionary & Open-Source Exporter
+- **13-Category Master Cheat Sheets & Matrices (`CheatSheetsReferenceView`)**: Production syntax cards across *Linux, Pipes, Network, Security, Git, Python, C, C++, Go, SQL, Docker & K8s, Algorithms & Math, and Wargame*, plus interactive reference tables for Big-O, OSI/TCP-IP, HTTP status codes, Linux octal permissions, and memory latency.
 - **Full A–Z Glossary & Active Recall Flashcards (`GlossaryFlashcards`)**: Every initial letter **A through Z** covered with plain-English intuition and interactive letter-by-letter filtering.
-- **66 Verified Academic & Industry Sources (`CURATED_CS_SOURCES`)**: Primary courses from MIT, Stanford, CMU, Harvard, UC Berkeley, Google SRE, Kubernetes, Karpathy Neural Networks, Beej, and IETF RFCs mapped directly to Stages `0–15`.
+- **Curated Academic & Industry Sources (`CURATED_CS_SOURCES`)**: Primary courses from MIT, Stanford, CMU, Harvard, UC Berkeley, Google SRE, Kubernetes, Karpathy Neural Networks, and IETF RFCs mapped directly to Stages `0–15`.
 - **16 Portfolio Projects (`ProjectsStudio`)**: Filterable across `Easy`, `Medium`, and `Hard` difficulty tiers with downloadable starter `README.md` specs.
 - **Open-Source Curriculum Exporter (`/api/curriculum/export`)**: Generate Markdown syllabi (`student`, `teacher`, `github`), CSV rubrics, Printable HTML/PDF packets, and structured JSON v2 schemas with customizable hours/week pacing.
-- **AI Study Mentor (`/api/tutor`)**: Powered by Gemini (`gemini-4-hydrogen`) when `GEMINI_API_KEY` is configured, seamlessly falling back offline to local grounded synthesis and verified 5-question quizzes for **all 16 stages (`stage-0`..`stage-15`)**.
+- **Server-Side BYOK AI Study Mentor (`/api/tutor`)**: Supports Gemini (`GEMINI_API_KEY`) or SSRF-hardened OpenAI-compatible/Ollama endpoints (`LLM_BASE_URL` + `LLM_API_KEY`) configured via `.env.local`, with seamless fallback to local grounded synthesis, `study_plan` mode, and verified 5-question quizzes for **all 16 stages (`stage-0`..`stage-15`)**.
 
 ---
 
@@ -110,12 +114,17 @@ docker run -p 3000:3000 --env-file .env.example cs-odyssey
 
 | Endpoint | Methods | Purpose |
 | :--- | :--- | :--- |
-| `/api/health` | `GET` | Reports Node runtime, Python/GCC availability, Gemini readiness, SSH guard, 16-stage curriculum counts & disk status. |
+| `/api/health` | `GET` | Reports Node runtime, Python/GCC availability, Gemini/custom BYOK readiness, SSH guard, 16-stage curriculum counts & disk status. |
 | `/api/progress` | `GET`, `PUT`, `DELETE` | Reads, atomically saves, and resets sanitized student progress JSON in `.data/odyssey-progress.json`. |
 | `/api/code/run` | `GET`, `POST` | Reports local toolchain capabilities (`GET`) or runs Python 3 / C11 in an isolated temp sandbox (`POST`). |
 | `/api/curriculum/export` | `GET` | Streams `.json`, `.csv`, `.md` (`github` / `student` / `teacher` / single `stage-0..stage-15`), and printable `.html` syllabi. |
-| `/api/tutor` | `POST` | AI Study Mentor (`eli9`, `quiz`, `debug`, `review`, `plan`, `search`) with live Gemini + offline 16-stage synthesis & quizzes. |
+| `/api/tutor` | `POST` | AI Study Mentor (`eli9`, `quiz`, `debug`, `review`, `study_plan`, `search`) with server BYOK (Gemini / custom LLM) + offline 16-stage synthesis & quizzes. |
 | `/api/ssh` | `POST` | Rate-limited, SSRF-hardened SSH terminal bridge whitelisted solely to `bandit.labs.overthewire.org:2220`. |
+| `/api/auth/github/url` | `GET` | Generates HMAC-SHA256 signed OAuth state & GitHub authorization URL for popup sync. |
+| `/api/auth/github/callback` | `GET` | Exchanges OAuth code for token and seals AES-256-GCM `HttpOnly; Secure; SameSite=None` session cookie. |
+| `/api/auth/github/status` | `GET` | Returns GitHub OAuth readiness, current authenticated handle, and resolved callback URL. |
+| `/api/auth/github/logout` | `POST` | Clears the encrypted GitHub OAuth session cookie. |
+| `/api/github/push` | `POST` | Creates/updates a dedicated GitHub repository (`cs-odyssey-progress`) with sanitized learner progress JSON. |
 
 ---
 
