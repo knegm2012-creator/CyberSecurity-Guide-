@@ -941,25 +941,25 @@ export function SystemsArcadeGame({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#03050c] text-slate-100 flex flex-col overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 bg-slate-100/95 dark:bg-[#03050c] text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden select-none">
       {/* Compact Top Edge HUD */}
-      <header className="h-12 border-b border-white/[0.08] bg-[#060a16] px-4 flex items-center justify-between gap-4 shrink-0">
+      <header className="h-12 border-b border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#060a16] px-4 flex items-center justify-between gap-4 shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-4 text-xs font-mono">
-          <span className="font-display font-bold text-white tracking-tight text-sm flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-sky-400" />
+          <span className="font-display font-bold text-slate-900 dark:text-white tracking-tight text-sm flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             <span>KERNEL DEFENSE</span>
           </span>
-          <span className="text-slate-600 hidden sm:inline">|</span>
-          <span className="tabular-nums text-emerald-400 font-semibold">
+          <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span>
+          <span className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">
             CORE {hud.integrity}%
           </span>
-          <span className="tabular-nums text-amber-300 font-semibold">
+          <span className="tabular-nums text-amber-700 dark:text-amber-300 font-semibold">
             CYCLES {hud.credits}
           </span>
-          <span className="tabular-nums text-sky-300">
+          <span className="tabular-nums text-sky-700 dark:text-sky-300">
             WAVE {hud.wave}/{hud.maxWaves}
           </span>
-          <span className="tabular-nums text-slate-300 hidden md:inline">
+          <span className="tabular-nums text-slate-600 dark:text-slate-300 hidden md:inline">
             SCORE {hud.score.toLocaleString()}
           </span>
         </div>
@@ -968,7 +968,7 @@ export function SystemsArcadeGame({
           {phase === 'playing' && (
             <button
               onClick={() => setPhase('paused')}
-              className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-mono text-slate-200 hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+              className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/[0.05] px-2.5 py-1 text-xs font-mono text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
             >
               <Pause className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Pause</span>
@@ -976,7 +976,7 @@ export function SystemsArcadeGame({
           )}
           <button
             onClick={() => setMuted((m) => !m)}
-            className="rounded-lg border border-white/10 bg-white/[0.05] p-1.5 text-slate-300 hover:text-white cursor-pointer"
+            className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/[0.05] p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer"
             title={muted ? 'Unmute audio (M)' : 'Mute audio (M)'}
             aria-label={muted ? 'Unmute audio' : 'Mute audio'}
           >
@@ -984,7 +984,7 @@ export function SystemsArcadeGame({
           </button>
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-mono text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer"
+            className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/[0.05] px-2.5 py-1 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
             title="Exit Arena (Esc)"
           >
             <X className="h-3.5 w-3.5" />
@@ -994,17 +994,17 @@ export function SystemsArcadeGame({
       </header>
 
       {/* Main Playfield Canvas Area (>= 85% unobstructed area) */}
-      <div className="relative flex-1 flex items-center justify-center p-2 sm:p-4 bg-[#03050c] overflow-hidden">
+      <div className="relative flex-1 flex items-center justify-center p-2 sm:p-4 bg-slate-100/95 dark:bg-[#03050c] overflow-hidden">
         <canvas
           ref={canvasRef}
           width={LOGICAL_W}
           height={LOGICAL_H}
-          className="w-full h-full max-w-[1160px] max-h-full aspect-[960/560] rounded-2xl border border-white/[0.1] shadow-2xl cursor-crosshair bg-[#050914] object-contain"
+          className="w-full h-full max-w-[1160px] max-h-full aspect-[960/560] rounded-2xl border border-slate-300 dark:border-white/[0.1] shadow-2xl cursor-crosshair bg-[#050914] object-contain"
         />
 
         {/* Compact Bottom-Left Defense Blueprint Dock during active play */}
         {phase === 'playing' && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-xl border border-white/[0.12] bg-[#060a16]/95 px-2.5 py-1.5 shadow-xl">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/[0.12] bg-white/95 dark:bg-[#060a16]/95 px-2.5 py-1.5 shadow-xl backdrop-blur-md">
             {(Object.keys(TOWER_BLUEPRINTS) as TowerKind[]).map((kind) => {
               const bp = TOWER_BLUEPRINTS[kind];
               const active = selectedKind === kind;
@@ -1013,10 +1013,10 @@ export function SystemsArcadeGame({
                 <button
                   key={kind}
                   onClick={() => setSelectedKind(kind)}
-                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                     active
-                      ? 'border-sky-400/60 bg-sky-500/20 text-white font-semibold'
-                      : 'border-white/10 bg-white/[0.03] text-slate-300 hover:text-white'
+                      ? 'border-sky-500/60 dark:border-sky-400/60 bg-sky-500/15 dark:bg-sky-500/20 text-sky-900 dark:text-white font-semibold'
+                      : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   } ${!affordable ? 'opacity-50' : ''}`}
                   title={`${bp.name}: ${bp.role} (${bp.cost} cycles) [Key ${bp.hotkey}]`}
                 >
@@ -1025,12 +1025,12 @@ export function SystemsArcadeGame({
                     style={{ background: bp.color }}
                   />
                   <span>{bp.hotkey}:{bp.name}</span>
-                  <span className="text-amber-300">{bp.cost}</span>
+                  <span className="text-amber-700 dark:text-amber-300">{bp.cost}</span>
                 </button>
               );
             })}
-            <span className="hidden md:inline-flex items-center gap-1 pl-2 text-[10px] font-mono text-slate-400">
-              <Crosshair className="h-3 w-3 text-sky-400" />
+            <span className="hidden md:inline-flex items-center gap-1 pl-2 text-[10px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              <Crosshair className="h-3 w-3 text-sky-600 dark:text-sky-400" />
               Click packets to zap · Click + pads to build/upgrade
             </span>
           </div>
@@ -1038,8 +1038,8 @@ export function SystemsArcadeGame({
 
         {/* TITLE SCREEN */}
         {phase === 'title' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#03050c]/92 p-4">
-            <div className="w-full max-w-md rounded-2xl border border-white/[0.12] bg-[#070c1a] p-7 text-center space-y-5 shadow-2xl">
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/45 dark:bg-[#03050c]/92 backdrop-blur-sm p-4">
+            <div className="optical-panel w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/[0.12] bg-white/95 dark:bg-[#070c1a] p-7 text-center space-y-5 shadow-2xl">
               {/* Bespoke Title Lockup Crest SVG (Title screen identity lockup) */}
               <div className="mx-auto w-20 h-20 flex items-center justify-center">
                 <svg viewBox="0 0 80 80" className="w-20 h-20" aria-hidden="true">
@@ -1061,13 +1061,13 @@ export function SystemsArcadeGame({
               </div>
 
               <div className="space-y-1.5">
-                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-sky-400">
+                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-sky-700 dark:text-sky-400 font-semibold">
                   Interactive Systems Simulation
                 </div>
-                <h1 className="font-display text-3xl font-bold text-white tracking-tight">
+                <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                   KERNEL DEFENSE
                 </h1>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   Click socket pads to deploy &amp; upgrade defenses, or click incoming SYN floods and overflows to neutralize threats before they breach CPU Core.
                 </p>
               </div>
@@ -1075,20 +1075,20 @@ export function SystemsArcadeGame({
               <div className="flex items-center justify-center gap-2 text-xs font-mono">
                 <button
                   onClick={() => setHardcore(false)}
-                  className={`px-3 py-1.5 rounded-lg border cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg border cursor-pointer whitespace-nowrap shrink-0 ${
                     !hardcore
-                      ? 'border-sky-400/60 bg-sky-500/20 text-sky-200 font-semibold'
-                      : 'border-white/10 bg-white/[0.03] text-slate-400'
+                      ? 'border-sky-500/60 dark:border-sky-400/60 bg-sky-500/15 dark:bg-sky-500/20 text-sky-900 dark:text-sky-200 font-semibold'
+                      : 'border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   Standard Mode
                 </button>
                 <button
                   onClick={() => setHardcore(true)}
-                  className={`px-3 py-1.5 rounded-lg border cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg border cursor-pointer whitespace-nowrap shrink-0 ${
                     hardcore
-                      ? 'border-rose-400/60 bg-rose-500/20 text-rose-200 font-semibold'
-                      : 'border-white/10 bg-white/[0.03] text-slate-400'
+                      ? 'border-rose-500/60 dark:border-rose-400/60 bg-rose-500/15 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 font-semibold'
+                      : 'border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   Hardcore (+Threat HP)
@@ -1097,7 +1097,7 @@ export function SystemsArcadeGame({
 
               <button
                 onClick={() => startNewRun(hardcore)}
-                className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-display font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-sky-500/20"
+                className="w-full py-3 rounded-xl bg-sky-600 hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-display font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-sky-500/20"
               >
                 <Play className="h-4 w-4 fill-current" />
                 <span>Start Defense Run</span>
@@ -1108,28 +1108,28 @@ export function SystemsArcadeGame({
 
         {/* PAUSED OVERLAY */}
         {phase === 'paused' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#03050c]/88 p-4">
-            <div className="w-full max-w-xs rounded-2xl border border-white/[0.12] bg-[#070c1a] p-6 text-center space-y-4">
-              <Shield className="h-8 w-8 text-sky-400 mx-auto" />
-              <h2 className="font-display text-xl font-bold text-white">Simulation Paused</h2>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/45 dark:bg-[#03050c]/88 backdrop-blur-sm p-4">
+            <div className="optical-panel w-full max-w-xs rounded-2xl border border-slate-200 dark:border-white/[0.12] bg-white/95 dark:bg-[#070c1a] p-6 text-center space-y-4 shadow-2xl">
+              <Shield className="h-8 w-8 text-sky-600 dark:text-sky-400 mx-auto" />
+              <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">Simulation Paused</h2>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => setPhase('playing')}
-                  className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-semibold text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
                   <span>Resume</span>
                 </button>
                 <button
                   onClick={() => startNewRun(hardcore)}
-                  className="w-full py-2.5 rounded-xl border border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/10 font-medium text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/[0.05] text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 font-medium text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Restart Run</span>
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs cursor-pointer"
+                  className="w-full py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs cursor-pointer"
                 >
                   Return to Workbench
                 </button>
@@ -1140,37 +1140,37 @@ export function SystemsArcadeGame({
 
         {/* VICTORY / GAME OVER MODAL */}
         {(phase === 'victory' || phase === 'gameover') && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#03050c]/90 p-4">
-            <div className="w-full max-w-sm rounded-2xl border border-white/[0.12] bg-[#070c1a] p-6 text-center space-y-4 shadow-2xl">
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/45 dark:bg-[#03050c]/90 backdrop-blur-sm p-4">
+            <div className="optical-panel w-full max-w-sm rounded-2xl border border-slate-200 dark:border-white/[0.12] bg-white/95 dark:bg-[#070c1a] p-6 text-center space-y-4 shadow-2xl">
               {phase === 'victory' ? (
-                <Trophy className="h-10 w-10 text-amber-400 mx-auto" />
+                <Trophy className="h-10 w-10 text-amber-500 dark:text-amber-400 mx-auto" />
               ) : (
-                <ShieldAlert className="h-10 w-10 text-rose-400 mx-auto" />
+                <ShieldAlert className="h-10 w-10 text-rose-600 dark:text-rose-400 mx-auto" />
               )}
 
               <div>
-                <h2 className="font-display text-2xl font-bold text-white">
+                <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
                   {phase === 'victory' ? 'Kernel Secured!' : 'Core Breached'}
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   {phase === 'victory'
                     ? 'All 6 adversarial traffic waves neutralized with intact CPU registers.'
                     : `System bus saturated during Wave ${hud.wave} of ${hud.maxWaves}.`}
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs bg-[#04070f] rounded-xl p-3 border border-white/[0.08]">
+              <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs bg-slate-50 dark:bg-[#04070f] rounded-xl p-3 border border-slate-200 dark:border-white/[0.08]">
                 <div>
                   <div className="text-[10px] text-slate-500">SCORE</div>
-                  <div className="font-bold text-white tabular-nums">{hud.score}</div>
+                  <div className="font-bold text-slate-900 dark:text-white tabular-nums">{hud.score}</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-500">NEUTRALIZED</div>
-                  <div className="font-bold text-emerald-400 tabular-nums">{hud.kills}</div>
+                  <div className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{hud.kills}</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-500">XP GAINED</div>
-                  <div className="font-bold text-sky-400 tabular-nums flex items-center justify-center gap-1">
+                  <div className="font-bold text-sky-700 dark:text-sky-400 tabular-nums flex items-center justify-center gap-1">
                     <Sparkles className="h-3 w-3" />
                     +{phase === 'victory' ? Math.max(80, Math.round(hud.score * 0.12)) : hud.score > 100 ? 40 : 0}
                   </div>
@@ -1180,14 +1180,14 @@ export function SystemsArcadeGame({
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => startNewRun(hardcore)}
-                  className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Zap className="h-3.5 w-3.5" />
                   <span>Play Again</span>
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-full py-2 rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 hover:text-white text-xs cursor-pointer"
+                  className="w-full py-2 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs cursor-pointer"
                 >
                   Back to CS Odyssey
                 </button>

@@ -461,15 +461,15 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
   return (
     <div className="space-y-6">
       <div className="optical-panel rounded-2xl p-6 space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/[0.08] pb-4">
           <div>
-            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-600 dark:text-sky-400 font-semibold">
               100% Local Browser Studio · Zero External Keys Required
             </span>
-            <h2 className="font-display text-lg font-bold text-white mt-0.5">
+            <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white mt-0.5">
               Architecture Diagram Editor &amp; Motion Video Lab
             </h2>
-            <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
               Synthesize crisp CS architecture visuals or upload any local photo to annotate and animate directly into downloadable PNGs and WebM clips.
             </p>
           </div>
@@ -477,10 +477,10 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
           <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium self-start">
             <button
               onClick={() => setStudioTab('diagram')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                 studioTab === 'diagram'
-                  ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 font-semibold'
-                  : 'text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-sky-500/15 text-sky-800 border border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-400/40 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-transparent'
               }`}
             >
               <ImageIcon className="h-3.5 w-3.5" />
@@ -488,10 +488,10 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
             </button>
             <button
               onClick={() => setStudioTab('animate')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                 studioTab === 'animate'
-                  ? 'bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-400/40 font-semibold'
-                  : 'text-slate-400 hover:text-white border border-transparent'
+                  ? 'bg-fuchsia-500/15 text-fuchsia-800 border border-fuchsia-500/40 dark:bg-fuchsia-500/20 dark:text-fuchsia-200 dark:border-fuchsia-400/40 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-transparent'
               }`}
             >
               <Film className="h-3.5 w-3.5" />
@@ -505,13 +505,13 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
           <div className="lg:col-span-4 space-y-4 text-xs">
             <div className="optical-inset rounded-xl p-4 space-y-3">
               <div>
-                <label className="block font-mono text-[11px] text-slate-400 mb-1">
+                <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1">
                   Architecture Blueprint
                 </label>
                 <select
                   value={preset}
                   onChange={(e) => setPreset(e.target.value as BlueprintPreset)}
-                  className="w-full rounded-lg border border-white/10 bg-[#04070e] px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-sky-400"
+                  className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] px-2.5 py-1.5 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500"
                 >
                   <option value="cpu">CPU Fetch-Decode-Execute</option>
                   <option value="network">DNS / TCP / TLS 1.3 Stack</option>
@@ -521,25 +521,27 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
               </div>
 
               <div>
-                <label className="block font-mono text-[11px] text-slate-400 mb-1">
+                <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1">
                   Title &amp; Caption Overlay
                 </label>
                 <input
                   type="text"
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#04070e] px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-sky-400 mb-2"
+                  className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] px-2.5 py-1.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 mb-2"
                 />
                 <input
                   type="text"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#04070e] px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-sky-400"
+                  className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] px-2.5 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block font-mono text-[11px] text-slate-400 mb-1.5">Color Theme</label>
+                <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1.5">
+                  Color Theme
+                </label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(Object.keys(PALETTES) as ThemePalette[]).map((k) => (
                     <button
@@ -547,8 +549,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                       onClick={() => setPaletteKey(k)}
                       className={`px-2 py-1.5 rounded-lg border text-[11px] text-left cursor-pointer ${
                         paletteKey === k
-                          ? 'border-sky-400/60 bg-sky-500/20 text-white font-semibold'
-                          : 'border-white/10 bg-white/[0.03] text-slate-400'
+                          ? 'border-sky-500/60 bg-sky-500/15 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/20 dark:text-white font-semibold'
+                          : 'border-slate-200 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400'
                       }`}
                     >
                       {PALETTES[k].name}
@@ -558,12 +560,12 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
               </div>
 
               <div>
-                <label className="block font-mono text-[11px] text-slate-400 mb-1.5">
+                <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1.5">
                   Upload Base Image / Photo (Optional Edit or Animate)
                 </label>
                 <div className="flex items-center gap-2">
-                  <label className="flex-1 rounded-lg border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-center cursor-pointer flex items-center justify-center gap-1.5 text-slate-200">
-                    <Upload className="h-3.5 w-3.5 text-sky-400" />
+                  <label className="flex-1 rounded-lg border border-slate-300 dark:border-white/15 bg-white hover:bg-slate-50 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] px-3 py-2 text-center cursor-pointer flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200">
+                    <Upload className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                     <span>{uploadedImageUrl ? 'Replace Photo' : 'Choose Image'}</span>
                     <input
                       type="file"
@@ -578,7 +580,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                         setUploadedImageUrl(null);
                         setImageVersion((v) => v + 1);
                       }}
-                      className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                      className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 cursor-pointer"
                       title="Remove uploaded photo"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -589,7 +591,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
 
               {uploadedImageUrl && (
                 <div>
-                  <label className="block font-mono text-[11px] text-slate-400 mb-1">
+                  <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1">
                     Image Filter
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -599,8 +601,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                         onClick={() => setFilterTone(f)}
                         className={`px-2 py-1 rounded-lg border capitalize text-[11px] cursor-pointer ${
                           filterTone === f
-                            ? 'border-sky-400 bg-sky-500/20 text-white'
-                            : 'border-white/10 text-slate-400'
+                            ? 'border-sky-500 bg-sky-500/15 text-sky-900 dark:border-sky-400 dark:bg-sky-500/20 dark:text-white font-semibold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {f}
@@ -615,8 +617,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                   onClick={() => setShowGrid((g) => !g)}
                   className={`flex-1 py-1.5 rounded-lg border text-[11px] font-mono cursor-pointer flex items-center justify-center gap-1 ${
                     showGrid
-                      ? 'border-sky-400/50 bg-sky-500/15 text-sky-200'
-                      : 'border-white/10 text-slate-400'
+                      ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:border-sky-400/50 dark:text-sky-200 font-semibold'
+                      : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   <Grid className="h-3 w-3" />
@@ -626,8 +628,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                   onClick={() => setScanlines((s) => !s)}
                   className={`flex-1 py-1.5 rounded-lg border text-[11px] font-mono cursor-pointer flex items-center justify-center gap-1 ${
                     scanlines
-                      ? 'border-sky-400/50 bg-sky-500/15 text-sky-200'
-                      : 'border-white/10 text-slate-400'
+                      ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:border-sky-400/50 dark:text-sky-200 font-semibold'
+                      : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   <Sparkles className="h-3 w-3" />
@@ -638,7 +640,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
 
             {studioTab === 'diagram' ? (
               <div className="optical-inset rounded-xl p-4 space-y-3">
-                <label className="block font-mono text-[11px] text-slate-400">
+                <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400">
                   Click Canvas to Place Callout Badge
                 </label>
                 <div className="flex gap-2">
@@ -647,12 +649,12 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                     value={stampText}
                     onChange={(e) => setStampText(e.target.value)}
                     placeholder="Badge label..."
-                    className="flex-1 rounded-lg border border-white/10 bg-[#04070e] px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-sky-400"
+                    className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] px-2.5 py-1.5 text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-sky-500"
                   />
                   {stamps.length > 0 && (
                     <button
                       onClick={() => setStamps([])}
-                      className="rounded-lg border border-white/10 px-2.5 py-1 text-slate-400 hover:text-white cursor-pointer"
+                      className="rounded-lg border border-slate-300 dark:border-white/10 px-2.5 py-1 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                     >
                       Clear
                     </button>
@@ -664,7 +666,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                   tint="rgb(14 165 233)"
                   opacity={0.92}
                   style={{ fontSize: 12 }}
-                  className="w-full !min-h-[36px] font-semibold text-white"
+                  className="w-full !min-h-[36px] font-semibold text-white whitespace-nowrap"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Download High-Res PNG</span>
@@ -673,7 +675,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
             ) : (
               <div className="optical-inset rounded-xl p-4 space-y-3">
                 <div>
-                  <label className="block font-mono text-[11px] text-slate-400 mb-1.5">
+                  <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1.5">
                     Video Aspect Ratio
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -683,8 +685,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                         onClick={() => setAspect(ar)}
                         className={`py-1.5 rounded-lg border font-mono text-[11px] cursor-pointer ${
                           aspect === ar
-                            ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-white font-semibold'
-                            : 'border-white/10 text-slate-400'
+                            ? 'border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-900 dark:border-fuchsia-400/60 dark:bg-fuchsia-500/20 dark:text-white font-semibold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {ar === '16:9' ? '16:9 Landscape' : '9:16 Portrait'}
@@ -694,7 +696,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                 </div>
 
                 <div>
-                  <label className="block font-mono text-[11px] text-slate-400 mb-1.5">
+                  <label className="block font-mono text-[11px] text-slate-600 dark:text-slate-400 mb-1.5">
                     Motion Dynamics
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -704,8 +706,8 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                         onClick={() => setMotionStyle(m)}
                         className={`py-1.5 rounded-lg border capitalize text-[11px] cursor-pointer ${
                           motionStyle === m
-                            ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-white font-semibold'
-                            : 'border-white/10 text-slate-400'
+                            ? 'border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-900 dark:border-fuchsia-400/60 dark:bg-fuchsia-500/20 dark:text-white font-semibold'
+                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {m}
@@ -720,7 +722,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                   tint="rgb(192 38 211)"
                   opacity={0.92}
                   style={{ fontSize: 12 }}
-                  className="w-full !min-h-[36px] font-semibold text-white"
+                  className="w-full !min-h-[36px] font-semibold text-white whitespace-nowrap"
                 >
                   {recording ? (
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -731,21 +733,21 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                 </SoapBubbleButton>
 
                 {recordError && (
-                  <p className="text-[11px] text-rose-400 font-mono">{recordError}</p>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-mono">{recordError}</p>
                 )}
 
                 {recordedVideoUrl && (
-                  <div className="space-y-2 pt-2 border-t border-white/[0.08]">
+                  <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/[0.08]">
                     <video
                       src={recordedVideoUrl}
                       controls
                       loop
-                      className="w-full rounded-lg border border-white/15 bg-black"
+                      className="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-black"
                     />
                     <a
                       href={recordedVideoUrl}
                       download={`cs-odyssey-${preset}-${aspect.replace(':', 'x')}.webm`}
-                      className="w-full py-2 rounded-lg border border-emerald-400/40 bg-emerald-500/15 text-emerald-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 hover:bg-emerald-500/25"
+                      className="w-full py-2 rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-500/25"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>Download WebM Video</span>
@@ -764,7 +766,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                 width={880}
                 height={500}
                 onClick={handleCanvasStampClick}
-                className="w-full h-auto rounded-xl border border-white/[0.08] cursor-crosshair shadow-xl"
+                className="w-full h-auto rounded-xl border border-slate-300 dark:border-white/[0.08] cursor-crosshair shadow-xl"
                 title="Click anywhere to stamp your label badge"
               />
             ) : (
@@ -772,7 +774,7 @@ export function CreativeMediaStudio({ onAwardXp }: { onAwardXp?: (xp: number) =>
                 ref={animCanvasRef}
                 width={animW}
                 height={animH}
-                className="max-w-full max-h-[540px] w-auto h-auto rounded-xl border border-white/[0.08] shadow-xl"
+                className="max-w-full max-h-[540px] w-auto h-auto rounded-xl border border-slate-300 dark:border-white/[0.08] shadow-xl"
               />
             )}
           </div>

@@ -9,6 +9,7 @@ import {
   sshRateLimiter,
   sshConcurrencyLimiter,
   tutorRateLimiter,
+  TokenBucketRateLimiter,
 } from '../lib/security.ts';
 import {
   executeCodeSecurely,
@@ -30,13 +31,19 @@ import {
   buildLocalStudyPlanResponse,
   sanitizeGroundingSources,
   buildLocalSearchGroundingResponse,
+  buildLocalCompanionResponse,
 } from '../lib/local-mentor.ts';
 import {
   generateCurriculumCsv,
   generateOpenSourceJson,
   computePacingSummary,
 } from '../lib/curriculum-export.ts';
-import { evaluateBadges, BADGE_DEFINITIONS } from '../lib/badges-data.ts';
+import {
+  evaluateBadges,
+  BADGE_DEFINITIONS,
+  detectRecursiveCode,
+  countNonEmptyLines,
+} from '../lib/badges-data.ts';
 import {
   CHEAT_SHEET_DATA,
   CHEAT_SHEET_CATEGORIES,
@@ -56,6 +63,55 @@ import {
 } from '../lib/github-oauth.ts';
 import { compileCToWasm } from '../lib/wasm/c-compiler.ts';
 import { executeCInWasm } from '../lib/wasm/c-runtime.ts';
+import {
+  formatSessionClock,
+  computeLoggableMinutes,
+  shouldPromptStudyLogOnSwitch,
+  buildDefaultSessionNote,
+  summarizeWorkspaceMinutes,
+  evaluateCatchUpSuggestion,
+  CATCH_UP_THRESHOLD_MS,
+  CATCH_UP_SESSION_MINUTES,
+} from '../lib/session-timer.ts';
+import {
+  ADVENTURE_REALMS,
+  computeBitsValue,
+  toSigned8Bit,
+  toHexByte,
+  evaluateBinaryLabMission,
+  evaluateLogicGate,
+  evaluateLogicLabMission,
+  getBossQuestionsForRealm,
+  computeAdventureCampaignProgress,
+} from '../lib/adventure-quest.ts';
+import {
+  DEFAULT_MENTOR_DAILY_LIMIT,
+  MIN_MENTOR_DAILY_LIMIT,
+  MAX_MENTOR_DAILY_LIMIT,
+  clampMentorDailyLimit,
+  findCachedMentorMatch,
+  formatQuotaResetCountdown,
+} from '../lib/mentor-quota.ts';
+import {
+  consumeMentorDailyQuotaServer,
+  getMentorQuotaSnapshotServer,
+  setMentorDailyLimitServer,
+} from '../lib/mentor-quota-server.ts';
+import {
+  clampBuddyPosition,
+  getCornerPosition,
+  getNextRoamWaypoint,
+  buildBuddyTrainingDeck,
+} from '../lib/buddy-helper.ts';
+import {
+  createInitialTerminalState,
+  executeTerminalCommand,
+  executeTerminalScript,
+  parseMarkdownCodeSnippets,
+} from '../lib/terminal-engine.ts';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { OdysseyStoreData } from '../hooks/use-odyssey-store.ts';
 import assert from 'assert';
 
@@ -488,15 +544,78 @@ for i in range(50000):
     assert(earnedIds.has('bitwise-initiate'));
   });
 
-  await test('Sanitizes earnedBadges timestamps and rejects invalid keys', () => {
+  await test('Unlocks First 1000 Lines of Code, Master of Recursion, and WASM Ignition dynamically', () => {
+    const pyRec = `def fib(n):\n    if n <= 1:\n        return n\n    return fib(n - 1) + fib(n - 2)\n`;
+    const pyIter = `def greet(name):\n    print(name)\n`;
+    const cRec = `int gcd(int a, int b) {\n  if (b == 0) return a;\n  return gcd(b, a % b);\n}\n`;
+
+    assert.strictEqual(detectRecursiveCode(pyRec, 'python'), true);
+    assert.strictEqual(detectRecursiveCode(pyIter, 'python'), false);
+    assert.strictEqual(detectRecursiveCode(cRec, 'c'), true);
+    assert.strictEqual(countNonEmptyLines(pyRec), 4);
+
+    const lockedCheck = evaluateBadges({
+      completedTopics: { 's12-t1': true, 's12-t4': true },
+      solvedBanditLevels: [0],
+      projectStatuses: {},
+      userMilestones: [],
+      savedSnippets: [{ id: 'iter-1', code: pyIter, language: 'python' }],
+      studyLogs: [],
+      currentStreak: 0,
+      linesOfCodeExecuted: 990,
+      codeRunsCount: 1,
+      recursionRunsCount: 0,
+    });
+
+    const beforeMap = Object.fromEntries(lockedCheck.badges.map((b) => [b.id, b]));
+    assert.strictEqual(beforeMap['wasm-spark'].unlocked, true);
+    assert.strictEqual(beforeMap['first-1000-loc'].unlocked, false);
+    assert.strictEqual(beforeMap['first-1000-loc'].current, 992);
+    assert.strictEqual(beforeMap['master-of-recursion'].unlocked, false);
+
+    const unlockedCheck = evaluateBadges({
+      completedTopics: { 's12-t1': true, 's12-t4': true, 's6-t2': true, 's6-t4': true },
+      solvedBanditLevels: [0],
+      projectStatuses: {},
+      userMilestones: [],
+      savedSnippets: [{ id: 'rec-1', code: pyRec, language: 'python' }],
+      studyLogs: [],
+      currentStreak: 0,
+      linesOfCodeExecuted: 996,
+      codeRunsCount: 5,
+      recursionRunsCount: 1,
+      cPointerRunsCount: 1,
+    });
+
+    const afterMap = Object.fromEntries(unlockedCheck.badges.map((b) => [b.id, b]));
+    assert.strictEqual(afterMap['first-1000-loc'].unlocked, true);
+    assert.strictEqual(afterMap['master-of-recursion'].unlocked, true);
+    assert.strictEqual(afterMap['pointer-surgeon'].unlocked, true);
+    assert(unlockedCheck.newlyUnlockedIds.includes('first-1000-loc'));
+    assert(unlockedCheck.newlyUnlockedIds.includes('master-of-recursion'));
+  });
+
+  await test('Sanitizes earnedBadges, coding telemetry counters, and savedSnippets safely', () => {
     const cleaned = sanitizeOdysseyStoreState({
       earnedBadges: {
         'milestone-spark': '2026-11-14T10:00:00.000Z',
         'INVALID KEY!!': '2026-11-14T10:00:00.000Z',
       },
+      linesOfCodeExecuted: -50,
+      codeRunsCount: 12,
+      recursionRunsCount: Infinity,
+      cPointerRunsCount: 4,
+      savedSnippets: [
+        { id: 's1', title: 'Fib', language: 'python', code: 'def f(): pass' },
+      ],
     });
     assert.strictEqual(cleaned.earnedBadges['milestone-spark'], '2026-11-14T10:00:00.000Z');
     assert.strictEqual(cleaned.earnedBadges['INVALID KEY!!'], undefined);
+    assert.strictEqual(cleaned.linesOfCodeExecuted, 0);
+    assert.strictEqual(cleaned.codeRunsCount, 12);
+    assert.strictEqual(cleaned.recursionRunsCount, 0);
+    assert.strictEqual(cleaned.cPointerRunsCount, 4);
+    assert.strictEqual(cleaned.savedSnippets.length, 1);
   });
 
   await test('Sanitizes stageTargetDates, autoLogTopicPractice, and generates local study plans + exports', () => {
@@ -760,6 +879,630 @@ int main(void) {
     assert.strictEqual(loopRes.success, false);
     assert.strictEqual(loopRes.exitCode, 124);
     assert.strictEqual(loopRes.stderr.includes('infinite loop'), true);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 12. Workspace Session Timer & Switch Auto-Prompt ---');
+  // --------------------------------------------------------------------------
+
+  await test('Formats session clocks accurately across seconds, minutes, and hours', () => {
+    assert.strictEqual(formatSessionClock(0), '00:00');
+    assert.strictEqual(formatSessionClock(65), '01:05');
+    assert.strictEqual(formatSessionClock(3661), '1:01:01');
+  });
+
+  await test('Computes loggable minutes and auto-prompts only when switching after active threshold', () => {
+    assert.strictEqual(computeLoggableMinutes(20), 0);
+    assert.strictEqual(computeLoggableMinutes(20, true), 1);
+    assert.strictEqual(computeLoggableMinutes(150), 3);
+
+    assert.strictEqual(
+      shouldPromptStudyLogOnSwitch({
+        fromWorkspace: 'lab',
+        toWorkspace: 'overview',
+        elapsedSeconds: 120,
+      }),
+      true
+    );
+    assert.strictEqual(
+      shouldPromptStudyLogOnSwitch({
+        fromWorkspace: 'lab',
+        toWorkspace: 'lab',
+        elapsedSeconds: 120,
+      }),
+      false
+    );
+    assert.strictEqual(
+      shouldPromptStudyLogOnSwitch({
+        fromWorkspace: 'lab',
+        toWorkspace: 'overview',
+        elapsedSeconds: 15,
+      }),
+      false
+    );
+    assert.strictEqual(
+      shouldPromptStudyLogOnSwitch({
+        fromWorkspace: 'lab',
+        toWorkspace: 'overview',
+        elapsedSeconds: 120,
+        autoPromptEnabled: false,
+      }),
+      false
+    );
+
+    assert.strictEqual(
+      buildDefaultSessionNote('lab', 240, true),
+      'Deep Focus study session in Systems Lab (4m)'
+    );
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 13. Hardened Backend & Analytics Boundaries ---');
+  // --------------------------------------------------------------------------
+
+  await test('Rejects IPv6 link-local/unique-local with zone IDs and Teredo (2001::1)', () => {
+    assert.strictEqual(isForbiddenIp('fe80::1%eth0'), true);
+    assert.strictEqual(isForbiddenIp('fd12:3456:789a::1%en0'), true);
+    assert.strictEqual(isForbiddenIp('2001::1'), true);
+    assert.strictEqual(isForbiddenIp('2001:0:4136:e378:8000:63bf:3fff:fdd2'), true);
+    assert.strictEqual(isForbiddenIp('2606:4700:4700::1111'), false);
+  });
+
+  await test('Rejects NUL bytes cleanly in executeCodeSecurely code or stdin', async () => {
+    await assert.rejects(
+      async () =>
+        executeCodeSecurely({
+          language: 'python',
+          code: 'print("ok")\0',
+        }),
+      /Null bytes are not permitted/i
+    );
+
+    await assert.rejects(
+      async () =>
+        executeCodeSecurely({
+          language: 'python',
+          code: 'print(input())',
+          stdin: 'abc\0def',
+        }),
+      /Null bytes are not permitted/i
+    );
+  });
+
+  await test('TokenBucketRateLimiter returns retryAfterSec >= 1 when exhausted and evicts LRU buckets', () => {
+    const limiter = new TokenBucketRateLimiter(2, 0.5, 2);
+    assert.strictEqual(limiter.tryConsume('ip-a').allowed, true);
+    assert.strictEqual(limiter.tryConsume('ip-a').allowed, true);
+
+    const blocked = limiter.tryConsume('ip-a');
+    assert.strictEqual(blocked.allowed, false);
+    assert.strictEqual(blocked.remaining, 0);
+    assert(blocked.retryAfterSec >= 1);
+
+    // Fill capacity with ip-b and ip-c; ip-a becomes oldest after ip-b access if ip-b refreshes LRU
+    assert.strictEqual(limiter.tryConsume('ip-b').allowed, true);
+    assert.strictEqual(limiter.tryConsume('ip-c').allowed, true);
+    // Since maxBuckets = 2, ip-a was evicted when ip-c was inserted, so ip-a gets a fresh 2-token bucket
+    const freshA = limiter.tryConsume('ip-a');
+    assert.strictEqual(freshA.allowed, true);
+    assert.strictEqual(freshA.remaining, 1);
+  });
+
+  await test('sanitizeOdysseyStoreState enforces strict allowlisting, blocks constructor/unexpected keys, and clamps workspaceMinutes', () => {
+    let protoErr = false;
+    try {
+      sanitizeOdysseyStoreState({ constructor: { prototype: { polluted: true } } });
+    } catch (err: any) {
+      protoErr = err.message.includes('Prototype pollution');
+    }
+    assert.strictEqual(protoErr, true);
+
+    const cleaned = sanitizeOdysseyStoreState({
+      unexpectedKey: 'should-be-stripped',
+      evilNested: { a: 1 },
+      workspaceMinutes: {
+        lab: 999_999,
+        overview: -12,
+        curriculum: 45.8,
+        invalidWorkspace: 500,
+      },
+    });
+    assert.strictEqual('unexpectedKey' in cleaned, false);
+    assert.strictEqual('evilNested' in cleaned, false);
+    assert.strictEqual(cleaned.workspaceMinutes.lab, 100_000);
+    assert.strictEqual(cleaned.workspaceMinutes.overview, 0);
+    assert.strictEqual(cleaned.workspaceMinutes.curriculum, 45);
+    assert.strictEqual(cleaned.workspaceMinutes.invalidWorkspace, undefined);
+  });
+
+  await test('summarizeWorkspaceMinutes computes sorted workspace totals accurately', () => {
+    const summary = summarizeWorkspaceMinutes({
+      overview: 15,
+      lab: 95.9,
+      shell: 40,
+      reference: -10,
+      curriculum: 60,
+    });
+    assert.strictEqual(summary.length, 5);
+    assert.deepStrictEqual(
+      summary.map((s) => s.workspace),
+      ['lab', 'curriculum', 'shell', 'overview', 'reference']
+    );
+    assert.strictEqual(summary[0].minutes, 95);
+    assert.strictEqual(summary[4].minutes, 0);
+    const total = summary.reduce((acc, row) => acc + row.minutes, 0);
+    assert.strictEqual(total, 210);
+  });
+
+  await test('Unlocks study streak threshold medals (3d, 7d, 14d, 30d) and capstone milestone medals progressively', () => {
+    const streak7Eval = evaluateBadges({
+      completedTopics: {},
+      solvedBanditLevels: [0],
+      projectStatuses: Object.fromEntries(
+        Array.from({ length: 6 }, (_, i) => [`proj-${i + 1}`, 'completed' as const])
+      ),
+      userMilestones: [],
+      savedSnippets: [],
+      studyLogs: [],
+      currentStreak: 7,
+    });
+    const earned7 = new Set(streak7Eval.badges.filter((b) => b.unlocked).map((b) => b.id));
+    assert(earned7.has('streak-3'));
+    assert(earned7.has('streak-7'));
+    assert(!earned7.has('streak-14'));
+    assert(!earned7.has('habit-centurion'));
+    assert(earned7.has('shipping-engineer'));
+    assert(earned7.has('portfolio-builder'));
+    assert(earned7.has('capstone-master'));
+    assert(!earned7.has('capstone-legend'));
+
+    const streak30Eval = evaluateBadges({
+      completedTopics: {},
+      solvedBanditLevels: [0],
+      projectStatuses: Object.fromEntries(
+        Array.from({ length: 10 }, (_, i) => [`proj-${i + 1}`, 'completed' as const])
+      ),
+      userMilestones: [],
+      savedSnippets: [],
+      studyLogs: [],
+      currentStreak: 30,
+    });
+    const earned30 = new Set(streak30Eval.badges.filter((b) => b.unlocked).map((b) => b.id));
+    assert(earned30.has('streak-14'));
+    assert(earned30.has('habit-centurion'));
+    assert(earned30.has('capstone-legend'));
+    assert(streak30Eval.totalBadgeXp > streak7Eval.totalBadgeXp);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 14. Zero-to-Mastery CS Adventure Quest Engine ---');
+  // --------------------------------------------------------------------------
+
+  await test('Covers all 16 stages (stage-0..stage-15) with interactive labs & valid Boss questions', () => {
+    assert.strictEqual(ADVENTURE_REALMS.length, 16);
+    STAGES_DATA.forEach((stage, idx) => {
+      const realm = ADVENTURE_REALMS[idx];
+      assert.strictEqual(realm.stageId, stage.id);
+      assert.strictEqual(realm.chapterNumber, stage.number);
+      assert(realm.zeroJargonAnalogy.length > 20);
+      assert(realm.firstPrinciples.length >= 3);
+      assert(realm.playgroundStarter.code.trim().length > 10);
+      const bossQs = getBossQuestionsForRealm(stage.id);
+      assert(bossQs.length >= 4, `Expected >=4 Boss questions for ${stage.id}`);
+      bossQs.forEach((q) => {
+        assert(q.options.length >= 2);
+        assert(q.correctIndex >= 0 && q.correctIndex < q.options.length);
+      });
+    });
+  });
+
+  await test('Binary switchboard & logic gate evaluators compute exact deterministic outputs', () => {
+    // 65 = 01000001 (ASCII 'A')
+    const bits65 = [0, 1, 0, 0, 0, 0, 0, 1];
+    assert.strictEqual(computeBitsValue(bits65), 65);
+    assert.strictEqual(toHexByte(65), '0x41');
+    assert.strictEqual(toSigned8Bit(255), -1);
+    assert.strictEqual(evaluateBinaryLabMission(bits65, 65).solved, true);
+    assert.strictEqual(evaluateBinaryLabMission(bits65, 42).solved, false);
+
+    assert.strictEqual(evaluateLogicGate('XOR', true, false), true);
+    assert.strictEqual(evaluateLogicGate('XOR', true, true), false);
+    assert.strictEqual(evaluateLogicGate('AND', true, true), true);
+    assert.strictEqual(
+      evaluateLogicLabMission('XOR', true, false, {
+        type: 'logic-gates',
+        prompt: 'Test XOR',
+        requiredGate: 'XOR',
+        targetOutput: true,
+        mustUseNonZeroInputs: true,
+        hint: '',
+        explainAfterSolve: '',
+      }).solved,
+      true
+    );
+  });
+
+  await test('computeAdventureCampaignProgress tracks mastered realms and next chapter cleanly', () => {
+    const stage0 = STAGES_DATA[0];
+    const completedTopics: Record<string, boolean> = {};
+    stage0.topics.forEach((t) => {
+      completedTopics[t.id] = true;
+    });
+    const campaign = computeAdventureCampaignProgress(completedTopics, { 'stage-0-0': true });
+    assert.strictEqual(campaign.masteredRealmsCount, 1);
+    assert.strictEqual(campaign.realms[0].mastered, true);
+    assert.strictEqual(campaign.recommendedStageId, 'stage-1');
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 15. 48-Hour Catch-Up Study Reminder & Settings Sanitization ---');
+  // --------------------------------------------------------------------------
+
+  await test('evaluateCatchUpSuggestion triggers strictly > 48h only when enabled', () => {
+    const baseNow = Date.UTC(2026, 10, 19, 12, 0, 0);
+    const exact48hAgo = new Date(baseNow - CATCH_UP_THRESHOLD_MS).toISOString();
+    const over48hAgo = new Date(baseNow - CATCH_UP_THRESHOLD_MS - 60_000).toISOString();
+    const threeDaysAgo = new Date(baseNow - 72 * 3_600_000).toISOString();
+
+    // Exact 48h should NOT trigger ("over 48 hours")
+    assert.strictEqual(
+      evaluateCatchUpSuggestion({ enabled: true, lastOpenedAt: exact48hAgo, nowMs: baseNow })
+        .shouldSuggest,
+      false
+    );
+
+    // 48h + 1m SHOULD trigger a 5-minute catch-up session
+    const overRes = evaluateCatchUpSuggestion({
+      enabled: true,
+      lastOpenedAt: over48hAgo,
+      nowMs: baseNow,
+    });
+    assert.strictEqual(overRes.shouldSuggest, true);
+    assert.strictEqual(overRes.suggestedMinutes, CATCH_UP_SESSION_MINUTES);
+    assert.strictEqual(CATCH_UP_SESSION_MINUTES, 5);
+    assert.strictEqual(overRes.hoursSinceLastOpen, 48);
+
+    // 72h with toggle disabled MUST remain false
+    const disabledRes = evaluateCatchUpSuggestion({
+      enabled: false,
+      lastOpenedAt: threeDaysAgo,
+      nowMs: baseNow,
+    });
+    assert.strictEqual(disabledRes.shouldSuggest, false);
+
+    // 72h with toggle enabled reports 3 days
+    const threeDayRes = evaluateCatchUpSuggestion({
+      enabled: true,
+      lastOpenedAt: threeDaysAgo,
+      nowMs: baseNow,
+    });
+    assert.strictEqual(threeDayRes.shouldSuggest, true);
+    assert.strictEqual(threeDayRes.hoursSinceLastOpen, 72);
+    assert.strictEqual(threeDayRes.daysAwayLabel, '3 days');
+
+    // Invalid or absent timestamp MUST never crash or false-trigger
+    assert.strictEqual(
+      evaluateCatchUpSuggestion({ enabled: true, lastOpenedAt: null, nowMs: baseNow }).shouldSuggest,
+      false
+    );
+    assert.strictEqual(
+      evaluateCatchUpSuggestion({ enabled: true, lastOpenedAt: 'not-a-date', nowMs: baseNow })
+        .shouldSuggest,
+      false
+    );
+  });
+
+  await test('sanitizeOdysseyStoreState preserves notification toggle and valid lastOpenedAt timestamps', () => {
+    const validIso = '2026-11-16T08:00:00.000Z';
+    const disabledState = sanitizeOdysseyStoreState({
+      catchUpNotificationsEnabled: false,
+      lastOpenedAt: validIso,
+    });
+    assert.strictEqual(disabledState.catchUpNotificationsEnabled, false);
+    assert.strictEqual(disabledState.lastOpenedAt, validIso);
+
+    const malformedState = sanitizeOdysseyStoreState({
+      catchUpNotificationsEnabled: 'yes' as unknown as boolean,
+      lastOpenedAt: 'not-a-real-timestamp',
+    });
+    assert.strictEqual(malformedState.catchUpNotificationsEnabled, true);
+    assert.strictEqual(malformedState.lastOpenedAt, undefined);
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 16. Live Mentor Companion, Saved History & Server Quota Limits ---');
+  // --------------------------------------------------------------------------
+
+  await test('clampMentorDailyLimit, findCachedMentorMatch, and buildLocalCompanionResponse behave deterministically', () => {
+    assert.strictEqual(clampMentorDailyLimit('invalid'), DEFAULT_MENTOR_DAILY_LIMIT);
+    assert.strictEqual(clampMentorDailyLimit(1), MIN_MENTOR_DAILY_LIMIT);
+    assert.strictEqual(clampMentorDailyLimit(9999), MAX_MENTOR_DAILY_LIMIT);
+    assert.strictEqual(clampMentorDailyLimit(75.8), 75);
+
+    const history = [
+      {
+        id: 'mr-1',
+        mode: 'companion',
+        stageId: 'stage-6',
+        workspace: 'lab',
+        prompt: 'What is a C pointer?',
+        response: 'A variable holding a memory address.',
+        source: 'local',
+        createdAt: '2026-11-19T10:00:00.000Z',
+        pinned: true,
+      },
+      {
+        id: 'mr-err',
+        mode: 'companion',
+        stageId: 'stage-6',
+        prompt: 'Broken prompt',
+        response: 'Error: Daily request limit reached',
+        source: 'error',
+        createdAt: '2026-11-19T10:00:00.000Z',
+      },
+    ];
+
+    const cacheHit = findCachedMentorMatch(history, {
+      mode: 'companion',
+      stageId: 'stage-6',
+      prompt: '  what   IS a c pointer? ',
+    });
+    assert(cacheHit && cacheHit.id === 'mr-1');
+
+    // Should ignore saved error replies so they are never served from cache
+    const ignoredError = findCachedMentorMatch(history, {
+      mode: 'companion',
+      stageId: 'stage-6',
+      prompt: 'Broken prompt',
+    });
+    assert.strictEqual(ignoredError, null);
+
+    const offlineReply = buildLocalCompanionResponse('stage-3', 'How do pipes work?', 'shell');
+    assert(offlineReply.includes('Odyssey Buddy'));
+    assert(offlineReply.includes('Stage 3'));
+    assert(offlineReply.length > 40);
+
+    const countdown = formatQuotaResetCountdown(
+      new Date(Date.UTC(2026, 10, 20, 0, 0, 0)).toISOString(),
+      Date.UTC(2026, 10, 19, 21, 30, 0)
+    );
+    assert.strictEqual(countdown, '2h 30m');
+  });
+
+  await test('sanitizeOdysseyStoreState validates mentorHistory URLs, limits entry sizes, and clamps mentorDailyLimit', () => {
+    const cleaned = sanitizeOdysseyStoreState({
+      mentorCompanionEnabled: false,
+      mentorDailyLimit: 2500,
+      mentorHistory: [
+        {
+          id: 'mr-safe',
+          mode: 'search',
+          stageId: 'stage-7',
+          workspace: 'lab',
+          prompt: 'How does TCP handshake work?',
+          response: 'SYN -> SYN-ACK -> ACK',
+          source: 'gemini-search',
+          createdAt: '2026-11-19T10:00:00.000Z',
+          pinned: true,
+          sources: [
+            { title: 'RFC 9293', uri: 'https://datatracker.ietf.org/doc/html/rfc9293' },
+            { title: 'XSS Link', uri: 'javascript:alert(1)' },
+          ],
+        },
+      ],
+    });
+
+    assert.strictEqual(cleaned.mentorCompanionEnabled, false);
+    assert.strictEqual(cleaned.mentorDailyLimit, MAX_MENTOR_DAILY_LIMIT);
+    assert.strictEqual(cleaned.mentorHistory.length, 1);
+    assert.strictEqual(cleaned.mentorHistory[0].pinned, true);
+    assert.strictEqual(cleaned.mentorHistory[0].sources?.length, 1);
+    assert.strictEqual(
+      cleaned.mentorHistory[0].sources?.[0].uri,
+      'https://datatracker.ietf.org/doc/html/rfc9293'
+    );
+  });
+
+  await test('consumeMentorDailyQuotaServer and setMentorDailyLimitServer persist atomic daily limits and enforce cap', async () => {
+    const prevDir = process.env.CS_ODYSSEY_DATA_DIR;
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'odyssey-quota-test-'));
+    process.env.CS_ODYSSEY_DATA_DIR = tempDir;
+
+    try {
+      const configured = await setMentorDailyLimitServer(5, 29);
+      assert.strictEqual(configured.dailyLimit, 5);
+      assert.strictEqual(configured.usedToday, 0);
+      assert.strictEqual(configured.remainingToday, 5);
+      assert.strictEqual(configured.isDailyLimitReached, false);
+
+      for (let i = 0; i < 5; i++) {
+        const res = await consumeMentorDailyQuotaServer({ burstRemaining: 28 - i });
+        assert.strictEqual(res.allowed, true);
+        assert.strictEqual(res.snapshot.usedToday, i + 1);
+      }
+
+      const blocked = await consumeMentorDailyQuotaServer({ burstRemaining: 20 });
+      assert.strictEqual(blocked.allowed, false);
+      assert.strictEqual(blocked.snapshot.usedToday, 5);
+      assert.strictEqual(blocked.snapshot.remainingToday, 0);
+      assert.strictEqual(blocked.snapshot.isDailyLimitReached, true);
+
+      const snapshotAfter = await getMentorQuotaSnapshotServer(20, 0);
+      assert.strictEqual(snapshotAfter.usedToday, 5);
+      assert.strictEqual(snapshotAfter.totalAllTime, 5);
+    } finally {
+      if (prevDir === undefined) {
+        delete process.env.CS_ODYSSEY_DATA_DIR;
+      } else {
+        process.env.CS_ODYSSEY_DATA_DIR = prevDir;
+      }
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 17. Interactive Movable Buddy, Training Decks & Cloud Configs ---');
+  // --------------------------------------------------------------------------
+
+  await test('clampBuddyPosition, corner presets, roam waypoints, and 16-stage training decks stay bounded and valid', () => {
+    const clampedHigh = clampBuddyPosition({ x: 9999, y: 9999 }, 1440, 900);
+    assert(clampedHigh.x <= 1440 - 196 - 18);
+    assert(clampedHigh.y <= 900 - 48 - 18);
+
+    const clampedLow = clampBuddyPosition({ x: -200, y: -50 }, 1440, 900);
+    assert.strictEqual(clampedLow.x, 18);
+    assert.strictEqual(clampedLow.y, 72);
+
+    const corners = ['bottom-left', 'bottom-right', 'top-left', 'top-right'] as const;
+    corners.forEach((c) => {
+      const pt = getCornerPosition(c, 1280, 720);
+      assert(pt.x >= 18 && pt.x <= 1280);
+      assert(pt.y >= 72 && pt.y <= 720);
+    });
+
+    const w0 = getNextRoamWaypoint(0, 1280, 720);
+    const w2 = getNextRoamWaypoint(2, 1280, 720);
+    assert.notDeepStrictEqual(w0, w2);
+
+    for (const stage of STAGES_DATA) {
+      const deck = buildBuddyTrainingDeck(stage.id);
+      assert(deck.length >= 5, `Expected training deck >=5 items for ${stage.id}`);
+      deck.forEach((q) => {
+        assert(q.question.length > 5);
+        assert(q.options.length >= 2);
+        assert(q.correctIndex >= 0 && q.correctIndex < q.options.length);
+      });
+    }
+  });
+
+  await test('Cloud deployment configs exist and enforce /api/health, port 3000, and non-root / persistence safety', () => {
+    const rootDir = process.cwd();
+    const expectedFiles = [
+      'Dockerfile',
+      'compose.yaml',
+      'render.yaml',
+      'fly.toml',
+      'railway.toml',
+      'cloud/cloudrun-service.yaml',
+      'cloud/k8s-deployment.yaml',
+      'cloud/README.md',
+    ];
+
+    for (const rel of expectedFiles) {
+      const fullPath = path.join(rootDir, rel);
+      assert(fs.existsSync(fullPath), `Missing cloud config: ${rel}`);
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      assert(content.trim().length > 40, `Cloud config appears empty: ${rel}`);
+      if (rel !== 'cloud/README.md') {
+        assert(content.includes('/api/health'), `Expected /api/health probe in ${rel}`);
+      }
+    }
+
+    const dockerfile = fs.readFileSync(path.join(rootDir, 'Dockerfile'), 'utf-8');
+    assert(dockerfile.includes('USER node'));
+    assert(dockerfile.includes('EXPOSE 3000'));
+    assert(dockerfile.includes('CS_ODYSSEY_DATA_DIR=/app/.data'));
+
+    const k8s = fs.readFileSync(path.join(rootDir, 'cloud/k8s-deployment.yaml'), 'utf-8');
+    assert(k8s.includes('runAsNonRoot: true'));
+    assert(k8s.includes('allowPrivilegeEscalation: false'));
+    assert(k8s.includes('PersistentVolumeClaim'));
+  });
+
+  // --------------------------------------------------------------------------
+  console.log('\n--- 18. Shared Terminal Engine & Notebook Snippet Execution ---');
+  // --------------------------------------------------------------------------
+  await test('Shared terminal execution engine runs commands, redirection, and real pipelines cleanly', () => {
+    const state = createInitialTerminalState('bandit0');
+    const lsRes = executeTerminalCommand(state, 'ls');
+    assert.strictEqual(lsRes.exitCode, 0);
+    assert(lsRes.stdout.includes('readme'));
+    assert(lsRes.stdout.includes('notes.txt'));
+
+    const catRes = executeTerminalCommand(state, 'cat readme');
+    assert.strictEqual(catRes.exitCode, 0);
+    assert.strictEqual(catRes.stdout.trim(), '6y2kwnwK6grgvwvpvLaa2T1cpFEKOhNR');
+
+    const pipeRes = executeTerminalCommand(
+      createInitialTerminalState('bandit7'),
+      'cat data.txt | grep millionth'
+    );
+    assert.strictEqual(pipeRes.exitCode, 0);
+    assert(pipeRes.stdout.includes('z7WtoNQU2XfjmMtWA8u5rN4vzqu4v99S'));
+
+    const uniqRes = executeTerminalCommand(
+      createInitialTerminalState('bandit8'),
+      'cat data.txt | sort | uniq -u'
+    );
+    assert.strictEqual(uniqRes.exitCode, 0);
+    assert.strictEqual(uniqRes.stdout.trim(), 'TESKZC0XvTetysLTcq5ZWVTLL922CAmp');
+
+    // Reject path traversal & null bytes cleanly
+    const traversal = executeTerminalCommand(state, 'cat ../../../\x00evil');
+    assert.notStrictEqual(traversal.exitCode, 0);
+  });
+
+  await test('executeTerminalScript executes multi-line notebook snippets with state continuity and && short-circuit', () => {
+    const initial = createInitialTerminalState('bandit0');
+    const script = `
+# Create lab directory and file
+mkdir lab && cd lab
+export AGENT_TAG=alpha-42
+echo "hello $AGENT_TAG" > log.txt
+echo "second line" >> log.txt
+cat log.txt | grep alpha-42
+pwd
+`;
+    const res = executeTerminalScript(initial, script);
+    assert.strictEqual(res.exitCode, 0);
+    assert.strictEqual(res.cwd, '/home/bandit0/lab');
+    assert(res.stdout.includes('hello alpha-42'));
+    assert(res.stdout.includes('/home/bandit0/lab'));
+    assert(res.fsChanged);
+
+    // Subsequent script reuses mutated virtual FS & CWD
+    const followUp = executeTerminalScript(res.nextState, 'cat log.txt | wc -l');
+    assert.strictEqual(followUp.exitCode, 0);
+    assert.strictEqual(followUp.stdout.trim(), '2');
+
+    // && stops cleanly on failing command
+    const failChain = executeTerminalScript(res.nextState, 'cat missing.txt && echo should_not_print');
+    assert.notStrictEqual(failChain.exitCode, 0);
+    assert(!failChain.stdout.includes('should_not_print'));
+  });
+
+  await test('parseMarkdownCodeSnippets extracts bash/python/c snippets and store sanitizer retains bash snippets', () => {
+    const markdown = `
+# Study Notes
+\`\`\`bash
+pwd
+ls -la
+\`\`\`
+
+\`\`\`python
+print(2 + 2)
+\`\`\`
+
+\`\`\`c
+#include <stdio.h>
+int main(void) { return 0; }
+\`\`\`
+`;
+    const extracted = parseMarkdownCodeSnippets(markdown);
+    assert.strictEqual(extracted.length, 3);
+    assert.strictEqual(extracted[0].language, 'bash');
+    assert.strictEqual(extracted[1].language, 'python');
+    assert.strictEqual(extracted[2].language, 'c');
+
+    const sanitized = sanitizeOdysseyStoreState({
+      savedSnippets: [
+        { id: 's1', title: 'List Dir', language: 'bash', code: 'ls -la' },
+        { id: 's2', title: 'Py Test', language: 'python', code: 'print(1)' },
+        { id: 's3', title: 'C Test', language: 'c', code: 'int main(){return 0;}' },
+      ],
+    });
+    assert.strictEqual(sanitized.savedSnippets?.length, 3);
+    assert.strictEqual(sanitized.savedSnippets?.[0].language, 'bash');
   });
 
   // --------------------------------------------------------------------------

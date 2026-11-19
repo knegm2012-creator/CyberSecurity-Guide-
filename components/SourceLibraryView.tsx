@@ -60,19 +60,19 @@ const DOMAIN_FILTERS: Array<'All' | SourceDomain> = [
 function getMediumIcon(medium: SourceMedium) {
   switch (medium) {
     case 'Video':
-      return <Video className="h-3.5 w-3.5 text-rose-400 shrink-0" />;
+      return <Video className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />;
     case 'Course':
-      return <GraduationCap className="h-3.5 w-3.5 text-sky-400 shrink-0" />;
+      return <GraduationCap className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />;
     case 'Book':
-      return <BookOpen className="h-3.5 w-3.5 text-amber-400 shrink-0" />;
+      return <BookOpen className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />;
     case 'Docs':
-      return <FileCode2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />;
+      return <FileCode2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
     case 'Lab':
-      return <FlaskConical className="h-3.5 w-3.5 text-sky-400 shrink-0" />;
+      return <FlaskConical className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />;
     case 'Paper':
-      return <ScrollText className="h-3.5 w-3.5 text-slate-300 shrink-0" />;
+      return <ScrollText className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300 shrink-0" />;
     case 'Repo':
-      return <FolderGit2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />;
+      return <FolderGit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
   }
 }
 
@@ -125,13 +125,13 @@ export function SourceLibraryView() {
       <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-400 tabular-nums">
+            <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-400 tabular-nums">
               Global Open-Education Index · {CURATED_CS_SOURCES.length} Verified Sources
             </div>
-            <h2 className="font-display text-xl font-bold text-white tracking-tight [text-wrap:balance]">
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight [text-wrap:balance]">
               Curated Websites, Videos, Courses, Books &amp; Papers
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
               Primary university courses, canonical video series, open-license textbooks, Internet RFC specs, and hands-on arenas mapped across all 16 stages.
             </p>
           </div>
@@ -151,7 +151,7 @@ export function SourceLibraryView() {
         </div>
 
         {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 border-t border-white/[0.08] items-center">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 border-t border-slate-200 dark:border-white/[0.08] items-center">
           <div className="md:col-span-5">
             <SoapBubbleSearch
               value={search}
@@ -165,7 +165,7 @@ export function SourceLibraryView() {
             <select
               value={domain}
               onChange={(e) => setDomain(e.target.value as 'All' | SourceDomain)}
-              className="w-full rounded-xl border border-white/[0.1] bg-[#040710]/85 px-3 py-2 text-xs text-slate-200 focus:border-cyan-400/50 focus:outline-none cursor-pointer"
+              className="w-full rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/85 px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:border-cyan-500 dark:focus:border-cyan-400/50 focus:outline-none cursor-pointer"
               aria-label="Filter by subject domain"
             >
               {DOMAIN_FILTERS.map((d) => (
@@ -180,7 +180,7 @@ export function SourceLibraryView() {
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value as 'All' | SourceLevel)}
-              className="w-full rounded-xl border border-white/[0.1] bg-[#040710]/85 px-3 py-2 text-xs text-slate-200 focus:border-cyan-400/50 focus:outline-none cursor-pointer"
+              className="w-full rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/85 px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:border-cyan-500 dark:focus:border-cyan-400/50 focus:outline-none cursor-pointer"
               aria-label="Filter by difficulty level"
             >
               {LEVEL_FILTERS.map((lv) => (
@@ -195,7 +195,7 @@ export function SourceLibraryView() {
             <select
               value={stageFilter}
               onChange={(e) => setStageFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.1] bg-[#040710]/85 px-3 py-2 text-xs text-slate-200 focus:border-cyan-400/50 focus:outline-none cursor-pointer"
+              className="w-full rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/85 px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:border-cyan-500 dark:focus:border-cyan-400/50 focus:outline-none cursor-pointer"
               aria-label="Filter by curriculum stage"
             >
               <option value="All">All {STAGES_DATA.length} Stages</option>
@@ -217,10 +217,10 @@ export function SourceLibraryView() {
                 <button
                   key={m.id}
                   onClick={() => setMedium(m.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     active
-                      ? 'bg-cyan-500/18 text-cyan-200 border border-cyan-400/35 font-semibold'
-                      : 'border border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'bg-cyan-500/15 dark:bg-cyan-500/18 text-cyan-700 dark:text-cyan-200 border border-cyan-500/35 dark:border-cyan-400/35 font-semibold'
+                      : 'border border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   {m.label}
@@ -238,7 +238,7 @@ export function SourceLibraryView() {
       {/* Results List */}
       {filteredSources.length === 0 ? (
         <div className="optical-panel rounded-2xl border-dashed p-10 text-center space-y-2">
-          <p className="text-sm font-medium text-slate-300">No sources matched the active filters.</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">No sources matched the active filters.</p>
           <button
             onClick={() => {
               setSearch('');
@@ -247,7 +247,7 @@ export function SourceLibraryView() {
               setDomain('All');
               setStageFilter('All');
             }}
-            className="text-xs font-mono text-cyan-400 hover:underline cursor-pointer"
+            className="text-xs font-mono text-cyan-700 dark:text-cyan-400 hover:underline cursor-pointer"
           >
             Reset all filters
           </button>
@@ -261,32 +261,32 @@ export function SourceLibraryView() {
             >
               <div className="space-y-2">
                 {/* Clean unboxed metadata kicker */}
-                <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1.5 min-w-0">
                     {getMediumIcon(src.medium)}
-                    <span className="text-slate-200 font-semibold">{src.medium}</span>
+                    <span className="text-slate-800 dark:text-slate-200 font-semibold">{src.medium}</span>
                     <span aria-hidden="true">·</span>
                     <span className="truncate">{src.domain}</span>
                   </div>
                   <span
                     className={`shrink-0 ${
                       src.cost === 'Free' || src.cost === 'Open Source'
-                        ? 'text-emerald-400'
-                        : 'text-amber-400'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-amber-700 dark:text-amber-400'
                     }`}
                   >
                     {src.cost}
                   </span>
                 </div>
 
-                <h3 className="text-sm font-semibold text-white leading-snug">{src.title}</h3>
-                <p className="text-xs font-mono text-slate-400">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{src.title}</h3>
+                <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
                   {src.authorOrOrg} · {src.level}
                 </p>
-                <p className="text-xs text-slate-300 leading-relaxed">{src.whyItMatters}</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{src.whyItMatters}</p>
               </div>
 
-              <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between gap-3 text-xs font-mono">
+              <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08] flex items-center justify-between gap-3 text-xs font-mono">
                 <span className="text-[11px] text-slate-500 truncate">
                   {src.stageIds.map((id) => `S${id.replace('stage-', '')}`).join(', ')} ·{' '}
                   {src.tags.slice(0, 3).join(', ')}
@@ -295,11 +295,11 @@ export function SourceLibraryView() {
                 <div className="flex items-center gap-3 shrink-0">
                   <button
                     onClick={() => handleCopyUrl(src.id, src.url)}
-                    className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
                     title="Copy source URL"
                   >
                     {copiedId === src.id ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Copy className="h-3.5 w-3.5" />
                     )}
@@ -310,7 +310,7 @@ export function SourceLibraryView() {
                     href={src.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sky-400 hover:underline font-semibold whitespace-nowrap"
+                    className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline font-semibold whitespace-nowrap"
                   >
                     <span>Visit</span>
                     <ExternalLink className="h-3 w-3" />

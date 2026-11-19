@@ -43,10 +43,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("dark", plusJakarta.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
+      data-theme="light"
+      suppressHydrationWarning
+      className={cn(plusJakarta.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('cs_odyssey_theme');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.classList.remove('dark');document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
-        className="min-h-screen bg-[#090D16] text-slate-100 font-sans antialiased selection:bg-sky-400 selection:text-slate-950"
+        className="min-h-screen bg-[#f7f7f8] text-slate-900 dark:bg-[#090D16] dark:text-slate-100 font-sans antialiased selection:bg-sky-500 selection:text-white dark:selection:bg-sky-400 dark:selection:text-slate-950"
         suppressHydrationWarning
       >
         {children}

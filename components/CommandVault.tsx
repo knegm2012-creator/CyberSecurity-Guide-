@@ -59,15 +59,15 @@ export function CommandVault({ onOpenAiMentor }: CommandVaultProps) {
       {/* Header */}
       <div className="optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-400 mb-1">
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-400 mb-1">
             <span>Command Arsenal &amp; Syntax Vault</span>
             <span>·</span>
             <span className="tabular-nums">{allCommands.length} Verified Commands</span>
           </div>
-          <h2 className="font-display text-xl font-bold text-white tracking-tight [text-wrap:balance]">
+          <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight [text-wrap:balance]">
             Searchable Command Cheat Sheet
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Instant command references with parameter explanations and safe examples.
           </p>
         </div>
@@ -89,10 +89,10 @@ export function CommandVault({ onOpenAiMentor }: CommandVaultProps) {
           <button
             key={cat}
             onClick={() => setSelectedCat(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer border ${
               selectedCat === cat
-                ? 'bg-cyan-500/18 border-cyan-400/35 text-cyan-200 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-cyan-500/15 dark:bg-cyan-500/18 border-cyan-500/35 dark:border-cyan-400/35 text-cyan-700 dark:text-cyan-200 font-semibold'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             {cat}
@@ -109,18 +109,18 @@ export function CommandVault({ onOpenAiMentor }: CommandVaultProps) {
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2.5">
-                <span className="font-semibold text-cyan-300 text-sm">{cmd.name}</span>
-                <span className="text-[11px] text-slate-400">
+                <span className="font-semibold text-cyan-700 dark:text-cyan-300 text-sm">{cmd.name}</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   · {cmd.category}
                 </span>
               </div>
 
-              {/* Syntax Box with Copy */}
-              <div className="optical-inset relative rounded-xl p-3 pr-12 text-slate-200 overflow-x-auto select-all">
+              {/* Syntax Box with Copy (high-contrast dark obsidian for code legibility) */}
+              <div className="relative rounded-xl border border-slate-800 dark:border-white/[0.08] bg-slate-900 dark:bg-[#04070e] p-3 pr-12 text-slate-100 overflow-x-auto select-all">
                 <code>{cmd.syntax}</code>
                 <button
                   onClick={() => handleCopy(cmd.syntax)}
-                  className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-slate-300 hover:bg-white/[0.12] transition-colors cursor-pointer"
+                  className="absolute right-2 top-2 p-1.5 rounded-lg bg-white/[0.08] border border-white/[0.12] text-slate-200 hover:bg-white/[0.16] transition-colors cursor-pointer"
                   title="Copy command"
                 >
                   {copiedText === cmd.syntax ? (
@@ -131,33 +131,33 @@ export function CommandVault({ onOpenAiMentor }: CommandVaultProps) {
                 </button>
               </div>
 
-              <p className="text-xs text-slate-300 font-sans mt-3 leading-relaxed">
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-sans mt-3 leading-relaxed">
                 {cmd.explanation}
               </p>
 
               {cmd.example && (
-                <div className="mt-2 text-[11px] text-slate-400 font-mono">
+                <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
                   <span className="text-slate-500">Example: </span>
-                  <span className="text-slate-300">{cmd.example}</span>
+                  <span className="text-slate-800 dark:text-slate-300">{cmd.example}</span>
                 </div>
               )}
 
               {cmd.safeNote && (
-                <div className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-400/25 p-2.5 text-[11px] font-sans text-amber-200 flex items-center gap-1.5">
-                  <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <div className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 dark:border-amber-400/25 p-2.5 text-[11px] font-sans text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+                  <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span>{cmd.safeNote}</span>
                 </div>
               )}
             </div>
 
-            <div className="pt-2.5 border-t border-white/[0.08] flex justify-end">
+            <div className="pt-2.5 border-t border-slate-200 dark:border-white/[0.08] flex justify-end">
               <button
                 onClick={() =>
                   onOpenAiMentor(
                     `ELI9: Can you explain the command "${cmd.syntax}" line by line and show me 2 safe exercises for a Grade 9 student?`
                   )
                 }
-                className="flex items-center gap-1 text-[11px] font-sans text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                className="flex items-center gap-1 text-[11px] font-sans text-cyan-700 dark:text-cyan-400 hover:text-cyan-900 dark:hover:text-cyan-300 cursor-pointer font-medium"
               >
                 <Sparkles className="h-3 w-3" />
                 <span>Explain in Detail</span>

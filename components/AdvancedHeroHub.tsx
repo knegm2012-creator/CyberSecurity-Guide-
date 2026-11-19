@@ -65,27 +65,27 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
   const getSubjectIcon = (subject: string) => {
     switch (subject) {
       case 'Algorithms & Data Structures':
-        return <Layers className="h-3.5 w-3.5 text-emerald-400" />;
+        return <Layers className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
       case 'Operating Systems & Concurrency':
-        return <Cpu className="h-3.5 w-3.5 text-sky-400" />;
+        return <Cpu className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />;
       case 'Databases & Relational Theory':
-        return <Database className="h-3.5 w-3.5 text-amber-400" />;
+        return <Database className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />;
       case 'Computer Networking & Protocols':
-        return <Network className="h-3.5 w-3.5 text-sky-400" />;
+        return <Network className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />;
       case 'Software Engineering & System Design':
-        return <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />;
+        return <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
       case 'Distributed Systems & Cloud Architecture':
-        return <Globe className="h-3.5 w-3.5 text-sky-400" />;
+        return <Globe className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />;
       case 'Systems Security & Cryptography':
-        return <Lock className="h-3.5 w-3.5 text-rose-400" />;
+        return <Lock className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />;
       case 'Compilers & Programming Languages':
-        return <Code2 className="h-3.5 w-3.5 text-emerald-400" />;
+        return <Code2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
       case 'Computer Architecture & Hardware':
-        return <Cpu className="h-3.5 w-3.5 text-amber-400" />;
+        return <Cpu className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />;
       case 'Applied Math, AI Systems & HPC':
-        return <Sigma className="h-3.5 w-3.5 text-fuchsia-400" />;
+        return <Sigma className="h-3.5 w-3.5 text-fuchsia-600 dark:text-fuchsia-400" />;
       default:
-        return <BookOpen className="h-3.5 w-3.5 text-slate-400" />;
+        return <BookOpen className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />;
     }
   };
 
@@ -95,13 +95,13 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
       <div className="optical-panel rounded-2xl p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-[11px] font-mono text-sky-400 uppercase tracking-wider">
-              Hero Phase · Collegiate & Systems Depth
+            <div className="text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
+              Hero Phase · Collegiate &amp; Systems Depth
             </div>
-            <h2 className="font-display text-xl font-bold text-white tracking-tight">
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight">
               Advanced Computer Science Systems
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
               Algorithms, OS concurrency, database storage engines, TCP/TLS networking, distributed architecture, and cryptography.
             </p>
           </div>
@@ -113,25 +113,25 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
                   'Explain how operating systems, databases, networking protocols, and algorithms combine inside a production backend service.'
                 )
               }
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer shrink-0"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+              <Sparkles className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
               <span>Ask Systems Mentor</span>
             </button>
           )}
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar border-t border-white/[0.08] pt-3">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar border-t border-slate-200 dark:border-white/[0.08] pt-3">
           {SUBJECT_AREAS.map((subj) => {
             const isSelected = selectedSubject === subj;
             return (
               <button
                 key={subj}
                 onClick={() => setSelectedSubject(subj)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-sky-500/20 text-white font-semibold ring-1 ring-sky-400/40'
-                    : 'optical-inset text-slate-400 hover:text-slate-200'
+                    ? 'bg-sky-500/15 text-sky-800 dark:bg-sky-500/20 dark:text-white font-semibold ring-1 ring-sky-500/40 dark:ring-sky-400/40'
+                    : 'optical-inset text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 {subj !== 'All' && !isSelected && getSubjectIcon(subj)}
@@ -146,12 +146,12 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left List */}
         <aside className="lg:col-span-4 optical-panel rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/[0.08] bg-[#050811]/70 flex items-center justify-between text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#050811]/70 flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold">
             <span>Modules ({filteredTopics.length})</span>
             <span>Select to inspect</span>
           </div>
 
-          <div className="divide-y divide-white/[0.06] max-h-[700px] overflow-y-auto">
+          <div className="divide-y divide-slate-200 dark:divide-white/[0.06] max-h-[700px] overflow-y-auto">
             {filteredTopics.map((topic) => {
               const isSelected = activeTopic.id === topic.id;
               return (
@@ -160,18 +160,24 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
                   onClick={() => setSelectedTopicId(topic.id)}
                   className={`w-full text-left px-4 py-3.5 transition-colors cursor-pointer space-y-1 ${
                     isSelected
-                      ? 'bg-sky-500/12 text-white shadow-[inset_0_0_0_1px_rgba(56,189,248,0.22)]'
-                      : 'hover:bg-white/[0.03]'
+                      ? 'bg-sky-500/12 text-slate-900 dark:text-white shadow-[inset_0_0_0_1px_rgba(14,165,233,0.3)] dark:shadow-[inset_0_0_0_1px_rgba(56,189,248,0.22)]'
+                      : 'hover:bg-slate-900/[0.03] dark:hover:bg-white/[0.03]'
                   }`}
                 >
                   <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
                     {getSubjectIcon(topic.subjectArea)}
-                    <span className={isSelected ? 'text-sky-400 font-semibold' : ''}>{topic.badge}</span>
+                    <span className={isSelected ? 'text-sky-600 dark:text-sky-400 font-semibold' : ''}>
+                      {topic.badge}
+                    </span>
                   </div>
-                  <h3 className={`text-xs sm:text-sm font-semibold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                  <h3
+                    className={`text-xs sm:text-sm font-semibold ${
+                      isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
                     {topic.title}
                   </h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {topic.overview}
                   </p>
                 </button>
@@ -182,31 +188,31 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
 
         {/* Right Dossier */}
         <section className="lg:col-span-8 optical-panel rounded-2xl p-6 space-y-6">
-          <div className="border-b border-white/[0.08] pb-4 space-y-2">
-            <div className="flex items-center gap-2 text-[11px] font-mono text-sky-400 uppercase tracking-wider">
+          <div className="border-b border-slate-200 dark:border-white/[0.08] pb-4 space-y-2">
+            <div className="flex items-center gap-2 text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
               {getSubjectIcon(activeTopic.subjectArea)}
               <span>{activeTopic.subjectArea}</span>
-              <span className="text-slate-600">·</span>
-              <span className="text-slate-400">{activeTopic.badge}</span>
+              <span className="text-slate-400 dark:text-slate-600">·</span>
+              <span className="text-slate-500 dark:text-slate-400 font-normal">{activeTopic.badge}</span>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-white">
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {activeTopic.title}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
               {activeTopic.overview}
             </p>
           </div>
 
           {/* 1. Core Concepts */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Core Mastery Checklist</span>
             </h3>
-            <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
+            <div className="optical-inset divide-y divide-slate-200 dark:divide-white/[0.06] rounded-xl overflow-hidden">
               {activeTopic.keyConcepts.map((concept, idx) => (
-                <div key={idx} className="px-3.5 py-2.5 text-xs text-slate-200 flex items-start gap-2.5">
-                  <span className="font-mono text-sky-400 font-semibold shrink-0 tabular-nums">
+                <div key={idx} className="px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-200 flex items-start gap-2.5">
+                  <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold shrink-0 tabular-nums">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <span className="leading-relaxed">{concept}</span>
@@ -217,18 +223,18 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
 
           {/* 2. CLI Diagnostic Tools */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Terminal className="h-3.5 w-3.5 text-sky-400" />
-              <span>Diagnostic Commands & Tools</span>
+            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <Terminal className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+              <span>Diagnostic Commands &amp; Tools</span>
             </h3>
-            <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
+            <div className="optical-inset divide-y divide-slate-200 dark:divide-white/[0.06] rounded-xl overflow-hidden">
               {activeTopic.keyCommands.map((cmd, idx) => (
                 <div
                   key={idx}
                   className="px-3.5 py-2.5 font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                 >
-                  <code className="text-emerald-400 font-semibold">{cmd.command}</code>
-                  <span className="text-xs text-slate-400 font-sans">{cmd.purpose}</span>
+                  <code className="text-emerald-700 dark:text-emerald-400 font-semibold">{cmd.command}</code>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-sans">{cmd.purpose}</span>
                 </div>
               ))}
             </div>
@@ -236,8 +242,8 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
 
           {/* 3. Authoritative Textbooks & Sources */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5 text-amber-400" />
+            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
               <span>Authoritative References</span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -248,21 +254,21 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-sky-400 uppercase">{source.type}</span>
+                      <span className="text-sky-600 dark:text-sky-400 uppercase font-semibold">{source.type}</span>
                       {source.isClassic && (
-                        <span className="text-amber-400 font-semibold">Classic Text</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold">Classic Text</span>
                       )}
                     </div>
-                    <h4 className="text-xs font-semibold text-white">{source.title}</h4>
+                    <h4 className="text-xs font-semibold text-slate-900 dark:text-white">{source.title}</h4>
                     <p className="text-[11px] text-slate-500 font-mono">{source.authorOrPlatform}</p>
-                    <p className="text-xs text-slate-300 leading-relaxed pt-1">{source.notes}</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pt-1">{source.notes}</p>
                   </div>
 
                   <a
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-mono text-sky-400 hover:underline pt-2 border-t border-white/[0.07]"
+                    className="inline-flex items-center gap-1 text-xs font-mono text-sky-600 dark:text-sky-400 hover:underline pt-2 border-t border-slate-200 dark:border-white/[0.07]"
                   >
                     <span>Open Source</span>
                     <ExternalLink className="h-3 w-3" />
@@ -274,15 +280,12 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
 
           {/* 4. Engineering Insights */}
           <div className="space-y-2">
-            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">
+            <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               Engineering Mental Models
             </h3>
-            <ul className="space-y-1.5 text-xs text-slate-300">
+            <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
               {activeTopic.essentialTips.map((tip, idx) => (
-                <li
-                  key={idx}
-                  className="optical-inset p-3 rounded-xl leading-relaxed"
-                >
+                <li key={idx} className="optical-inset p-3 rounded-xl leading-relaxed">
                   {tip}
                 </li>
               ))}
@@ -293,17 +296,17 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
           {activeTopic.sampleCodeSnippet && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Code2 className="h-3.5 w-3.5 text-emerald-400" />
+                <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Code2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Reference Implementation ({activeTopic.sampleCodeSnippet.language.toUpperCase()})</span>
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleCopyCode(activeTopic.id, activeTopic.sampleCodeSnippet!.code)}
-                    className="optical-card px-2.5 py-1.5 rounded-lg text-xs text-slate-300 flex items-center gap-1 cursor-pointer font-mono"
+                    className="optical-card px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer font-mono whitespace-nowrap shrink-0"
                   >
                     {copiedSnippetId === activeTopic.id ? (
-                      <Check className="h-3 w-3 text-emerald-400" />
+                      <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Copy className="h-3 w-3" />
                     )}
@@ -321,7 +324,7 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
                       tint="rgb(16 185 129)"
                       opacity={0.92}
                       style={{ fontSize: 11.5 }}
-                      className="!min-h-[30px] !px-3.5 font-semibold text-white font-mono"
+                      className="!min-h-[30px] !px-3.5 font-semibold text-white font-mono whitespace-nowrap shrink-0"
                     >
                       <Play className="h-3 w-3 fill-current" />
                       <span>Run in Playground</span>
@@ -330,9 +333,9 @@ export function AdvancedHeroHub({ onOpenAiMentor, onOpenPlaygroundWithCode }: Ad
                 </div>
               </div>
 
-              <p className="text-xs text-slate-400">{activeTopic.sampleCodeSnippet.description}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{activeTopic.sampleCodeSnippet.description}</p>
 
-              <pre className="optical-inset rounded-xl p-4 font-mono text-xs text-slate-200 overflow-x-auto whitespace-pre leading-relaxed">
+              <pre className="rounded-xl border border-slate-800 dark:border-white/[0.08] bg-slate-900 dark:bg-[#04070e] p-4 font-mono text-xs text-slate-100 dark:text-slate-200 overflow-x-auto whitespace-pre leading-relaxed">
                 {activeTopic.sampleCodeSnippet.code}
               </pre>
             </div>

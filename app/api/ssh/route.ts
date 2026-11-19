@@ -31,16 +31,21 @@ const MAX_TIMEOUT_MS = 20000;
 const MIN_TIMEOUT_MS = 2000;
 
 export async function POST(req: NextRequest) {
-  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
 
   // 1. Rate Limiting Check
   const rateCheck = sshRateLimiter.tryConsume(clientIp);
+  const headers = apiSecurityHeaders({
+    'X-RateLimit-Remaining': String(rateCheck.remaining),
+    ...(rateCheck.allowed ? {} : { 'Retry-After': String(rateCheck.retryAfterSec) }),
+  });
+
   if (!rateCheck.allowed) {
     return NextResponse.json(
       {
         error: 'Too Many Requests: SSH rate limit exceeded. Please wait a moment before sending more commands.',
         rateLimited: true,
+        retryAfterSec: rateCheck.retryAfterSec,
       },
       { status: 429, headers }
     );
@@ -74,6 +79,11 @@ export async function POST(req: NextRequest) {
     const command = typeof body.command === 'string' ? body.command.slice(0, 2048) : undefined;
     const cwd = typeof body.cwd === 'string' ? body.cwd : `/home/${username}`;
     const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Number(body.timeoutMs) || 12000));
+
+    if ((command && command.includes('\0')) || password.includes('\0')) {
+      releaseConcurrency();
+      return NextResponse.json({ error: 'Invalid control characters in SSH payload.' }, { status: 400, headers });
+    }
 
     if (!username) {
       releaseConcurrency();

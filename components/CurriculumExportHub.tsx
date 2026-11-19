@@ -163,13 +163,13 @@ export function CurriculumExportHub({
       <div className="optical-panel rounded-2xl p-5 sm:p-6 space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-400">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
               MIT Open Educational Resource · Students, Teachers &amp; GitHub
             </div>
-            <h2 className="font-display text-xl font-bold text-white tracking-tight">
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white tracking-tight">
               Open-Source Curriculum Pack &amp; Syllabus Exporter
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
               Generate complete, portable curriculum files ready for self-study checklists, printable classroom syllabi, LMS spreadsheets, and GitHub repositories.
             </p>
           </div>
@@ -179,18 +179,22 @@ export function CurriculumExportHub({
               <button
                 type="button"
                 onClick={onDownloadMasteryPdf}
-                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-emerald-300 hover:text-white cursor-pointer whitespace-nowrap"
+                className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
               >
-                <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+                <FileDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Mastery Report (.pdf)</span>
               </button>
             )}
 
             <button
               onClick={handleCopy}
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer whitespace-nowrap"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap shrink-0"
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
               <span>{copied ? 'Copied' : 'Copy Output'}</span>
             </button>
 
@@ -199,7 +203,7 @@ export function CurriculumExportHub({
               tint="rgb(14 165 233)"
               opacity={0.92}
               style={{ fontSize: 12 }}
-              className="!min-h-[34px] !px-4 font-semibold text-white whitespace-nowrap"
+              className="!min-h-[34px] !px-4 font-semibold text-white whitespace-nowrap shrink-0"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Download {fileMetadata.filename}</span>
@@ -211,11 +215,11 @@ export function CurriculumExportHub({
         <div className="optical-inset rounded-xl p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
           <div className="lg:col-span-5 space-y-1">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-300 flex items-center gap-1.5">
-                <CalendarClock className="h-3.5 w-3.5 text-sky-400" />
+              <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                 <span>Study / Course Pace</span>
               </span>
-              <span className="text-sky-400 font-bold tabular-nums">{hoursPerWeek} hrs / week</span>
+              <span className="text-sky-600 dark:text-sky-400 font-bold tabular-nums">{hoursPerWeek} hrs / week</span>
             </div>
             <div className="py-1">
               <SoapBubbleSlider
@@ -232,38 +236,44 @@ export function CurriculumExportHub({
             </div>
           </div>
 
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08] border border-white/[0.08] rounded-xl bg-[#070b14]/70 text-xs overflow-hidden">
+          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl bg-white/80 dark:bg-[#070b14]/70 text-xs overflow-hidden">
             <div className="px-3.5 py-2.5">
-              <div className="text-slate-400">Total Effort</div>
-              <div className="font-mono font-bold text-white tabular-nums mt-0.5">{pacing.totalHours} hrs</div>
+              <div className="text-slate-500 dark:text-slate-400">Total Effort</div>
+              <div className="font-mono font-bold text-slate-900 dark:text-white tabular-nums mt-0.5">
+                {pacing.totalHours} hrs
+              </div>
             </div>
             <div className="px-3.5 py-2.5">
-              <div className="text-slate-400">Duration</div>
-              <div className="font-mono font-bold text-sky-400 tabular-nums mt-0.5">{pacing.totalWeeks} weeks</div>
+              <div className="text-slate-500 dark:text-slate-400">Duration</div>
+              <div className="font-mono font-bold text-sky-600 dark:text-sky-400 tabular-nums mt-0.5">
+                {pacing.totalWeeks} weeks
+              </div>
             </div>
             <div className="px-3.5 py-2.5">
-              <div className="text-slate-400">Projected Finish</div>
-              <div className="font-mono font-bold text-emerald-400 tabular-nums mt-0.5">{projectedCompletionDate}</div>
+              <div className="text-slate-500 dark:text-slate-400">Projected Finish</div>
+              <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5">
+                {projectedCompletionDate}
+              </div>
             </div>
             <div className="px-3.5 py-2.5">
-              <div className="text-slate-400">Verified Sources</div>
-              <div className="font-mono font-bold text-slate-200 tabular-nums mt-0.5">{CURATED_CS_SOURCES.length} links</div>
+              <div className="text-slate-500 dark:text-slate-400">Verified Sources</div>
+              <div className="font-mono font-bold text-slate-800 dark:text-slate-200 tabular-nums mt-0.5">
+                {CURATED_CS_SOURCES.length} links
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* GitHub Progress OAuth Sync */}
-      {data && stats && (
-        <GitHubSyncPanel data={data} stats={stats} compact />
-      )}
+      {data && stats && <GitHubSyncPanel data={data} stats={stats} compact />}
 
       {/* Two-Column Config & Live Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <aside className="lg:col-span-4 optical-panel rounded-2xl p-5 space-y-5">
           {/* Format Selector */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 font-semibold">
               1. Output Format
             </h3>
             <div className="space-y-1.5">
@@ -313,14 +323,18 @@ export function CurriculumExportHub({
                     onClick={() => setArtifact(item.id)}
                     className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors cursor-pointer flex items-start gap-2.5 ${
                       active
-                        ? 'border-sky-500/50 bg-sky-500/12 text-white shadow-[0_0_16px_rgba(56,189,248,0.14)]'
-                        : 'border-white/[0.07] bg-[#04070e]/75 text-slate-300 hover:border-white/20'
+                        ? 'border-sky-500/50 bg-sky-500/12 text-slate-900 dark:text-white shadow-[0_0_16px_rgba(14,165,233,0.12)]'
+                        : 'border-slate-200 dark:border-white/[0.07] bg-white/75 dark:bg-[#04070e]/75 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
                     }`}
                   >
-                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${active ? 'text-sky-400' : 'text-slate-500'}`} />
+                    <Icon
+                      className={`h-4 w-4 mt-0.5 shrink-0 ${
+                        active ? 'text-sky-600 dark:text-sky-400' : 'text-slate-500'
+                      }`}
+                    />
                     <div className="min-w-0">
                       <div className="text-xs font-semibold">{item.label}</div>
-                      <div className="text-[11px] text-slate-400">{item.sub}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{item.sub}</div>
                     </div>
                   </button>
                 );
@@ -331,8 +345,8 @@ export function CurriculumExportHub({
           {/* Audience Mode */}
           {artifact === 'curriculum-md' && (
             <>
-              <div className="space-y-2.5 pt-4 border-t border-white/[0.08]">
-                <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              <div className="space-y-2.5 pt-4 border-t border-slate-200 dark:border-white/[0.08]">
+                <h3 className="text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 font-semibold">
                   2. Audience Profile
                 </h3>
                 <div className="grid grid-cols-1 gap-1.5">
@@ -364,14 +378,18 @@ export function CurriculumExportHub({
                         onClick={() => setMode(p.id)}
                         className={`w-full text-left rounded-xl border px-3 py-2 transition-colors cursor-pointer flex items-start gap-2.5 ${
                           active
-                            ? 'border-emerald-500/50 bg-emerald-500/12 text-white'
-                            : 'border-white/[0.07] bg-[#04070e]/75 text-slate-300 hover:border-white/20'
+                            ? 'border-emerald-500/50 bg-emerald-500/12 text-slate-900 dark:text-white'
+                            : 'border-slate-200 dark:border-white/[0.07] bg-white/75 dark:bg-[#04070e]/75 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
                         }`}
                       >
-                        <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${active ? 'text-emerald-400' : 'text-slate-500'}`} />
+                        <Icon
+                          className={`h-4 w-4 mt-0.5 shrink-0 ${
+                            active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
+                          }`}
+                        />
                         <div>
                           <div className="text-xs font-semibold">{p.label}</div>
-                          <div className="text-[11px] text-slate-400">{p.desc}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{p.desc}</div>
                         </div>
                       </button>
                     );
@@ -380,11 +398,11 @@ export function CurriculumExportHub({
               </div>
 
               {/* Section Toggles */}
-              <div className="space-y-2.5 pt-4 border-t border-white/[0.08]">
-                <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              <div className="space-y-2.5 pt-4 border-t border-slate-200 dark:border-white/[0.08]">
+                <h3 className="text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 font-semibold">
                   3. Included Curriculum Blocks
                 </h3>
-                <div className="space-y-2 text-xs text-slate-300">
+                <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
                   {[
                     { label: 'All 16 Stage Syllabi & Topics', state: includeStages, setter: setIncludeStages },
                     { label: 'Hero Collegiate Systems Modules', state: includeHeroModules, setter: setIncludeHeroModules },
@@ -396,7 +414,7 @@ export function CurriculumExportHub({
                     <div
                       key={opt.label}
                       onClick={() => opt.setter(!opt.state)}
-                      className="optical-inset flex items-center justify-between gap-3 rounded-xl px-3 py-2 cursor-pointer hover:border-white/20"
+                      className="optical-inset flex items-center justify-between gap-3 rounded-xl px-3 py-2 cursor-pointer hover:border-slate-300 dark:hover:border-white/20"
                     >
                       <span>{opt.label}</span>
                       <div onClick={(e) => e.stopPropagation()}>
@@ -418,14 +436,14 @@ export function CurriculumExportHub({
 
         {/* Right Live Preview (8 cols) */}
         <section className="lg:col-span-8 optical-panel rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/[0.08] bg-[#050811]/70 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-            <span className="text-white font-semibold">{fileMetadata.filename}</span>
-            <span className="text-slate-400 tabular-nums">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#050811]/70 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <span className="text-slate-900 dark:text-white font-semibold">{fileMetadata.filename}</span>
+            <span className="text-slate-500 dark:text-slate-400 tabular-nums">
               {fileMetadata.lineCount} lines · {fileMetadata.kb} KB · MIT Open License
             </span>
           </div>
 
-          <pre className="p-5 bg-[#03050b]/85 text-xs font-mono text-slate-200 overflow-x-auto max-h-[680px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
+          <pre className="p-5 bg-slate-900 dark:bg-[#03050b]/85 text-xs font-mono text-slate-100 dark:text-slate-200 overflow-x-auto max-h-[680px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
             {generatedOutput}
           </pre>
         </section>

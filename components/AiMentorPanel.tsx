@@ -6,12 +6,24 @@ import { SoapBubbleButton } from '@/components/soap-bubble';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import { LiquidGlassOrb, type LiquidGlassOrbState } from '@/components/liquid-glass-orb';
 
+import {
+  DEFAULT_MENTOR_DAILY_LIMIT,
+  type MentorQuotaSnapshot,
+  type MentorSavedRequestEntry,
+} from '@/lib/mentor-quota';
+
 interface AiMentorPanelProps {
   isOpen: boolean;
   onClose: () => void;
   initialPrompt?: string;
   completedTopicsCount?: number;
   dailyGoalMinutes?: number;
+  activeStageId?: string;
+  quotaSnapshot?: MentorQuotaSnapshot | null;
+  requestedDailyLimit?: number;
+  onQuotaUpdated?: (snapshot: MentorQuotaSnapshot) => void;
+  onSaveRequest?: (entry: Omit<MentorSavedRequestEntry, 'id' | 'createdAt'>) => void;
+  onOpenSettings?: () => void;
 }
 
 interface QuizQuestion {
@@ -49,18 +61,30 @@ function AiMentorContent({
   initialPrompt,
   completedTopicsCount = 0,
   dailyGoalMinutes = 45,
+  activeStageId = 'stage-0',
+  quotaSnapshot,
+  requestedDailyLimit = DEFAULT_MENTOR_DAILY_LIMIT,
+  onQuotaUpdated,
+  onSaveRequest,
+  onOpenSettings,
 }: {
   onClose: () => void;
   initialPrompt?: string;
   completedTopicsCount?: number;
   dailyGoalMinutes?: number;
+  activeStageId?: string;
+  quotaSnapshot?: MentorQuotaSnapshot | null;
+  requestedDailyLimit?: number;
+  onQuotaUpdated?: (snapshot: MentorQuotaSnapshot) => void;
+  onSaveRequest?: (entry: Omit<MentorSavedRequestEntry, 'id' | 'createdAt'>) => void;
+  onOpenSettings?: () => void;
 }) {
   const [activeMode, setActiveMode] = useState<MentorMode>(() =>
     resolveInitialMode(initialPrompt)
   );
   const [promptText, setPromptText] = useState(initialPrompt || '');
   const [codeOrError, setCodeOrError] = useState('');
-  const [selectedStageId, setSelectedStageId] = useState('stage-0');
+  const [selectedStageId, setSelectedStageId] = useState(activeStageId || 'stage-0');
   const [planMinutes, setPlanMinutes] = useState(dailyGoalMinutes);
   const [preferOffline, setPreferOffline] = useState(false);
   const [runtimeInfo, setRuntimeInfo] = useState<MentorRuntimeInfo | null>(null);
@@ -148,26 +172,53 @@ function AiMentorContent({
           codeOrError,
           completedTopicsCount,
           dailyGoalMinutes: planMinutes,
+          requestedDailyLimit,
           preferOffline,
         }),
       });
 
       const data = await res.json();
+      if (data?.quota && onQuotaUpdated) {
+        onQuotaUpdated(data.quota as MentorQuotaSnapshot);
+      }
 
       if (!res.ok || data.error) {
         setHasError(true);
         setResponseResult(`Error: ${data.error || `Request failed (${res.status})`}`);
       } else if (activeMode === 'quiz') {
-        setQuizQuestions(data.quiz || []);
+        const quizList: QuizQuestion[] = data.quiz || [];
+        setQuizQuestions(quizList);
         setUserAnswers({});
         setQuizSubmitted(false);
+        if (onSaveRequest && quizList.length > 0) {
+          onSaveRequest({
+            mode: 'quiz',
+            stageId: currentStage.id,
+            prompt: promptText || `Stage ${currentStage.number} 5-Question Quiz`,
+            response: quizList.map((q, i) => `Q${i + 1}: ${q.question}`).join('\n'),
+            source: typeof data.source === 'string' ? data.source : 'verified-bank',
+          });
+        }
         speechStartedAtRef.current = performance.now();
         setIsSpeaking(true);
         speakingTimerRef.current = setTimeout(() => setIsSpeaking(false), 3200);
       } else {
-        setResponseResult(data.result);
-        setResponseSources(Array.isArray(data.sources) ? data.sources : []);
-        setResponseOrigin(typeof data.source === 'string' ? data.source : null);
+        const resultText = typeof data.result === 'string' ? data.result : '';
+        const cleanSources = Array.isArray(data.sources) ? data.sources : [];
+        const originSource = typeof data.source === 'string' ? data.source : 'local';
+        setResponseResult(resultText);
+        setResponseSources(cleanSources);
+        setResponseOrigin(originSource);
+        if (onSaveRequest && resultText) {
+          onSaveRequest({
+            mode: activeMode,
+            stageId: currentStage.id,
+            prompt: promptText || `${activeMode} (${currentStage.title})`,
+            response: resultText,
+            source: originSource,
+            sources: cleanSources,
+          });
+        }
         speechStartedAtRef.current = performance.now();
         setIsSpeaking(true);
         speakingTimerRef.current = setTimeout(() => setIsSpeaking(false), 4500);
@@ -194,15 +245,15 @@ function AiMentorContent({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-[#03050b]/88">
-      <div className="w-full max-w-xl h-full border-l border-white/[0.1] bg-[#060a14]/98 flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 dark:bg-[#03050b]/88 backdrop-blur-sm">
+      <div className="w-full max-w-xl h-full border-l border-slate-200 dark:border-white/[0.1] bg-white dark:bg-[#060a14]/98 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="border-b border-white/[0.08] bg-[#040710]/65 px-5 py-3.5 flex items-center justify-between">
+        <div className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#040710]/65 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Sparkles className="h-4 w-4 text-cyan-400" />
+            <Sparkles className="h-4 w-4 text-sky-600 dark:text-cyan-400" />
             <div>
-              <h3 className="font-display text-sm font-semibold text-white">AI Study Mentor</h3>
-              <p className="text-[11px] font-mono text-slate-400">
+              <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-white">AI Study Mentor</h3>
+              <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
                 {preferOffline
                   ? 'Mode: Local Offline Engine'
                   : runtimeInfo?.provider === 'gemini'
@@ -215,13 +266,23 @@ function AiMentorContent({
           </div>
 
           <div className="flex items-center gap-2">
+            {quotaSnapshot && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="px-2 py-1 rounded-lg border border-sky-500/30 bg-sky-500/10 text-[10px] font-mono text-sky-800 dark:text-cyan-200 hover:border-sky-400 cursor-pointer tabular-nums"
+                title="Daily mentor quota remaining — click to configure limit in Settings"
+              >
+                {quotaSnapshot.remainingToday}/{quotaSnapshot.dailyLimit} left
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPreferOffline((prev) => !prev)}
               className={`px-2 py-1 rounded-lg border text-[10px] font-mono transition-colors cursor-pointer whitespace-nowrap ${
                 preferOffline
-                  ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
-                  : 'border-white/[0.1] bg-white/[0.04] text-slate-300 hover:text-white'
+                  ? 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200'
+                  : 'border-slate-300 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
               }`}
               title="Switch between configured server AI endpoint (.env.local) and built-in offline engine"
             >
@@ -230,7 +291,8 @@ function AiMentorContent({
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+              aria-label="Close AI Study Mentor"
             >
               <X className="h-4 w-4" />
             </button>
@@ -238,7 +300,7 @@ function AiMentorContent({
         </div>
 
         {/* Agentic Liquid Glass Orb Presence */}
-        <div className="border-b border-white/[0.08] bg-black py-4 flex items-center justify-center shrink-0">
+        <div className="border-b border-slate-200 dark:border-white/[0.08] bg-black py-4 flex items-center justify-center shrink-0">
           <LiquidGlassOrb
             baseColor="#ffffff"
             colorA="#000000"
@@ -280,7 +342,7 @@ function AiMentorContent({
         </div>
 
         {/* Mode Tabs */}
-        <div className="border-b border-white/[0.08] bg-[#040710]/70 px-3 py-2">
+        <div className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/70 dark:bg-[#040710]/70 px-3 py-2">
           <div className="optical-subnav flex gap-1 p-1 rounded-xl text-[11px] font-medium overflow-x-auto no-scrollbar">
             {[
               { id: 'eli9', label: 'Concept Guide' },
@@ -301,8 +363,8 @@ function AiMentorContent({
                 }}
                 className={`flex-1 py-1.5 px-2 rounded-lg whitespace-nowrap transition-colors cursor-pointer border ${
                   activeMode === tab.id
-                    ? 'bg-cyan-500/18 text-cyan-200 border-cyan-400/35 font-semibold'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'bg-sky-500/15 text-sky-800 dark:text-cyan-200 border-sky-500/35 font-semibold'
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 {tab.label}
@@ -312,12 +374,12 @@ function AiMentorContent({
         </div>
 
         {/* Stage Selector */}
-        <div className="border-b border-white/[0.08] bg-[#040710]/50 px-4 py-2.5 flex items-center gap-3 text-xs">
-          <span className="text-slate-500 font-mono">Context:</span>
+        <div className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/40 dark:bg-[#040710]/50 px-4 py-2.5 flex items-center gap-3 text-xs">
+          <span className="text-slate-600 dark:text-slate-500 font-mono">Context:</span>
           <select
             value={selectedStageId}
             onChange={(e) => setSelectedStageId(e.target.value)}
-            className="flex-1 rounded-xl border border-white/[0.1] bg-[#040710]/90 px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-400/50 font-mono text-[11px]"
+            className="flex-1 rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/90 px-2.5 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-sky-500 dark:focus:border-cyan-400/50 font-mono text-[11px]"
           >
             {STAGES_DATA.map((s) => (
               <option key={s.id} value={s.id}>
@@ -333,11 +395,11 @@ function AiMentorContent({
             <div className="space-y-4">
               {quizQuestions.length === 0 ? (
                 <div className="optical-card rounded-2xl p-6 text-center space-y-3">
-                  <Trophy className="h-7 w-7 text-amber-400 mx-auto" />
-                  <h4 className="font-display text-sm font-semibold text-white">
+                  <Trophy className="h-7 w-7 text-amber-600 dark:text-amber-400 mx-auto" />
+                  <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
                     Stage {currentStage.number} Check
                   </h4>
-                  <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
                     Generate 5 multiple-choice questions on {currentStage.title}.
                   </p>
                   <SoapBubbleButton
@@ -358,8 +420,8 @@ function AiMentorContent({
                 <div className="space-y-4">
                   {quizQuestions.map((q, qIdx) => (
                     <div key={qIdx} className="optical-card rounded-2xl p-4 space-y-3">
-                      <div className="text-xs font-semibold text-white">
-                        <span className="text-cyan-400 font-mono mr-1.5 tabular-nums">Q{qIdx + 1}.</span>
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                        <span className="text-sky-700 dark:text-cyan-400 font-mono mr-1.5 tabular-nums">Q{qIdx + 1}.</span>
                         {q.question}
                       </div>
 
@@ -368,12 +430,18 @@ function AiMentorContent({
                           const isSelected = userAnswers[qIdx] === optIdx;
                           const isCorrect = q.correctIndex === optIdx;
 
-                          let optionStyle = 'border-white/[0.08] bg-[#040710]/80 text-slate-300 hover:border-white/[0.18]';
+                          let optionStyle =
+                            'border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#040710]/80 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-white/[0.18]';
                           if (quizSubmitted) {
-                            if (isCorrect) optionStyle = 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200 font-semibold';
-                            else if (isSelected && !isCorrect) optionStyle = 'border-rose-400/50 bg-rose-500/15 text-rose-200 line-through';
+                            if (isCorrect)
+                              optionStyle =
+                                'border-emerald-500/50 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 font-semibold';
+                            else if (isSelected && !isCorrect)
+                              optionStyle =
+                                'border-rose-500/50 bg-rose-500/15 text-rose-800 dark:text-rose-200 line-through';
                           } else if (isSelected) {
-                            optionStyle = 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100 font-semibold';
+                            optionStyle =
+                              'border-sky-500/60 bg-sky-500/15 text-sky-900 dark:text-cyan-100 font-semibold';
                           }
 
                           return (
@@ -384,15 +452,17 @@ function AiMentorContent({
                               className={`w-full text-left p-2.5 rounded-xl border text-xs transition-colors flex items-center justify-between cursor-pointer ${optionStyle}`}
                             >
                               <span>{opt}</span>
-                              {quizSubmitted && isCorrect && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
+                              {quizSubmitted && isCorrect && (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              )}
                             </button>
                           );
                         })}
                       </div>
 
                       {quizSubmitted && (
-                        <div className="optical-inset rounded-xl p-3 text-xs text-slate-300 leading-relaxed">
-                          <span className="font-mono text-cyan-400 font-semibold">Explanation: </span>
+                        <div className="optical-inset rounded-xl p-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                          <span className="font-mono text-sky-700 dark:text-cyan-400 font-semibold">Explanation: </span>
                           {q.explanation}
                         </div>
                       )}
@@ -412,14 +482,14 @@ function AiMentorContent({
                   ) : (
                     <div className="optical-inset rounded-2xl p-4 flex items-center justify-between">
                       <div>
-                        <div className="text-xs text-slate-400">Score</div>
-                        <div className="text-lg font-bold font-mono text-white tabular-nums">
+                        <div className="text-xs text-slate-600 dark:text-slate-400">Score</div>
+                        <div className="text-lg font-bold font-mono text-slate-900 dark:text-white tabular-nums">
                           {calculateScore().correct} / {calculateScore().total} ({calculateScore().pct}%)
                         </div>
                       </div>
                       <button
                         onClick={() => handleAskMentor()}
-                        className="px-3.5 py-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] text-xs font-medium text-slate-200 hover:bg-white/[0.08] cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] text-xs font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.08] cursor-pointer"
                       >
                         New Set
                       </button>
@@ -432,13 +502,13 @@ function AiMentorContent({
 
           {activeMode !== 'quiz' && responseResult && (
             <div className="optical-card rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-cyan-400 font-semibold uppercase tracking-wider">
+                  <span className="text-[11px] font-mono text-sky-700 dark:text-cyan-400 font-semibold uppercase tracking-wider">
                     Mentor Response
                   </span>
                   {responseOrigin && (
-                    <span className="rounded border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-mono text-slate-300">
+                    <span className="rounded border border-slate-200 dark:border-white/[0.1] bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
                       {responseOrigin === 'gemini-search'
                         ? 'Google Search Grounded'
                         : responseOrigin === 'custom-llm'
@@ -458,18 +528,18 @@ function AiMentorContent({
                     setResponseOrigin(null);
                     setHasError(false);
                   }}
-                  className="text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Clear
                 </button>
               </div>
-              <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+              <div className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
                 {responseResult}
               </div>
 
               {responseSources.length > 0 && (
-                <div className="border-t border-white/[0.08] pt-3 space-y-2">
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-sky-400 uppercase tracking-wider">
+                <div className="border-t border-slate-200 dark:border-white/[0.08] pt-3 space-y-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-sky-700 dark:text-sky-400 uppercase tracking-wider">
                     <Globe className="h-3 w-3" />
                     <span>Grounded References</span>
                   </div>
@@ -480,10 +550,10 @@ function AiMentorContent({
                         href={src.uri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="optical-inset rounded-lg px-3 py-2 flex items-center justify-between gap-2 text-[11px] text-slate-300 hover:text-white hover:border-sky-400/40 transition-colors"
+                        className="optical-inset rounded-lg px-3 py-2 flex items-center justify-between gap-2 text-[11px] text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:border-sky-500/40 transition-colors"
                       >
                         <span className="truncate font-medium">{src.title}</span>
-                        <ExternalLink className="h-3 w-3 text-sky-400 shrink-0" />
+                        <ExternalLink className="h-3 w-3 text-sky-600 dark:text-sky-400 shrink-0" />
                       </a>
                     ))}
                   </div>
@@ -495,16 +565,16 @@ function AiMentorContent({
           {activeMode === 'study_plan' && !responseResult && (
             <div className="optical-card rounded-2xl p-5 space-y-4">
               <div className="space-y-1">
-                <h4 className="font-display text-sm font-semibold text-white">
+                <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
                   Daily Session Plan · Stage {currentStage.number}
                 </h4>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Synthesize a structured Intuition -&gt; Sandbox Proof -&gt; Exit Gate session block tailored to your daily time budget.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
-                <span className="text-slate-400 mr-1">Session budget:</span>
+                <span className="text-slate-600 dark:text-slate-400 mr-1">Session budget:</span>
                 {[30, 45, 60, 90].map((mins) => (
                   <button
                     key={mins}
@@ -512,8 +582,8 @@ function AiMentorContent({
                     onClick={() => setPlanMinutes(mins)}
                     className={`px-2.5 py-1 rounded-lg border cursor-pointer tabular-nums ${
                       planMinutes === mins
-                        ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-200 font-semibold'
-                        : 'border-white/[0.1] bg-[#040710]/80 text-slate-400 hover:text-white'
+                        ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:text-cyan-200 font-semibold'
+                        : 'border-slate-300 dark:border-white/[0.1] bg-slate-50 dark:bg-[#040710]/80 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                     }`}
                   >
                     {mins}m
@@ -539,7 +609,7 @@ function AiMentorContent({
 
           {(activeMode === 'eli9' || activeMode === 'search') && !responseResult && (
             <div className="space-y-2.5">
-              <span className="text-[11px] text-slate-500 font-mono uppercase tracking-wider">
+              <span className="text-[11px] text-slate-600 dark:text-slate-500 font-mono uppercase tracking-wider">
                 {activeMode === 'search' ? 'Live Spec & Engineering Search Prompts' : 'Suggested Prompts'}
               </span>
               <div className="flex flex-col gap-1.5">
@@ -561,7 +631,7 @@ function AiMentorContent({
                   <button
                     key={q}
                     onClick={() => setPromptText(q)}
-                    className="optical-card text-left text-xs rounded-xl px-3.5 py-2.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    className="optical-card text-left text-xs rounded-xl px-3.5 py-2.5 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     {q}
                   </button>
@@ -573,14 +643,14 @@ function AiMentorContent({
 
         {/* Input Form */}
         {activeMode !== 'quiz' && (
-          <form onSubmit={handleAskMentor} className="border-t border-white/[0.08] bg-[#040710]/70 p-4 space-y-2.5">
+          <form onSubmit={handleAskMentor} className="border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#040710]/70 p-4 space-y-2.5">
             {activeMode === 'debug' && (
               <textarea
                 rows={2}
                 value={codeOrError}
                 onChange={(e) => setCodeOrError(e.target.value)}
                 placeholder="Paste the failing command, compiler warning, or code..."
-                className="w-full rounded-xl border border-white/[0.1] bg-[#040710]/90 p-2.5 text-xs text-slate-200 font-mono focus:border-cyan-400/50 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/90 p-2.5 text-xs text-slate-900 dark:text-slate-200 font-mono focus:border-sky-500 dark:focus:border-cyan-400/50 focus:outline-none"
               />
             )}
 
@@ -602,7 +672,7 @@ function AiMentorContent({
                     ? 'Describe what you expected vs what happened...'
                     : 'Paste your lab write-up or notes for feedback...'
                 }
-                className="flex-1 rounded-xl border border-white/[0.1] bg-[#040710]/90 px-3.5 py-2 text-xs text-slate-200 focus:border-cyan-400/50 focus:outline-none"
+                className="flex-1 rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-[#040710]/90 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-200 focus:border-sky-500 dark:focus:border-cyan-400/50 focus:outline-none"
               />
 
               <SoapBubbleButton
@@ -632,6 +702,12 @@ export function AiMentorPanel({
   initialPrompt,
   completedTopicsCount,
   dailyGoalMinutes,
+  activeStageId,
+  quotaSnapshot,
+  requestedDailyLimit,
+  onQuotaUpdated,
+  onSaveRequest,
+  onOpenSettings,
 }: AiMentorPanelProps) {
   if (!isOpen) return null;
   return (
@@ -641,6 +717,12 @@ export function AiMentorPanel({
       initialPrompt={initialPrompt}
       completedTopicsCount={completedTopicsCount}
       dailyGoalMinutes={dailyGoalMinutes}
+      activeStageId={activeStageId}
+      quotaSnapshot={quotaSnapshot}
+      requestedDailyLimit={requestedDailyLimit}
+      onQuotaUpdated={onQuotaUpdated}
+      onSaveRequest={onSaveRequest}
+      onOpenSettings={onOpenSettings}
     />
   );
 }

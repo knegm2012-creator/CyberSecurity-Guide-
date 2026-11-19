@@ -70,7 +70,7 @@ export function FuturisticStudio({
   return (
     <div className="space-y-10">
       {/* 1. Spatial Perspective Depth Cloud */}
-      <div className="rounded-xl overflow-hidden border border-slate-800">
+      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
         <DepthField
           images={DEPTH_IMAGES}
           textAlign="center"
@@ -106,7 +106,7 @@ export function FuturisticStudio({
       {/* 2. WebGL 2.0 Chromatic Refracted Display & Fluid Typing */}
       <section id="optical-refraction" className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <div
-          className="lg:col-span-6 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center"
+          className="lg:col-span-6 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center"
           style={{ background: '#050505', padding: '3rem', containerType: 'inline-size' }}
         >
           <RefractedText
@@ -143,7 +143,7 @@ export function FuturisticStudio({
           />
         </div>
 
-        <div className="lg:col-span-6 rounded-xl overflow-hidden border border-slate-800 min-h-[340px]">
+        <div className="lg:col-span-6 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 min-h-[340px]">
           <FluidTyping text={['Text over a fluid background.', 'Animated with React Drops.']} />
         </div>
       </section>
@@ -263,12 +263,12 @@ export function FuturisticStudio({
       </section>
 
       {/* 5. 3D-Volume Shape Physics Playground */}
-      <section className="rounded-xl overflow-hidden border border-slate-800">
+      <section className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
         <ShapePhysics height="100svh" />
       </section>
 
       {/* 6. Spring-Physics Architectural Artifact Fan */}
-      <section className="rounded-xl border border-slate-800 bg-[#050811] py-12 px-4 overflow-hidden">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#050811] py-12 px-4 overflow-hidden">
         <FanGallery
           items={FAN_ITEMS}
           cardWidth={162}

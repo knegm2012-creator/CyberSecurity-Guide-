@@ -92,22 +92,22 @@ export function CurriculumSkillGraph({
 
   return (
     <div className="optical-panel rounded-2xl overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-3 bg-[#050811]/70">
+      <div className="px-5 py-3.5 border-b border-slate-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3 bg-slate-50/80 dark:bg-[#050811]/70">
         <div className="flex items-center gap-2">
-          <Compass className="h-4 w-4 text-sky-400" />
-          <h2 className="font-display text-sm font-semibold text-white">
+          <Compass className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+          <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
             Curriculum Competency Graph (Stages 0–15)
           </h2>
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-slate-400">
+        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-slate-600 dark:text-slate-400">
           <span>Click any node to inspect prerequisites</span>
-          <span className="text-emerald-400">Complete</span>
-          <span className="text-sky-400">Active Focus</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Complete</span>
+          <span className="text-sky-700 dark:text-sky-400 font-semibold">Active Focus</span>
         </div>
       </div>
 
       {/* Interactive SVG DAG Viewport */}
-      <div className="bg-[#03050b]/90 border-b border-white/[0.08] overflow-x-auto">
+      <div className="bg-slate-50 dark:bg-[#03050b]/90 border-b border-slate-200 dark:border-white/[0.08] overflow-x-auto">
         <svg
           viewBox="0 0 1330 300"
           className="w-full min-w-[920px] h-[270px] select-none"
@@ -153,7 +153,11 @@ export function CurriculumSkillGraph({
                   key={`${preNum}-${node.stageNumber}`}
                   d={`M ${from.x + 28} ${from.y} C ${midX} ${from.y}, ${midX} ${node.y}, ${node.x - 28} ${node.y}`}
                   fill="none"
-                  stroke={highlighted ? '#38bdf8' : '#1e293b'}
+                  className={
+                    highlighted
+                      ? 'stroke-sky-500 dark:stroke-sky-400'
+                      : 'stroke-slate-300 dark:stroke-slate-800'
+                  }
                   strokeWidth={highlighted ? 2 : 1.5}
                   strokeOpacity={highlighted ? 0.95 : 0.85}
                 />
@@ -183,15 +187,14 @@ export function CurriculumSkillGraph({
                   width={84}
                   height={48}
                   rx={8}
-                  fill={isSelected ? '#0b1830' : '#070b15'}
-                  stroke={
+                  className={
                     isSelected
-                      ? '#38bdf8'
+                      ? 'fill-sky-50 dark:fill-[#0b1830] stroke-sky-500 dark:stroke-sky-400'
                       : isComplete
-                      ? '#10b981'
+                      ? 'fill-white dark:fill-[#070b15] stroke-emerald-500'
                       : isCurrent
-                      ? '#0ea5e9'
-                      : 'rgba(255,255,255,0.14)'
+                      ? 'fill-white dark:fill-[#070b15] stroke-sky-500'
+                      : 'fill-white dark:fill-[#070b15] stroke-slate-300 dark:stroke-white/15'
                   }
                   strokeWidth={isSelected ? 2 : 1.25}
                 />
@@ -201,10 +204,10 @@ export function CurriculumSkillGraph({
                   textAnchor="middle"
                   className={`font-mono text-[11px] font-bold ${
                     isComplete
-                      ? 'fill-emerald-400'
+                      ? 'fill-emerald-700 dark:fill-emerald-400'
                       : isSelected || isCurrent
-                      ? 'fill-sky-400'
-                      : 'fill-slate-300'
+                      ? 'fill-sky-700 dark:fill-sky-400'
+                      : 'fill-slate-800 dark:fill-slate-300'
                   }`}
                 >
                   S{String(node.stageNumber).padStart(2, '0')} · {doneCount}/{st.topics.length}
@@ -213,7 +216,7 @@ export function CurriculumSkillGraph({
                   x={node.x}
                   y={node.y + 12}
                   textAnchor="middle"
-                  className="font-sans text-[10px] fill-slate-400"
+                  className="font-sans text-[10px] fill-slate-500 dark:fill-slate-400"
                 >
                   {shortTitle}
                 </text>
@@ -224,20 +227,20 @@ export function CurriculumSkillGraph({
       </div>
 
       {/* Selected Node Dossier Bar */}
-      <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#070b14]/60">
+      <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white/80 dark:bg-[#070b14]/60">
         <div className="space-y-1.5 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400">
-            <span className="text-sky-400 font-semibold">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400">
+            <span className="text-sky-700 dark:text-sky-400 font-semibold">
               Stage {activeStage.number} · {activeNode.track}
             </span>
             <span aria-hidden="true">·</span>
             <span>{activeStage.timeEstimate}</span>
             <span aria-hidden="true">·</span>
-            <span className="inline-flex items-center gap-1 text-slate-300 tabular-nums">
+            <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 tabular-nums">
               {activePct === 100 ? (
-                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <Circle className="h-3 w-3 text-slate-500" />
+                <Circle className="h-3 w-3 text-slate-400 dark:text-slate-500" />
               )}
               {activeDoneCount}/{activeStage.topics.length} topics ({activePct}%)
             </span>
@@ -250,16 +253,16 @@ export function CurriculumSkillGraph({
               </>
             )}
           </div>
-          <h3 className="font-display text-base font-bold text-white">{activeStage.title}</h3>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">{activeStage.goal}</p>
+          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">{activeStage.title}</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">{activeStage.goal}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleDownloadHandout}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer whitespace-nowrap"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-sky-400" />
+            <Download className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             <span>Stage Handout (.md)</span>
           </button>
 

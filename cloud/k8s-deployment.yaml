@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cs-odyssey-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cs-odyssey
+  labels:
+    app: cs-odyssey
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cs-odyssey
+  template:
+    metadata:
+      labels:
+        app: cs-odyssey
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: cs-odyssey
+          image: ghcr.io/YOUR_GITHUB_ORG/cs-odyssey:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: CS_ODYSSEY_DATA_DIR
+              value: /app/.data
+            # Optional secret injection:
+            # - name: GEMINI_API_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: cs-odyssey-secrets
+            #       key: GEMINI_API_KEY
+          volumeMounts:
+            - name: data-storage
+              mountPath: /app/.data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "1000m"
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+      volumes:
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: cs-odyssey-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cs-odyssey
+spec:
+  type: ClusterIP
+  selector:
+    app: cs-odyssey
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

@@ -503,13 +503,13 @@ export function AlgorithmVisualizerLab() {
       {/* Header & Mode Switch */}
       <div className="optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] font-mono text-sky-400 uppercase tracking-wider font-semibold">
+          <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
             Stage 12 · Live Algorithm Simulation Engine
           </span>
-          <h2 className="font-display text-lg font-bold text-white mt-0.5 [text-wrap:balance]">
+          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white mt-0.5 [text-wrap:balance]">
             Interactive Sorting &amp; Graph Pathfinding Visualizer
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
             Step through divide-and-conquer sorting comparisons or edit obstacles and weighted terrain to watch BFS, DFS, and Dijkstra settle shortest paths.
           </p>
         </div>
@@ -520,10 +520,10 @@ export function AlgorithmVisualizerLab() {
               setIsPlaying(false);
               setMode('sorting');
             }}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               mode === 'sorting'
-                ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                : 'text-slate-400 hover:text-slate-100 border border-transparent'
+                ? 'bg-sky-500/15 text-sky-800 border border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-400/40 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 border border-transparent'
             }`}
           >
             <GitCommitHorizontal className="h-3.5 w-3.5" />
@@ -534,10 +534,10 @@ export function AlgorithmVisualizerLab() {
               setIsPlaying(false);
               setMode('pathfinding');
             }}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               mode === 'pathfinding'
-                ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                : 'text-slate-400 hover:text-slate-100 border border-transparent'
+                ? 'bg-sky-500/15 text-sky-800 border border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-400/40 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 border border-transparent'
             }`}
           >
             <Grid3X3 className="h-3.5 w-3.5" />
@@ -550,21 +550,21 @@ export function AlgorithmVisualizerLab() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Interactive Stage */}
         <section className="lg:col-span-8 optical-panel rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.08] bg-white/[0.03] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
-            <span className="text-white font-semibold">
+          <div className="px-5 py-3 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-white/[0.03] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <span className="text-slate-900 dark:text-white font-semibold">
               {mode === 'sorting'
                 ? `Algorithm: ${sortAlgo.toUpperCase()} SORT`
                 : `Solver: ${pathAlgo.toUpperCase()} GRAPH SEARCH`}
             </span>
-            <span className="text-slate-400 tabular-nums">
+            <span className="text-slate-500 dark:text-slate-400 tabular-nums">
               Step {currentIdx + 1} / {totalSteps}
             </span>
           </div>
 
-          <div className="p-6 bg-[#040710]/70 space-y-5">
+          <div className="p-6 bg-slate-50/60 dark:bg-[#040710]/70 space-y-5">
             {mode === 'sorting' ? (
               <>
-                <div className="h-64 flex items-end gap-1.5 border-b border-white/[0.08] pb-2">
+                <div className="h-64 flex items-end gap-1.5 border-b border-slate-200 dark:border-white/[0.08] pb-2">
                   {currentSort.values.map((val, idx) => {
                     const isCmp = currentSort.comparing.includes(idx);
                     const isWrt = currentSort.writing.includes(idx);
@@ -574,18 +574,18 @@ export function AlgorithmVisualizerLab() {
                         <div
                           className={`w-full rounded-t transition-all duration-100 ${
                             isWrt
-                              ? 'bg-amber-400'
+                              ? 'bg-amber-500 dark:bg-amber-400'
                               : isCmp
-                              ? 'bg-sky-400'
+                              ? 'bg-sky-500 dark:bg-sky-400'
                               : isDone
-                              ? 'bg-emerald-400'
-                              : 'bg-slate-600'
+                              ? 'bg-emerald-500 dark:bg-emerald-400'
+                              : 'bg-slate-400 dark:bg-slate-600'
                           }`}
                           style={{ height: `${val}%` }}
                           title={`Index ${idx}: value ${val}`}
                         />
                         {arraySize <= 24 && (
-                          <span className="text-[10px] font-mono text-slate-500 tabular-nums">
+                          <span className="text-[10px] font-mono text-slate-600 dark:text-slate-500 tabular-nums">
                             {val}
                           </span>
                         )}
@@ -595,17 +595,17 @@ export function AlgorithmVisualizerLab() {
                 </div>
 
                 {/* Dual-coded state legend (no hue-only) */}
-                <div className="flex flex-wrap items-center gap-5 text-[11px] font-mono text-slate-400">
+                <div className="flex flex-wrap items-center gap-5 text-[11px] font-mono text-slate-600 dark:text-slate-400">
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2.5 w-2.5 bg-sky-400 rounded-xs" />
+                    <span className="inline-block h-2.5 w-2.5 bg-sky-500 dark:bg-sky-400 rounded-xs" />
                     Comparing
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2.5 w-2.5 bg-amber-400 rounded-xs" />
+                    <span className="inline-block h-2.5 w-2.5 bg-amber-500 dark:bg-amber-400 rounded-xs" />
                     Writing / Swap
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2.5 w-2.5 bg-emerald-400 rounded-xs" />
+                    <span className="inline-block h-2.5 w-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-xs" />
                     Sorted Position
                   </span>
                 </div>
@@ -624,28 +624,34 @@ export function AlgorithmVisualizerLab() {
                     const isFrontier = frontierSet.has(idx);
                     const isVisited = visitedSet.has(idx);
 
-                    let cellClass = 'bg-slate-900 border-slate-800 text-slate-600 hover:border-slate-600';
+                    let cellClass =
+                      'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-500 dark:text-slate-600 hover:border-slate-400 dark:hover:border-slate-600';
                     let symbol = '';
                     if (isStart) {
-                      cellClass = 'bg-sky-500 text-slate-950 border-sky-400 font-bold';
+                      cellClass = 'bg-sky-500 text-white dark:text-slate-950 border-sky-600 dark:border-sky-400 font-bold';
                       symbol = 'S';
                     } else if (isTarget) {
-                      cellClass = 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold';
+                      cellClass =
+                        'bg-emerald-500 text-white dark:text-slate-950 border-emerald-600 dark:border-emerald-400 font-bold';
                       symbol = 'T';
                     } else if (kind === 'wall') {
-                      cellClass = 'bg-slate-700 border-slate-600 text-slate-300';
+                      cellClass =
+                        'bg-slate-700 dark:bg-slate-700 border-slate-800 dark:border-slate-600 text-slate-200 dark:text-slate-300';
                       symbol = '#';
                     } else if (isPath) {
-                      cellClass = 'bg-amber-400 text-slate-950 border-amber-300 font-bold';
+                      cellClass = 'bg-amber-400 text-slate-950 border-amber-500 dark:border-amber-300 font-bold';
                       symbol = '*';
                     } else if (isVisited) {
-                      cellClass = 'bg-sky-500/25 border-sky-500/40 text-sky-300';
+                      cellClass =
+                        'bg-sky-100 dark:bg-sky-500/25 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300';
                       symbol = kind === 'weight' ? '5' : '.';
                     } else if (isFrontier) {
-                      cellClass = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
+                      cellClass =
+                        'bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40 text-amber-800 dark:text-amber-300';
                       symbol = '+';
                     } else if (kind === 'weight') {
-                      cellClass = 'bg-amber-950/40 border-amber-700/50 text-amber-400';
+                      cellClass =
+                        'bg-amber-50 dark:bg-amber-950/40 border-amber-400/60 dark:border-amber-700/50 text-amber-700 dark:text-amber-400 font-semibold';
                       symbol = '5';
                     }
 
@@ -663,19 +669,31 @@ export function AlgorithmVisualizerLab() {
                 </div>
 
                 {/* Dual-coded cell symbol legend */}
-                <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-slate-400">
-                  <span><strong className="text-sky-400">S</strong> Start</span>
-                  <span><strong className="text-emerald-400">T</strong> Target</span>
-                  <span><strong className="text-slate-300">#</strong> Wall</span>
-                  <span><strong className="text-amber-400">5</strong> Weighted Mud (Cost 5)</span>
-                  <span><strong className="text-sky-300">.</strong> Visited</span>
-                  <span><strong className="text-amber-300">*</strong> Optimal Path</span>
+                <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-slate-600 dark:text-slate-400">
+                  <span>
+                    <strong className="text-sky-600 dark:text-sky-400">S</strong> Start
+                  </span>
+                  <span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">T</strong> Target
+                  </span>
+                  <span>
+                    <strong className="text-slate-800 dark:text-slate-300">#</strong> Wall
+                  </span>
+                  <span>
+                    <strong className="text-amber-600 dark:text-amber-400">5</strong> Weighted Mud (Cost 5)
+                  </span>
+                  <span>
+                    <strong className="text-sky-600 dark:text-sky-300">.</strong> Visited
+                  </span>
+                  <span>
+                    <strong className="text-amber-600 dark:text-amber-300">*</strong> Optimal Path
+                  </span>
                 </div>
               </>
             )}
 
             {/* Live Step Annotation */}
-            <div className="optical-inset rounded-xl px-4 py-2.5 text-xs font-mono text-slate-200">
+            <div className="optical-inset rounded-xl px-4 py-2.5 text-xs font-mono text-slate-800 dark:text-slate-200">
               {mode === 'sorting' ? currentSort.note : currentPath.note}
             </div>
           </div>
@@ -683,15 +701,17 @@ export function AlgorithmVisualizerLab() {
 
         {/* Right Control Deck */}
         <aside className="lg:col-span-4 optical-panel rounded-2xl p-5 space-y-5">
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
-            <SlidersHorizontal className="h-4 w-4 text-sky-400" />
-            <h3 className="font-display text-sm font-semibold text-white">Simulation Controls</h3>
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/[0.08] pb-3">
+            <SlidersHorizontal className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
+              Simulation Controls
+            </h3>
           </div>
 
           {mode === 'sorting' ? (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-slate-400">Algorithm</span>
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">Algorithm</span>
                 <div className="grid grid-cols-2 gap-1.5 text-xs">
                   {(
                     [
@@ -711,8 +731,8 @@ export function AlgorithmVisualizerLab() {
                       }}
                       className={`px-3 py-2 rounded-xl border font-medium transition-all cursor-pointer ${
                         sortAlgo === a.id
-                          ? 'border-sky-400/50 bg-sky-500/20 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                          : 'optical-inset text-slate-300 hover:border-white/[0.14]'
+                          ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:border-sky-400/50 dark:bg-sky-500/20 dark:text-sky-200 font-semibold shadow-sm'
+                          : 'optical-inset text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/[0.14]'
                       }`}
                     >
                       {a.label}
@@ -722,9 +742,9 @@ export function AlgorithmVisualizerLab() {
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-mono text-slate-300">
+                <div className="flex justify-between text-xs font-mono text-slate-700 dark:text-slate-300">
                   <span>Array Size</span>
-                  <span className="text-sky-300 font-bold tabular-nums">{arraySize} items</span>
+                  <span className="text-sky-600 dark:text-sky-300 font-bold tabular-nums">{arraySize} items</span>
                 </div>
                 <div className="py-1">
                   <SoapBubbleSlider
@@ -747,7 +767,7 @@ export function AlgorithmVisualizerLab() {
           ) : (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-slate-400">Traversal Strategy</span>
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">Traversal Strategy</span>
                 <div className="grid grid-cols-3 gap-1.5 text-xs">
                   {(
                     [
@@ -766,8 +786,8 @@ export function AlgorithmVisualizerLab() {
                       }}
                       className={`px-2.5 py-2 rounded-xl border font-medium transition-all cursor-pointer ${
                         pathAlgo === a.id
-                          ? 'border-sky-400/50 bg-sky-500/20 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                          : 'optical-inset text-slate-300 hover:border-white/[0.14]'
+                          ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:border-sky-400/50 dark:bg-sky-500/20 dark:text-sky-200 font-semibold shadow-sm'
+                          : 'optical-inset text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/[0.14]'
                       }`}
                     >
                       {a.label}
@@ -777,14 +797,14 @@ export function AlgorithmVisualizerLab() {
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-slate-400">Grid Click Brush</span>
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">Grid Click Brush</span>
                 <div className="grid grid-cols-2 gap-1.5 text-xs">
                   <button
                     onClick={() => setPaintMode('wall')}
                     className={`px-3 py-2 rounded-xl border font-medium transition-all cursor-pointer ${
                       paintMode === 'wall'
-                        ? 'border-sky-400/50 bg-sky-500/20 text-sky-200'
-                        : 'optical-inset text-slate-300'
+                        ? 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:border-sky-400/50 dark:bg-sky-500/20 dark:text-sky-200 font-semibold'
+                        : 'optical-inset text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     Place Wall (#)
@@ -793,8 +813,8 @@ export function AlgorithmVisualizerLab() {
                     onClick={() => setPaintMode('weight')}
                     className={`px-3 py-2 rounded-xl border font-medium transition-all cursor-pointer ${
                       paintMode === 'weight'
-                        ? 'border-amber-400/50 bg-amber-500/20 text-amber-200'
-                        : 'optical-inset text-slate-300'
+                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-800 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-200 font-semibold'
+                        : 'optical-inset text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     Weighted Mud (5)
@@ -805,10 +825,10 @@ export function AlgorithmVisualizerLab() {
           )}
 
           {/* Speed Slider */}
-          <div className="space-y-1.5 pt-3 border-t border-white/[0.08]">
-            <div className="flex justify-between text-xs font-mono text-slate-300">
+          <div className="space-y-1.5 pt-3 border-t border-slate-200 dark:border-white/[0.08]">
+            <div className="flex justify-between text-xs font-mono text-slate-700 dark:text-slate-300">
               <span>Step Delay</span>
-              <span className="text-sky-300 font-bold tabular-nums">
+              <span className="text-sky-600 dark:text-sky-300 font-bold tabular-nums">
                 {speedMs} ms · {speedMs <= 40 ? 'Fast' : speedMs >= 160 ? 'Slow' : 'Medium'}
               </span>
             </div>
@@ -834,7 +854,7 @@ export function AlgorithmVisualizerLab() {
               tint={isPlaying ? 'rgb(245 158 11)' : 'rgb(14 165 233)'}
               opacity={0.92}
               style={{ fontSize: 12 }}
-              className="!min-h-[34px] !px-3 font-semibold text-white justify-center"
+              className="!min-h-[34px] !px-3 font-semibold text-white justify-center whitespace-nowrap"
             >
               {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
               <span>{isPlaying ? 'Pause' : 'Play'}</span>
@@ -849,7 +869,7 @@ export function AlgorithmVisualizerLab() {
                   setPathStepIdx((p) => Math.min(pathSteps.length - 1, p + 1));
                 }
               }}
-              className="optical-card inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 cursor-pointer"
+              className="optical-card inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap"
             >
               <SkipForward className="h-3.5 w-3.5" />
               <span>Step</span>
@@ -863,7 +883,7 @@ export function AlgorithmVisualizerLab() {
                   rebuildPath(createDeterministicTerrain(), pathAlgo);
                 }
               }}
-              className="optical-card inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 cursor-pointer"
+              className="optical-card inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset</span>

@@ -257,7 +257,15 @@ async function probeVersion(executable: string | null): Promise<ToolchainStatus>
   };
 }
 
+let cachedToolchain: { value: ToolchainCapabilities; expiresAt: number } | null = null;
+const TOOLCHAIN_CACHE_TTL_MS = 60_000;
+
 export async function detectToolchainCapabilities(): Promise<ToolchainCapabilities> {
+  const now = Date.now();
+  if (cachedToolchain && cachedToolchain.expiresAt > now) {
+    return cachedToolchain.value;
+  }
+
   const [pyExe, gccExe] = await Promise.all([
     resolvePythonExecutable(),
     resolveGccExecutable(),
@@ -267,12 +275,19 @@ export async function detectToolchainCapabilities(): Promise<ToolchainCapabiliti
     probeVersion(gccExe),
   ]);
 
-  return {
+  const value: ToolchainCapabilities = {
     platform: process.platform,
     arch: process.arch,
     python,
     gcc,
   };
+  cachedToolchain = { value, expiresAt: now + TOOLCHAIN_CACHE_TTL_MS };
+  return value;
+}
+
+function redactSandboxPaths(text: string, tmpDir: string): string {
+  if (!text || !tmpDir) return text;
+  return text.split(tmpDir).join('/sandbox');
 }
 
 /**
@@ -288,6 +303,10 @@ export async function executeCodeSecurely(
 
   if (!code || typeof code !== 'string') {
     throw new Error('Code is required.');
+  }
+
+  if (code.includes('\0') || stdin.includes('\0')) {
+    throw new Error('Null bytes are not permitted in source code or standard input.');
   }
 
   if (code.length > MAX_CODE_LENGTH_CHARS) {
@@ -392,7 +411,10 @@ export async function executeCodeSecurely(
       );
 
       if (compileResult.exitCode !== 0) {
-        compileError = compileResult.stderr || compileResult.stdout || 'Compilation failed';
+        compileError = redactSandboxPaths(
+          compileResult.stderr || compileResult.stdout || 'Compilation failed',
+          tmpDir
+        );
         return {
           success: false,
           stdout: '',
@@ -429,11 +451,13 @@ export async function executeCodeSecurely(
     }
 
     const executionTimeMs = Date.now() - startTime;
+    const safeStdout = redactSandboxPaths(stdout, tmpDir);
+    const safeStderr = redactSandboxPaths(stderr, tmpDir);
 
     return {
       success: exitCode === 0,
-      stdout,
-      stderr,
+      stdout: safeStdout,
+      stderr: safeStderr,
       exitCode,
       executionTimeMs,
       compileError: compileError || undefined,

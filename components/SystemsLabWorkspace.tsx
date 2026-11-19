@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Code2,
   Calculator,
@@ -16,13 +17,29 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { CodePlayground } from '@/components/CodePlayground';
-import { FoundationsStudio } from '@/components/FoundationsStudio';
-import { GitSandbox } from '@/components/GitSandbox';
-import { AlgorithmVisualizerLab } from '@/components/AlgorithmVisualizerLab';
-import { FuturisticStudio } from '@/components/FuturisticStudio';
-import { CreativeMediaStudio } from '@/components/CreativeMediaStudio';
 import { SavedCodeSnippet } from '@/hooks/use-odyssey-store';
 import { SoapBubbleButton, SoapBubbleSlider } from '@/components/soap-bubble';
+
+const FoundationsStudio = dynamic(
+  () => import('@/components/FoundationsStudio').then((m) => m.FoundationsStudio),
+  { ssr: false }
+);
+const GitSandbox = dynamic(
+  () => import('@/components/GitSandbox').then((m) => m.GitSandbox),
+  { ssr: false }
+);
+const AlgorithmVisualizerLab = dynamic(
+  () => import('@/components/AlgorithmVisualizerLab').then((m) => m.AlgorithmVisualizerLab),
+  { ssr: false }
+);
+const FuturisticStudio = dynamic(
+  () => import('@/components/FuturisticStudio').then((m) => m.FuturisticStudio),
+  { ssr: false }
+);
+const CreativeMediaStudio = dynamic(
+  () => import('@/components/CreativeMediaStudio').then((m) => m.CreativeMediaStudio),
+  { ssr: false }
+);
 
 export type SystemsLabTab =
   | 'playground'
@@ -56,6 +73,7 @@ interface SystemsLabWorkspaceProps {
   onOpenCommandPalette?: () => void;
   onOpenGame?: () => void;
   onOpenAiMentor: (prompt?: string) => void;
+  onCodeExecuted?: (payload: { language: 'python' | 'c'; code: string; success: boolean }) => void;
 }
 
 const PACKET_STEPS = [
@@ -139,6 +157,7 @@ export function SystemsLabWorkspace({
   onOpenCommandPalette,
   onOpenGame,
   onOpenAiMentor,
+  onCodeExecuted,
 }: SystemsLabWorkspaceProps) {
   const [ramData, setRamData] = useState(INITIAL_RAM_CELLS);
   const [derefValue, setDerefValue] = useState('99');
@@ -186,10 +205,10 @@ export function SystemsLabWorkspace({
       {/* Sub-navigation bar */}
       <div className="optical-panel rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-sky-400">
+          <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-sky-600 dark:text-sky-400 font-semibold">
             Interactive Engineering Workbench
           </p>
-          <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 [text-wrap:balance]">
+          <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-0.5 [text-wrap:balance]">
             Systems Lab
           </h1>
         </div>
@@ -203,10 +222,10 @@ export function SystemsLabWorkspace({
                 <button
                   key={tab.id}
                   onClick={() => onSelectLab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
-                      : 'text-slate-400 hover:text-slate-100 border border-transparent hover:bg-white/[0.04]'
+                      ? 'bg-sky-500/15 text-sky-800 border border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-400/40 font-semibold shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 border border-transparent hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.04]'
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -218,7 +237,7 @@ export function SystemsLabWorkspace({
           {onOpenGame && (
             <button
               onClick={onOpenGame}
-              className="optical-card shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-300 hover:text-white cursor-pointer"
+              className="optical-card shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-white cursor-pointer whitespace-nowrap"
             >
               <Gamepad2 className="h-3.5 w-3.5" />
               <span>Kernel Defense</span>
@@ -237,6 +256,7 @@ export function SystemsLabWorkspace({
           savedSnippets={savedSnippets}
           onSaveSnippet={onSaveSnippet}
           onDeleteSnippet={onDeleteSnippet}
+          onCodeExecuted={onCodeExecuted}
         />
       )}
 
@@ -271,19 +291,19 @@ export function SystemsLabWorkspace({
         <div className="optical-panel rounded-2xl p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <span className="text-[11px] font-mono text-sky-400 uppercase tracking-wider font-semibold">
+              <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
                 Stage 6 · C Memory Model
               </span>
-              <h2 className="font-display text-lg font-bold text-white mt-0.5">
+              <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                 RAM Address Grid &amp; Pointer Dereferencing
               </h2>
-              <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
                 Memory in C behaves like an indexed array of numbered lockers. A scalar variable holds a value directly; a pointer holds another variable&apos;s address.
               </p>
             </div>
             <button
               onClick={resetRam}
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 cursor-pointer self-start"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer self-start whitespace-nowrap shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset RAM</span>
@@ -292,7 +312,7 @@ export function SystemsLabWorkspace({
 
           <div className="optical-inset rounded-xl overflow-x-auto font-mono text-xs">
             <table className="w-full text-left">
-              <thead className="border-b border-white/[0.08] bg-white/[0.03] text-slate-400">
+              <thead className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-100/80 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400">
                 <tr>
                   <th className="p-3">Address</th>
                   <th className="p-3">Symbol</th>
@@ -301,7 +321,7 @@ export function SystemsLabWorkspace({
                   <th className="p-3">Role</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.06]">
+              <tbody className="divide-y divide-slate-200 dark:divide-white/[0.06]">
                 {ramData.map((row) => {
                   const isTarget = row.address === '0x1000';
                   const isPointer = row.varName === 'ptr_score';
@@ -311,17 +331,17 @@ export function SystemsLabWorkspace({
                       key={row.address}
                       className={
                         isPointer
-                          ? 'bg-indigo-500/10 text-indigo-300'
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-800 dark:text-indigo-300'
                           : isTarget
-                          ? 'bg-sky-500/10 text-sky-300'
-                          : 'text-slate-300'
+                          ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300'
+                          : 'text-slate-700 dark:text-slate-300'
                       }
                     >
-                      <td className="p-3 font-semibold text-slate-400 tabular-nums">{row.address}</td>
-                      <td className="p-3 font-semibold text-white">{row.varName}</td>
-                      <td className="p-3 text-slate-400">{row.type}</td>
+                      <td className="p-3 font-semibold text-slate-500 dark:text-slate-400 tabular-nums">{row.address}</td>
+                      <td className="p-3 font-semibold text-slate-900 dark:text-white">{row.varName}</td>
+                      <td className="p-3 text-slate-500 dark:text-slate-400">{row.type}</td>
                       <td className="p-3 font-bold tabular-nums">{row.value}</td>
-                      <td className="p-3 text-slate-400 font-sans text-[11px]">
+                      <td className="p-3 text-slate-600 dark:text-slate-400 font-sans text-[11px]">
                         {isPointer && 'Holds address 0x1000 (points to score)'}
                         {isTarget && 'Target int variable stored at 0x1000'}
                         {row.address === '0x100E' && 'Null terminator (\\0) marks C string boundary'}
@@ -334,24 +354,31 @@ export function SystemsLabWorkspace({
           </div>
 
           <div className="optical-inset rounded-xl p-4 space-y-3">
-            <div className="text-xs font-semibold text-white">Interactive Pointer Dereference Experiment</div>
-            <p className="text-xs text-slate-400">
-              Executing <code className="bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 rounded text-sky-300">*ptr_score = value;</code> follows address <code className="text-sky-300">0x1000</code> and mutates <code className="text-sky-300">score</code> in place.
+            <div className="text-xs font-semibold text-slate-900 dark:text-white">
+              Interactive Pointer Dereference Experiment
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Executing{' '}
+              <code className="bg-slate-200/70 dark:bg-white/[0.06] border border-slate-300 dark:border-white/[0.08] px-1.5 py-0.5 rounded text-sky-700 dark:text-sky-300">
+                *ptr_score = value;
+              </code>{' '}
+              follows address <code className="text-sky-700 dark:text-sky-300 font-semibold">0x1000</code> and mutates{' '}
+              <code className="text-sky-700 dark:text-sky-300 font-semibold">score</code> in place.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-mono text-slate-400">*ptr_score =</span>
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-400">*ptr_score =</span>
               <input
                 type="text"
                 value={derefValue}
                 onChange={(e) => setDerefValue(e.target.value)}
-                className="w-24 rounded-lg border border-white/[0.1] bg-black/40 px-2.5 py-1.5 text-xs font-mono text-sky-300 focus:outline-none focus:border-sky-400/60"
+                className="w-24 rounded-lg border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-black/40 px-2.5 py-1.5 text-xs font-mono text-sky-700 dark:text-sky-300 font-semibold focus:outline-none focus:border-sky-500"
               />
               <SoapBubbleButton
                 onClick={updateThroughPointer}
                 tint="rgb(14 165 233)"
                 opacity={0.92}
                 style={{ fontSize: 12 }}
-                className="!min-h-[34px] !px-4 font-semibold text-white"
+                className="!min-h-[34px] !px-4 font-semibold text-white whitespace-nowrap shrink-0"
               >
                 Write via Pointer
               </SoapBubbleButton>
@@ -363,13 +390,13 @@ export function SystemsLabWorkspace({
       {activeLab === 'packet' && (
         <div className="optical-panel rounded-2xl p-6 space-y-6">
           <div>
-            <span className="text-[11px] font-mono text-sky-400 uppercase tracking-wider font-semibold">
+            <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
               Stage 4 · Networking &amp; Web Protocols
             </span>
-            <h2 className="font-display text-lg font-bold text-white mt-0.5">
+            <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white mt-0.5">
               Packet Hop Journey: Click to Render
             </h2>
-            <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
               Step through ARP resolution, DNS lookup, the TCP 3-way handshake, TLS 1.3 negotiation, and HTTPS delivery.
             </p>
           </div>
@@ -381,11 +408,13 @@ export function SystemsLabWorkspace({
                 onClick={() => setCurrentPacketStep(idx)}
                 className={`flex-1 min-w-[130px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   currentPacketStep === idx
-                    ? 'border-sky-400/50 bg-sky-500/15 text-white shadow-[0_0_20px_-8px_rgba(56,189,248,0.45),inset_0_1px_0_rgba(255,255,255,0.14)]'
-                    : 'optical-card text-slate-400 hover:text-slate-200'
+                    ? 'border-sky-500/50 bg-sky-500/12 text-slate-900 dark:text-white shadow-[0_0_20px_-8px_rgba(14,165,233,0.35)]'
+                    : 'optical-card text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
-                <div className="text-[10px] font-mono text-sky-400 tabular-nums">HOP 0{s.step}</div>
+                <div className="text-[10px] font-mono text-sky-600 dark:text-sky-400 tabular-nums font-semibold">
+                  HOP 0{s.step}
+                </div>
                 <div className="text-xs font-semibold truncate mt-0.5">{s.actor}</div>
               </button>
             ))}
@@ -394,26 +423,26 @@ export function SystemsLabWorkspace({
           <div className="optical-inset rounded-xl p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="text-xs font-mono bg-sky-500/15 text-sky-300 border border-sky-400/35 px-2.5 py-0.5 rounded-md font-semibold tabular-nums">
+                <span className="text-xs font-mono bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/35 px-2.5 py-0.5 rounded-md font-semibold tabular-nums">
                   Step {curPacket.step} / {PACKET_STEPS.length}
                 </span>
-                <span className="text-sm font-semibold text-white">{curPacket.title}</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{curPacket.title}</span>
               </div>
-              <span className="text-xs font-mono text-slate-300 border border-white/[0.1] bg-white/[0.03] px-2.5 py-0.5 rounded-md">
+              <span className="text-xs font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.03] px-2.5 py-0.5 rounded-md">
                 {curPacket.packetType}
               </span>
             </div>
 
             <div className="space-y-1.5">
               <div className="text-xs font-mono text-slate-500">Network Node</div>
-              <div className="text-xs font-semibold text-sky-300">{curPacket.actor}</div>
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line pt-1">
+              <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">{curPacket.actor}</div>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line pt-1">
                 {curPacket.action}
               </p>
             </div>
 
-            <div className="rounded-xl bg-black/45 border border-white/[0.08] p-3.5 font-mono text-xs">
-              <span className="text-slate-500 text-[11px]">Wire Frame / Payload</span>
+            <div className="rounded-xl bg-slate-900 dark:bg-black/45 border border-slate-800 dark:border-white/[0.08] p-3.5 font-mono text-xs">
+              <span className="text-slate-400 text-[11px]">Wire Frame / Payload</span>
               <div className="mt-1 text-emerald-400 font-semibold">{curPacket.payload}</div>
             </div>
 
@@ -421,7 +450,7 @@ export function SystemsLabWorkspace({
               <button
                 disabled={currentPacketStep === 0}
                 onClick={() => setCurrentPacketStep((p) => Math.max(0, p - 1))}
-                className="optical-card px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-200 disabled:opacity-35 cursor-pointer"
+                className="optical-card px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 disabled:opacity-35 cursor-pointer whitespace-nowrap shrink-0"
               >
                 Previous Hop
               </button>
@@ -431,7 +460,7 @@ export function SystemsLabWorkspace({
                 tint="rgb(14 165 233)"
                 opacity={0.92}
                 style={{ fontSize: 12 }}
-                className="!min-h-[34px] !px-4 font-semibold text-white disabled:opacity-35"
+                className="!min-h-[34px] !px-4 font-semibold text-white disabled:opacity-35 whitespace-nowrap shrink-0"
               >
                 <span>Next Hop</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -446,25 +475,30 @@ export function SystemsLabWorkspace({
           <div className="optical-panel rounded-2xl p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-[11px] font-mono text-sky-400 uppercase tracking-wider font-semibold">
+                <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-wider font-semibold">
                   Stage 12 · Asymptotics &amp; Microarchitecture
                 </span>
-                <h2 className="font-display text-lg font-bold text-white mt-0.5">
+                <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                   Big-O Growth Calculator &amp; Latency Hierarchy
                 </h2>
-                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
                   Compare asymptotic operation growth as input elements scale and contrast CPU cache vs DRAM vs NVMe disk vs network round-trip latency.
                 </p>
               </div>
-              <div className="optical-inset font-mono text-xs rounded-xl px-3.5 py-2 tabular-nums">
-                Input Size: <strong className="text-sky-400">N = {inputSizeN.toLocaleString()} items</strong>
+              <div className="optical-inset font-mono text-xs rounded-xl px-3.5 py-2 tabular-nums text-slate-700 dark:text-slate-300 shrink-0">
+                Input Size: <strong className="text-sky-600 dark:text-sky-400">N = {inputSizeN.toLocaleString()} items</strong>
               </div>
             </div>
 
             <div className="optical-inset space-y-2 rounded-xl p-4">
-              <div className="flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>Input Elements: <strong className="text-sky-300 tabular-nums">{inputSizeN.toLocaleString()} items</strong></span>
-                <span className="text-slate-400">Range: 10 — 50,000</span>
+              <div className="flex items-center justify-between text-xs font-mono text-slate-700 dark:text-slate-300">
+                <span>
+                  Input Elements:{' '}
+                  <strong className="text-sky-600 dark:text-sky-300 tabular-nums">
+                    {inputSizeN.toLocaleString()} items
+                  </strong>
+                </span>
+                <span className="text-slate-500 dark:text-slate-400">Range: 10 — 50,000</span>
               </div>
               <div className="py-1">
                 <SoapBubbleSlider
@@ -486,31 +520,31 @@ export function SystemsLabWorkspace({
                 {
                   name: 'O(1) — Hash Lookup',
                   ops: 1,
-                  color: 'bg-emerald-400',
+                  color: 'bg-emerald-500 dark:bg-emerald-400',
                   example: 'Dictionary get, array index read',
                 },
                 {
                   name: 'O(log n) — Binary Search / Balanced Tree',
                   ops: Math.max(1, Math.round(Math.log2(inputSizeN))),
-                  color: 'bg-sky-400',
+                  color: 'bg-sky-500 dark:bg-sky-400',
                   example: 'Binary search, B-Tree point lookup',
                 },
                 {
                   name: 'O(n) — Linear Scan',
                   ops: inputSizeN,
-                  color: 'bg-sky-500',
+                  color: 'bg-sky-600 dark:bg-sky-500',
                   example: 'Single loop, unsliced copy',
                 },
                 {
                   name: 'O(n log n) — Merge / Timsort',
                   ops: Math.round(inputSizeN * Math.log2(inputSizeN)),
-                  color: 'bg-amber-400',
+                  color: 'bg-amber-500 dark:bg-amber-400',
                   example: 'Comparison sort, FFT, spatial divide',
                 },
                 {
                   name: 'O(n^2) — Nested Pair Loop',
                   ops: inputSizeN * inputSizeN,
-                  color: 'bg-rose-400',
+                  color: 'bg-rose-500 dark:bg-rose-400',
                   example: 'All-pairs brute force, naive bubble sort',
                 },
               ].map((row) => {
@@ -520,18 +554,18 @@ export function SystemsLabWorkspace({
                 return (
                   <div key={row.name} className="optical-inset rounded-xl p-3.5 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="font-mono font-semibold text-white">{row.name}</span>
-                      <span className="font-mono text-slate-400 tabular-nums">
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white">{row.name}</span>
+                      <span className="font-mono text-slate-600 dark:text-slate-400 tabular-nums">
                         {row.ops.toLocaleString()} ops (~{estMs} ms @ 1ns/op)
                       </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-white/[0.06] overflow-hidden">
                       <div
                         className={`h-full ${row.color} transition-all duration-200`}
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>
-                    <div className="text-[11px] text-slate-400">{row.example}</div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">{row.example}</div>
                   </div>
                 );
               })}
@@ -540,14 +574,16 @@ export function SystemsLabWorkspace({
 
           <div className="optical-panel rounded-2xl p-6 space-y-4">
             <div>
-              <h3 className="font-display text-base font-bold text-white">Hardware Memory Latency Hierarchy</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                Hardware Memory Latency Hierarchy
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Every Systems Engineer knows numbers every programmer should internalize: a single DRAM miss costs ~80 L1 hits, and an SSD read costs thousands of DRAM cycles.
               </p>
             </div>
             <div className="optical-inset rounded-xl overflow-x-auto font-mono text-xs">
               <table className="w-full text-left">
-                <thead className="border-b border-white/[0.08] bg-white/[0.03] text-slate-400">
+                <thead className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-100/80 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400">
                   <tr>
                     <th className="p-3">Storage Tier</th>
                     <th className="p-3">Typical Latency</th>
@@ -555,19 +591,19 @@ export function SystemsLabWorkspace({
                     <th className="p-3">Engineering Note</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.06]">
+                <tbody className="divide-y divide-slate-200 dark:divide-white/[0.06]">
                   {MEMORY_LATENCY_TIERS.map((tier) => (
-                    <tr key={tier.tier} className="text-slate-200">
-                      <td className="p-3 font-semibold text-white">{tier.tier}</td>
-                      <td className="p-3 text-sky-400 tabular-nums">
+                    <tr key={tier.tier} className="text-slate-700 dark:text-slate-200">
+                      <td className="p-3 font-semibold text-slate-900 dark:text-white">{tier.tier}</td>
+                      <td className="p-3 text-sky-600 dark:text-sky-400 tabular-nums font-semibold">
                         {tier.ns >= 1000000
                           ? `${(tier.ns / 1000000).toLocaleString()} ms`
                           : tier.ns >= 1000
                           ? `${(tier.ns / 1000).toLocaleString()} us`
                           : `${tier.ns} ns`}
                       </td>
-                      <td className="p-3 text-amber-400 tabular-nums">{tier.ratio}</td>
-                      <td className="p-3 font-sans text-slate-400">{tier.role}</td>
+                      <td className="p-3 text-amber-600 dark:text-amber-400 tabular-nums font-semibold">{tier.ratio}</td>
+                      <td className="p-3 font-sans text-slate-600 dark:text-slate-400">{tier.role}</td>
                     </tr>
                   ))}
                 </tbody>

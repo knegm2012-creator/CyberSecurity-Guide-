@@ -65,32 +65,51 @@ function computeServerMetrics(state: Record<string, unknown>) {
   };
 }
 
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function enqueueDiskOp<T>(op: () => Promise<T>): Promise<T> {
+  const next = writeQueue.then(op, op);
+  writeQueue = next.catch(() => {});
+  return next;
+}
+
+async function readEnvelopeWithBackupFallback(filePath: string, backupPath: string) {
+  for (const candidate of [filePath, backupPath]) {
+    try {
+      const raw = await fs.readFile(candidate, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<StoredEnvelope>;
+      if (parsed && typeof parsed === 'object' && parsed.state) {
+        const cleanState = sanitizeOdysseyStoreState(parsed.state);
+        return {
+          available: true,
+          exists: true,
+          state: cleanState,
+          metrics: computeServerMetrics(cleanState),
+          updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
+          recoveredFromBackup: candidate === backupPath,
+        };
+      }
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code === 'ENOENT' && candidate === filePath) {
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
 export async function GET() {
   const headers = apiSecurityHeaders();
-  const { filePath } = resolveProgressPaths();
+  const { filePath, backupPath } = resolveProgressPaths();
 
   try {
-    const raw = await fs.readFile(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<StoredEnvelope>;
-    if (!parsed || typeof parsed !== 'object' || !parsed.state) {
-      return NextResponse.json({ available: true, exists: false, state: null, updatedAt: null }, { headers });
+    const recovered = await readEnvelopeWithBackupFallback(filePath, backupPath);
+    if (recovered) {
+      return NextResponse.json(recovered, { headers });
     }
-    const cleanState = sanitizeOdysseyStoreState(parsed.state);
-    return NextResponse.json(
-      {
-        available: true,
-        exists: true,
-        state: cleanState,
-        metrics: computeServerMetrics(cleanState),
-        updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
-      },
-      { headers }
-    );
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException)?.code;
-    if (code === 'ENOENT') {
-      return NextResponse.json({ available: true, exists: false, state: null, updatedAt: null }, { headers });
-    }
+    return NextResponse.json({ available: true, exists: false, state: null, updatedAt: null }, { headers });
+  } catch {
     return NextResponse.json(
       { available: false, exists: false, state: null, updatedAt: null },
       { headers }
@@ -99,10 +118,13 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
-
   const rateCheck = progressRateLimiter.tryConsume(clientIp);
+  const headers = apiSecurityHeaders({
+    'X-RateLimit-Remaining': String(rateCheck.remaining),
+    ...(rateCheck.allowed ? {} : { 'Retry-After': String(rateCheck.retryAfterSec) }),
+  });
+
   if (!rateCheck.allowed) {
     return NextResponse.json(
       { error: 'Too Many Requests: Progress sync throttled.' },
@@ -138,29 +160,35 @@ export async function PUT(req: NextRequest) {
   };
 
   const { dir, filePath, backupPath } = resolveProgressPaths();
-  const tempPath = path.join(dir, `.odyssey-progress-${crypto.randomBytes(6).toString('hex')}.tmp`);
   const metrics = computeServerMetrics(cleanState);
 
-  try {
-    await fs.mkdir(dir, { recursive: true, mode: 0o700 });
-    await fs.copyFile(filePath, backupPath).catch(() => {});
-    await fs.writeFile(tempPath, JSON.stringify(envelope, null, 2), { encoding: 'utf-8', mode: 0o600 });
-    await fs.rename(tempPath, filePath);
-
-    return NextResponse.json({ ok: true, persistedToDisk: true, updatedAt, metrics }, { headers });
-  } catch {
+  return enqueueDiskOp(async () => {
+    const tempPath = path.join(dir, `.odyssey-progress-${crypto.randomBytes(6).toString('hex')}.tmp`);
     try {
-      await fs.rm(tempPath, { force: true });
-    } catch (_) {}
-    // Gracefully allow browser localStorage-only mode on read-only hosts without failing client saves
-    return NextResponse.json({ ok: true, persistedToDisk: false, updatedAt, metrics }, { headers });
-  }
+      await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+      await fs.copyFile(filePath, backupPath).catch(() => {});
+      await fs.writeFile(tempPath, JSON.stringify(envelope, null, 2), { encoding: 'utf-8', mode: 0o600 });
+      await fs.rename(tempPath, filePath);
+
+      return NextResponse.json({ ok: true, persistedToDisk: true, updatedAt, metrics }, { headers });
+    } catch {
+      try {
+        await fs.rm(tempPath, { force: true });
+      } catch (_) {}
+      // Gracefully allow browser localStorage-only mode on read-only hosts without failing client saves
+      return NextResponse.json({ ok: true, persistedToDisk: false, updatedAt, metrics }, { headers });
+    }
+  });
 }
 
 export async function DELETE(req: NextRequest) {
-  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
   const rateCheck = progressRateLimiter.tryConsume(clientIp);
+  const headers = apiSecurityHeaders({
+    'X-RateLimit-Remaining': String(rateCheck.remaining),
+    ...(rateCheck.allowed ? {} : { 'Retry-After': String(rateCheck.retryAfterSec) }),
+  });
+
   if (!rateCheck.allowed) {
     return NextResponse.json(
       { error: 'Too Many Requests: Progress delete throttled.' },
@@ -169,10 +197,12 @@ export async function DELETE(req: NextRequest) {
   }
 
   const { filePath, backupPath } = resolveProgressPaths();
-  await Promise.allSettled([
-    fs.rm(filePath, { force: true }),
-    fs.rm(backupPath, { force: true }),
-  ]);
+  await enqueueDiskOp(() =>
+    Promise.allSettled([
+      fs.rm(filePath, { force: true }),
+      fs.rm(backupPath, { force: true }),
+    ])
+  );
 
   return NextResponse.json({ ok: true, cleared: true }, { headers });
 }

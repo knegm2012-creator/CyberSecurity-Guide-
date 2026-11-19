@@ -36,15 +36,15 @@ function getIntensityLevel(minutes: number, goalMinutes: number): 0 | 1 | 2 | 3 
 function getIntensityClasses(level: 0 | 1 | 2 | 3 | 4): string {
   switch (level) {
     case 4:
-      return 'border-emerald-300/70 bg-emerald-400/50 text-white shadow-[0_0_12px_rgba(52,211,153,0.28)]';
+      return 'border-emerald-500/70 dark:border-emerald-300/70 bg-emerald-500/30 dark:bg-emerald-400/50 text-emerald-950 dark:text-white shadow-[0_0_12px_rgba(16,185,129,0.2)]';
     case 3:
-      return 'border-emerald-400/50 bg-emerald-500/32 text-emerald-100';
+      return 'border-emerald-500/50 dark:border-emerald-400/50 bg-emerald-500/20 dark:bg-emerald-500/32 text-emerald-900 dark:text-emerald-100';
     case 2:
-      return 'border-cyan-400/45 bg-cyan-500/24 text-cyan-100';
+      return 'border-cyan-500/45 dark:border-cyan-400/45 bg-cyan-500/15 dark:bg-cyan-500/24 text-cyan-900 dark:text-cyan-100';
     case 1:
-      return 'border-sky-500/35 bg-sky-500/14 text-sky-200';
+      return 'border-sky-500/35 bg-sky-500/12 dark:bg-sky-500/14 text-sky-800 dark:text-sky-200';
     default:
-      return 'border-white/[0.07] bg-[#04070f] text-slate-600';
+      return 'border-slate-200 dark:border-white/[0.07] bg-slate-100 dark:bg-[#04070f] text-slate-400 dark:text-slate-600';
   }
 }
 
@@ -152,14 +152,14 @@ export function WeeklyContributionHeatmap({
       aria-label="Weekly Contribution Heatmap"
     >
       {/* Header + View Switch */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-3.5">
         <div className="flex items-center gap-2.5">
-          <Grid3X3 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <Grid3X3 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <div>
-            <h2 className="font-display text-sm font-semibold text-white">
+            <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
               Weekly Contribution Heatmap
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               7-day granular activity intensity &amp; 12-week contribution cadence
             </p>
           </div>
@@ -171,8 +171,8 @@ export function WeeklyContributionHeatmap({
             onClick={() => setViewMode('weekly')}
             className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap border ${
               viewMode === 'weekly'
-                ? 'bg-emerald-500/18 border-emerald-400/35 text-emerald-200 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-500/18 border-emerald-500/35 text-emerald-800 dark:text-emerald-200 font-semibold'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             7-Day Intensity
@@ -182,8 +182,8 @@ export function WeeklyContributionHeatmap({
             onClick={() => setViewMode('calendar')}
             className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap border ${
               viewMode === 'calendar'
-                ? 'bg-emerald-500/18 border-emerald-400/35 text-emerald-200 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-500/18 border-emerald-500/35 text-emerald-800 dark:text-emerald-200 font-semibold'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             12-Week Heatmap
@@ -204,7 +204,7 @@ export function WeeklyContributionHeatmap({
                   onClick={() => setSelectedDayStr(day.dateStr)}
                   className={`rounded-xl border p-2.5 text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${getIntensityClasses(
                     day.intensityLevel
-                  )} ${isSelected ? 'ring-2 ring-sky-400/80' : ''}`}
+                  )} ${isSelected ? 'ring-2 ring-sky-500/80 dark:ring-sky-400/80' : ''}`}
                   title={`${day.dateStr}: ${day.totalMinutes}m across ${day.sessionsCount} session(s)`}
                 >
                   <span className="text-[10px] font-mono uppercase opacity-80">
@@ -223,14 +223,14 @@ export function WeeklyContributionHeatmap({
 
           {/* Granular Category x Day Heatmap Matrix */}
           <div className="optical-inset rounded-xl p-3.5 space-y-2">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400">
               Channel Breakdown · Past 7 Days
             </div>
 
             <div className="space-y-1.5">
               {channelRows.map((row) => (
                 <div key={row.key} className="grid grid-cols-8 gap-1.5 items-center">
-                  <span className="text-[10px] font-mono text-slate-400 truncate pr-1">
+                  <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 truncate pr-1">
                     {row.label}
                   </span>
                   {weeklyBreakdown.map((day) => {
@@ -258,7 +258,7 @@ export function WeeklyContributionHeatmap({
       ) : (
         /* 12-Week (84-Day) Contribution Calendar Grid */
         <div className="optical-inset rounded-xl p-4 space-y-3 overflow-x-auto">
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-400">
             <span>Rolling 12-Week Study Contribution Grid</span>
             <span>{last84Days.filter((c) => c.minutes > 0).length} / 84 active days</span>
           </div>
@@ -278,8 +278,8 @@ export function WeeklyContributionHeatmap({
                       aria-label={`${cell.dateStr}: ${cell.minutes} minutes`}
                       className={`h-4 w-full rounded-sm border transition-all cursor-pointer ${getIntensityClasses(
                         lvl
-                      )} ${cell.isToday ? 'ring-1 ring-amber-300' : ''} ${
-                        isSelected ? 'ring-2 ring-sky-400' : ''
+                      )} ${cell.isToday ? 'ring-1 ring-amber-500 dark:ring-amber-300' : ''} ${
+                        isSelected ? 'ring-2 ring-sky-500 dark:ring-sky-400' : ''
                       }`}
                     />
                   );
@@ -292,13 +292,13 @@ export function WeeklyContributionHeatmap({
 
       {/* Selected Day Granular Inspector + Legend */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] font-mono">
-        <div className="flex items-center gap-3 text-slate-300 tabular-nums">
-          <span className="inline-flex items-center gap-1 text-emerald-400">
+        <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 tabular-nums">
+          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
             <Flame className="h-3.5 w-3.5" />
             <span>{weeklyTotals.activeDays}/7 active</span>
           </span>
-          <span className="inline-flex items-center gap-1 text-slate-300">
-            <Clock className="h-3.5 w-3.5 text-sky-400" />
+          <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
+            <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             <span>
               {(weeklyTotals.minutes / 60).toFixed(1)}h ({weeklyTotals.sessions} sessions)
             </span>
@@ -306,7 +306,7 @@ export function WeeklyContributionHeatmap({
         </div>
 
         {/* Heat Intensity Legend */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+        <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
           <span>Less</span>
           {([0, 1, 2, 3, 4] as const).map((lvl) => (
             <span
@@ -320,12 +320,12 @@ export function WeeklyContributionHeatmap({
 
       {activeDayDetail.dateStr && (
         <div className="optical-inset rounded-xl px-3.5 py-2.5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="font-mono text-[11px] text-slate-300 tabular-nums">
-            <span className="text-sky-400 font-semibold">{activeDayDetail.dateStr}</span>
-            <span className="text-slate-600 mx-1.5">·</span>
+          <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300 tabular-nums">
+            <span className="text-sky-700 dark:text-sky-400 font-semibold">{activeDayDetail.dateStr}</span>
+            <span className="text-slate-400 dark:text-slate-600 mx-1.5">·</span>
             <span>{activeDayDetail.totalMinutes}m logged</span>
           </div>
-          <div className="text-[11px] text-slate-400 truncate max-w-md">
+          <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate max-w-md">
             {activeDayDetail.sessions.length > 0
               ? activeDayDetail.sessions
                   .slice(0, 2)

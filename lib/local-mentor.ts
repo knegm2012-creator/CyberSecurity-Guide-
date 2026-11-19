@@ -746,6 +746,33 @@ export function buildLocalStudyPlanResponse(
   ].join('\n');
 }
 
+export function buildLocalCompanionResponse(
+  stageId: string | undefined,
+  promptText: string,
+  workspace?: string
+): string {
+  const activeStage = STAGES_DATA.find((s) => s.id === stageId) || STAGES_DATA[0];
+  const lower = promptText.toLowerCase();
+
+  if (lower.includes('debug') || lower.includes('error') || lower.includes('bug') || lower.includes('fail')) {
+    return buildLocalDebugResponse(promptText, `Current stage context: ${activeStage.title}`);
+  }
+
+  if (lower.includes('plan') || lower.includes('next') || lower.includes('stuck')) {
+    const topicNames = activeStage.topics.slice(0, 2).map((t) => `"${t.title}"`).join(' & ');
+    return [
+      `Hey! Let's tackle **Stage ${activeStage.number} (${activeStage.title.split(':')[0]})** step by step:`,
+      '',
+      `1. **Right Now (${workspace || 'Workbench'}):** Focus on ${topicNames}.`,
+      `2. **Try This Micro-Drill:** Open the playground or shell and verify one concrete case from "${activeStage.practiceTask.title}".`,
+      `3. **Pro Tip:** ${activeStage.topics[0]?.eli9 || activeStage.goal}`,
+    ].join('\n');
+  }
+
+  const baseGuide = buildLocalEli9Response(activeStage.id, promptText);
+  return `${baseGuide}\n\n---\n*Odyssey Buddy · Stage ${activeStage.number} Offline Partner*`;
+}
+
 export function sanitizeGroundingSources(chunks: unknown): SearchSourceCitation[] {
   if (!Array.isArray(chunks)) return [];
   const seen = new Set<string>();

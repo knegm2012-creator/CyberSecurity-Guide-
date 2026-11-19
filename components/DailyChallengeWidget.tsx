@@ -339,15 +339,15 @@ export function DailyChallengeWidget({
   const getCategoryIcon = (category: DailyMicroTask['category']) => {
     switch (category) {
       case 'Terminal':
-        return <Terminal className="h-3.5 w-3.5 text-emerald-400" />;
+        return <Terminal className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
       case 'Foundations':
-        return <Calculator className="h-3.5 w-3.5 text-sky-400" />;
+        return <Calculator className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />;
       case 'Git':
-        return <GitBranch className="h-3.5 w-3.5 text-amber-400" />;
+        return <GitBranch className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />;
       case 'Code':
-        return <Code2 className="h-3.5 w-3.5 text-sky-400" />;
+        return <Code2 className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />;
       case 'Security':
-        return <Shield className="h-3.5 w-3.5 text-emerald-400" />;
+        return <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
     }
   };
 
@@ -360,31 +360,31 @@ export function DailyChallengeWidget({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="space-y-2 max-w-3xl">
           {/* Inline metadata line */}
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-mono text-slate-400 tabular-nums">
-            <span className="inline-flex items-center gap-1.5 text-sky-400 font-medium uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-mono text-slate-600 dark:text-slate-400 tabular-nums">
+            <span className="inline-flex items-center gap-1.5 text-sky-700 dark:text-sky-400 font-semibold uppercase tracking-wider">
               {getCategoryIcon(task.category)}
               <span>Daily Focus</span>
             </span>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-400 dark:text-slate-600">·</span>
             <span>Stage {task.stageNumber}</span>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-400 dark:text-slate-600">·</span>
             <span>{dateFormatted}</span>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-400 dark:text-slate-600">·</span>
             <span>~{task.estimatedMinutes} min</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-amber-400">+{task.xpReward} XP</span>
+            <span className="text-slate-400 dark:text-slate-600">·</span>
+            <span className="text-amber-700 dark:text-amber-400 font-semibold">+{task.xpReward} XP</span>
             {completed && (
               <>
-                <span className="text-slate-600">·</span>
-                <span className="text-emerald-400 font-semibold">Done today</span>
+                <span className="text-slate-400 dark:text-slate-600">·</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Done today</span>
               </>
             )}
           </div>
 
-          <h3 className="font-display text-base sm:text-lg font-semibold text-white tracking-tight">
+          <h3 className="font-display text-base sm:text-lg font-semibold text-slate-900 dark:text-white tracking-tight">
             {task.title}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             {task.description}
           </p>
         </div>
@@ -404,13 +404,13 @@ export function DailyChallengeWidget({
           {!completed ? (
             <button
               onClick={handleClaim}
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 hover:text-emerald-300 cursor-pointer whitespace-nowrap"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer whitespace-nowrap"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Mark Complete</span>
             </button>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-xs font-mono text-emerald-400 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-500/10 dark:bg-emerald-950/30 px-3 py-2 text-xs font-mono text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>+{task.xpReward} XP logged</span>
             </span>
@@ -418,9 +418,9 @@ export function DailyChallengeWidget({
 
           <button
             onClick={() => onOpenAiMentor(task.hintPrompt)}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 hover:text-white cursor-pointer whitespace-nowrap"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap"
           >
-            <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+            <Sparkles className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             <span>Hint</span>
           </button>
         </div>

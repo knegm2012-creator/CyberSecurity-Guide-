@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { List, Network } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { List, Network, Compass } from 'lucide-react';
 import { StageExplorer } from './StageExplorer';
 import { AdvancedHeroHub } from './AdvancedHeroHub';
 import { ProjectsStudio } from './ProjectsStudio';
@@ -11,7 +12,18 @@ import { CurriculumAtoZAtlas } from './CurriculumAtoZAtlas';
 import type { OdysseyStoreData } from '@/hooks/use-odyssey-store';
 import type { MasteryReportInput } from '@/lib/mastery-report-pdf';
 
-export type CurriculumSubTab = 'atlas' | 'stages' | 'hero' | 'projects' | 'export';
+const AdventureQuestMode = dynamic(
+  () => import('./AdventureQuestMode').then((m) => m.AdventureQuestMode),
+  {
+    loading: () => (
+      <div className="optical-panel rounded-2xl p-6 text-xs font-mono text-slate-600 dark:text-slate-300">
+        Loading CS Adventure Campaign...
+      </div>
+    ),
+  }
+);
+
+export type CurriculumSubTab = 'quest' | 'atlas' | 'stages' | 'hero' | 'projects' | 'export';
 
 interface CurriculumWorkspaceProps {
   activeSubTab: CurriculumSubTab;
@@ -28,6 +40,7 @@ interface CurriculumWorkspaceProps {
   onSetStageTargetDate?: (stageId: string, targetDate: string) => void;
   onToggleExitCheck: (checkKey: string) => void;
   onMarkStageComplete: (stageId: string, completed: boolean) => void;
+  onLogBossClear?: (minutes: number, stageId: string, notes: string) => void;
   onAddMilestone: (
     title: string,
     category: 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom',
@@ -41,7 +54,7 @@ interface CurriculumWorkspaceProps {
   onOpenShell: () => void;
   onOpenNotes: (stageId: string) => void;
   onOpenPlayground: (language: 'python' | 'c', code: string) => void;
-  onOpenLab: (labTab: 'foundations' | 'git') => void;
+  onOpenLab: (labTab: 'foundations' | 'git' | 'visualizer') => void;
   exportData?: OdysseyStoreData;
   exportStats?: MasteryReportInput['stats'];
   onDownloadMasteryPdf?: () => void;
@@ -62,6 +75,7 @@ export function CurriculumWorkspace({
   onSetStageTargetDate,
   onToggleExitCheck,
   onMarkStageComplete,
+  onLogBossClear,
   onAddMilestone,
   onUpdateProjectStatus,
   onUpdateProjectNotes,
@@ -81,14 +95,14 @@ export function CurriculumWorkspace({
       {/* Sub-navigation optical header */}
       <div className="optical-panel rounded-2xl p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-400">
+          <div className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-600 dark:text-sky-400 font-semibold">
             Curriculum Architecture
           </div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight [text-wrap:balance]">
-            A–Z Curriculum &amp; Engineering Track
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight [text-wrap:balance]">
+            CS Adventure &amp; Engineering Track
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400">
-            16-stage Zero-to-Hero path from hardware switches to compilers, cloud SRE &amp; AI compute, with A–Z Atlas and open-source export.
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Self-contained 16-chapter Quest Campaign from zero prior CS knowledge to compilers, cloud SRE &amp; AI compute.
           </p>
         </div>
 
@@ -97,10 +111,10 @@ export function CurriculumWorkspace({
             <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium">
               <button
                 onClick={() => setStageViewMode('handbook')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   stageViewMode === 'handbook'
-                    ? 'bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 <List className="h-3.5 w-3.5" />
@@ -108,10 +122,10 @@ export function CurriculumWorkspace({
               </button>
               <button
                 onClick={() => setStageViewMode('graph')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   stageViewMode === 'graph'
-                    ? 'bg-white/10 text-sky-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-white text-sky-700 shadow-sm dark:bg-white/10 dark:text-sky-300 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 <Network className="h-3.5 w-3.5" />
@@ -122,6 +136,7 @@ export function CurriculumWorkspace({
 
           <div className="optical-subnav flex rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar">
             {[
+              { id: 'quest', label: 'Adventure Quest' },
               { id: 'atlas', label: 'A–Z Master Atlas' },
               { id: 'stages', label: '16-Stage Handbook' },
               { id: 'hero', label: 'Systems Engineering (Hero)' },
@@ -131,18 +146,42 @@ export function CurriculumWorkspace({
               <button
                 key={tab.id}
                 onClick={() => onChangeSubTab(tab.id as CurriculumSubTab)}
-                className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   activeSubTab === tab.id
-                    ? 'bg-sky-500/20 text-white font-semibold ring-1 ring-sky-400/40 shadow-[0_0_16px_rgba(56,189,248,0.2)]'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-sky-500/15 text-sky-800 dark:bg-sky-500/20 dark:text-white font-semibold ring-1 ring-sky-500/40 dark:ring-sky-400/40 shadow-[0_0_14px_rgba(14,165,233,0.16)]'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
-                {tab.label}
+                {tab.id === 'quest' && <Compass className="h-3.5 w-3.5" />}
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {activeSubTab === 'quest' && (
+        <AdventureQuestMode
+          selectedStageId={selectedStageId}
+          onSelectStage={onSelectStage}
+          completedTopics={completedTopics}
+          completedExitChecks={completedExitChecks}
+          onToggleTopic={onToggleTopic}
+          onCompleteTopicWithHabit={onCompleteTopicWithHabit}
+          onToggleExitCheck={onToggleExitCheck}
+          onMarkStageComplete={onMarkStageComplete}
+          onLogBossClear={onLogBossClear}
+          onOpenPlayground={onOpenPlayground}
+          onOpenShell={onOpenShell}
+          onOpenVisualizer={() => onOpenLab('visualizer')}
+          onOpenHandbook={(stageId) => {
+            onSelectStage(stageId);
+            setStageViewMode('handbook');
+            onChangeSubTab('stages');
+          }}
+          onOpenAiMentor={onOpenAiMentor}
+        />
+      )}
 
       {activeSubTab === 'atlas' && (
         <CurriculumAtoZAtlas

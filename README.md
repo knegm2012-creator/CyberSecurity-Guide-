@@ -104,9 +104,21 @@ npm run dev
 Includes Node 22, Python 3, and GCC preinstalled:
 
 ```bash
-docker build -t cs-odyssey .
-docker run -p 3000:3000 --env-file .env.example cs-odyssey
+docker compose --env-file .env.example up -d --build
 ```
+
+### Deploy to Your Own Cloud
+
+Ready-to-deploy configs are included with `/api/health` probes and persistent `/app/.data` storage:
+
+- **Docker Compose / Cloud VMs (EC2, Droplets, Hetzner)**: `compose.yaml` + `Dockerfile`
+- **Google Cloud Run**: `cloud/cloudrun-service.yaml` (`gcloud run services replace cloud/cloudrun-service.yaml --region=europe-west1`)
+- **Kubernetes (GKE / EKS / AKS / k3s)**: `cloud/k8s-deployment.yaml` (`kubectl apply -f cloud/k8s-deployment.yaml`)
+- **Render**: `render.yaml` Blueprint
+- **Fly.io**: `fly.toml` (`fly deploy`)
+- **Railway**: `railway.toml`
+
+See [`cloud/README.md`](cloud/README.md) for step-by-step commands and environment variable reference.
 
 ---
 

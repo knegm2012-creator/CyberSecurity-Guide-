@@ -81,20 +81,34 @@ function isRestrictedIpv4(ipNum: number): boolean {
  * Checks if an IPv6 address falls into restricted/private/loopback ranges.
  */
 function isRestrictedIpv6(ip: string): boolean {
-  const normalized = ip.toLowerCase();
+  const withoutZone = ip.toLowerCase().split('%')[0];
+  const normalized = withoutZone.trim();
 
   // Loopback ::1
   if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') return true;
   // Unspecified ::
   if (normalized === '::' || normalized === '0:0:0:0:0:0:0:0') return true;
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1)
-  if (normalized.startsWith('::ffff:')) {
-    const v4Part = normalized.slice(7);
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1) or NAT64 (64:ff9b::)
+  if (normalized.startsWith('::ffff:') || normalized.startsWith('64:ff9b:')) {
+    const v4Part = normalized.split(':').pop() || '';
+    if (normalized.startsWith('::ffff:') && net.isIPv4(normalized.slice(7))) {
+      const parsed = parseIpv4ToNumber(normalized.slice(7));
+      return parsed !== null && isRestrictedIpv4(parsed);
+    }
     if (net.isIPv4(v4Part)) {
       const parsed = parseIpv4ToNumber(v4Part);
       return parsed !== null && isRestrictedIpv4(parsed);
     }
-    return true; // Malformed or restricted IPv4-mapped
+    return true;
+  }
+  // IPv4-compatible IPv6 ::a.b.c.d
+  if (normalized.startsWith('::') && net.isIPv4(normalized.slice(2))) {
+    const parsed = parseIpv4ToNumber(normalized.slice(2));
+    return parsed !== null && isRestrictedIpv4(parsed);
+  }
+  // Discard prefix 100::/64 and Teredo 2001:0::/32
+  if (normalized.startsWith('100::') || normalized.startsWith('2001:0:') || normalized.startsWith('2001::')) {
+    return true;
   }
   // Unique local addresses (fc00::/7)
   if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
@@ -120,9 +134,10 @@ export function isForbiddenIp(ip: string): boolean {
     return isRestrictedIpv4(ipNum);
   }
 
-  const v6Family = net.isIPv6(clean);
+  const bareV6 = clean.split('%')[0];
+  const v6Family = net.isIPv6(bareV6);
   if (v6Family) {
-    return isRestrictedIpv6(clean);
+    return isRestrictedIpv6(bareV6);
   }
 
   // Not a valid standard IP string
@@ -203,41 +218,75 @@ interface TokenBucket {
   lastRefill: number;
 }
 
-class TokenBucketRateLimiter {
+const MAX_TRACKED_BUCKETS = 10_000;
+
+export class TokenBucketRateLimiter {
   private buckets = new Map<string, TokenBucket>();
   private maxTokens: number;
   private refillRatePerSec: number;
+  private maxBuckets: number;
   private cleanupIntervalMs: number;
   private lastCleanup: number;
 
-  constructor(maxTokens = 30, refillRatePerSec = 0.5) {
+  constructor(maxTokens = 30, refillRatePerSec = 0.5, maxBuckets = MAX_TRACKED_BUCKETS) {
     this.maxTokens = maxTokens;
     this.refillRatePerSec = refillRatePerSec;
+    this.maxBuckets = Math.max(1, maxBuckets);
     this.cleanupIntervalMs = 60000;
     this.lastCleanup = Date.now();
   }
 
-  public tryConsume(clientId: string, cost = 1): { allowed: boolean; remaining: number } {
+  public tryConsume(
+    clientId: string,
+    cost = 1
+  ): { allowed: boolean; remaining: number; retryAfterSec: number } {
     const now = Date.now();
     this.maybeCleanup(now);
 
     let bucket = this.buckets.get(clientId);
     if (!bucket) {
+      if (this.buckets.size >= this.maxBuckets) {
+        const oldestKey = this.buckets.keys().next().value;
+        if (oldestKey !== undefined) {
+          this.buckets.delete(oldestKey);
+        }
+      }
       bucket = { tokens: this.maxTokens, lastRefill: now };
       this.buckets.set(clientId, bucket);
     } else {
-      const elapsedSec = (now - bucket.lastRefill) / 1000;
+      const elapsedSec = Math.max(0, (now - bucket.lastRefill) / 1000);
       const refilled = elapsedSec * this.refillRatePerSec;
       bucket.tokens = Math.min(this.maxTokens, bucket.tokens + refilled);
       bucket.lastRefill = now;
+      // Refresh LRU position
+      this.buckets.delete(clientId);
+      this.buckets.set(clientId, bucket);
     }
 
     if (bucket.tokens >= cost) {
       bucket.tokens -= cost;
-      return { allowed: true, remaining: Math.floor(bucket.tokens) };
+      return { allowed: true, remaining: Math.floor(bucket.tokens), retryAfterSec: 0 };
     }
 
-    return { allowed: false, remaining: 0 };
+    const deficit = cost - bucket.tokens;
+    const retryAfterSec = Math.max(1, Math.ceil(deficit / Math.max(0.01, this.refillRatePerSec)));
+    return { allowed: false, remaining: 0, retryAfterSec };
+  }
+
+  public peekRemaining(clientId: string): { remaining: number; capacity: number; retryAfterSec: number } {
+    const now = Date.now();
+    const bucket = this.buckets.get(clientId);
+    if (!bucket) {
+      return { remaining: this.maxTokens, capacity: this.maxTokens, retryAfterSec: 0 };
+    }
+    const elapsedSec = Math.max(0, (now - bucket.lastRefill) / 1000);
+    const currentTokens = Math.min(this.maxTokens, bucket.tokens + elapsedSec * this.refillRatePerSec);
+    const remaining = Math.floor(currentTokens);
+    const retryAfterSec =
+      remaining >= 1
+        ? 0
+        : Math.max(1, Math.ceil((1 - currentTokens) / Math.max(0.01, this.refillRatePerSec)));
+    return { remaining, capacity: this.maxTokens, retryAfterSec };
   }
 
   private maybeCleanup(now: number) {
@@ -294,22 +343,29 @@ export const progressRateLimiter = new TokenBucketRateLimiter(60, 2); // 60 burs
 export const githubSyncRateLimiter = new TokenBucketRateLimiter(20, 0.35); // 20 bursts, ~1 every 3s for GitHub sync
 
 export function getClientIp(req: Request): string {
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp && realIp.length <= 64 && net.isIP(realIp)) {
+    return realIp;
+  }
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0].trim();
-    if (first) return first;
+    if (first && first.length <= 64 && net.isIP(first)) {
+      return first;
+    }
   }
-  const realIp = req.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
   return '127.0.0.1';
 }
 
-export function apiSecurityHeaders(): Record<string, string> {
+export function apiSecurityHeaders(extra?: Record<string, string>): Record<string, string> {
   return {
     'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    ...(extra || {}),
   };
 }
 

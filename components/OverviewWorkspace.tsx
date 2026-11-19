@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Clock,
   Target,
@@ -23,6 +24,10 @@ import {
   Film,
   FileDown,
   FolderGit2,
+  Sun,
+  Moon,
+  Compass,
+  Clock3,
 } from 'lucide-react';
 import { STAGES_DATA } from '@/lib/curriculum-data';
 import {
@@ -30,18 +35,39 @@ import {
   UserMilestone,
   type StageProgressSummary,
   type CadenceDayCell,
+  type NextBestAction,
 } from '@/hooks/use-odyssey-store';
-import { DailyChallengeWidget } from './DailyChallengeWidget';
-import { CurriculumSkillGraph } from './CurriculumSkillGraph';
-import { ProgressAnalyticsDeck } from './ProgressAnalyticsDeck';
-import { DailyHabitTracker } from './DailyHabitTracker';
-import { WeeklyContributionHeatmap } from './WeeklyContributionHeatmap';
+import { summarizeWorkspaceMinutes, type AppTheme } from '@/lib/session-timer';
 import { LiquidGlassLogo } from './liquid-glass-logo';
 import { ChromaticButton } from './chromatic-button';
 import { SoapBubbleButton } from './soap-bubble';
-import { BadgesCollection } from './BadgesCollection';
 import type { EvaluatedBadge } from '@/lib/badges-data';
 import type { PrimaryWorkspace } from './Navbar';
+
+const DailyChallengeWidget = dynamic(
+  () => import('./DailyChallengeWidget').then((m) => m.DailyChallengeWidget),
+  { ssr: false }
+);
+const CurriculumSkillGraph = dynamic(
+  () => import('./CurriculumSkillGraph').then((m) => m.CurriculumSkillGraph),
+  { ssr: false }
+);
+const ProgressAnalyticsDeck = dynamic(
+  () => import('./ProgressAnalyticsDeck').then((m) => m.ProgressAnalyticsDeck),
+  { ssr: false }
+);
+const DailyHabitTracker = dynamic(
+  () => import('./DailyHabitTracker').then((m) => m.DailyHabitTracker),
+  { ssr: false }
+);
+const WeeklyContributionHeatmap = dynamic(
+  () => import('./WeeklyContributionHeatmap').then((m) => m.WeeklyContributionHeatmap),
+  { ssr: false }
+);
+const BadgesCollection = dynamic(
+  () => import('./BadgesCollection').then((m) => m.BadgesCollection),
+  { ssr: false }
+);
 
 interface OverviewWorkspaceProps {
   stats: {
@@ -82,7 +108,11 @@ interface OverviewWorkspaceProps {
     badges: EvaluatedBadge[];
     unlockedCount: number;
     totalCount: number;
+    totalLinesOfCode?: number;
+    totalBadgeXp?: number;
   };
+  recentlyUnlockedBadgeIds?: string[];
+  onDismissBadgeCelebration?: (badgeId?: string) => void;
   isDailyChallengeCompleted: boolean;
   onCompleteDailyChallenge: (dateKey: string, xp: number, title: string, stageId: string) => void;
   onToggleMilestone: (id: string) => void;
@@ -111,6 +141,10 @@ interface OverviewWorkspaceProps {
   onOpenGame?: () => void;
   onDownloadMasteryPdf?: () => void;
   onOpenGitHubSync?: () => void;
+  theme?: AppTheme;
+  onToggleTheme?: () => void;
+  nextBestAction?: NextBestAction;
+  workspaceMinutes?: Record<string, number>;
 }
 
 const PRESET_MILESTONES = [
@@ -130,6 +164,8 @@ export function OverviewWorkspace({
   cadenceMetrics,
   autoLogTopicPractice,
   badgesSummary,
+  recentlyUnlockedBadgeIds,
+  onDismissBadgeCelebration,
   isDailyChallengeCompleted,
   onCompleteDailyChallenge,
   onToggleMilestone,
@@ -149,6 +185,10 @@ export function OverviewWorkspace({
   onOpenGame,
   onDownloadMasteryPdf,
   onOpenGitHubSync,
+  theme = 'light',
+  onToggleTheme,
+  nextBestAction,
+  workspaceMinutes,
 }: OverviewWorkspaceProps) {
   const [filterMilestones, setFilterMilestones] = useState<'all' | 'active' | 'completed'>('all');
   const [showLogModal, setShowLogModal] = useState(false);
@@ -199,25 +239,28 @@ export function OverviewWorkspace({
     setShowMilestoneForm(false);
   };
 
+  const workspaceSummary = summarizeWorkspaceMinutes(workspaceMinutes);
+  const totalTrackedWorkspaceMinutes = workspaceSummary.reduce((sum, w) => sum + w.minutes, 0);
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-7 space-y-6">
-      {/* 0. Futuristic Optical Entrance Stage */}
+      {/* 0. Studio Light-First Hero Stage */}
       <section className="optical-panel rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-center">
-        <div className="lg:col-span-6 p-7 sm:p-10 space-y-5 bg-gradient-to-br from-[#060913] via-[#04070e] to-black">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400 tabular-nums uppercase tracking-wider">
-            <span className="text-sky-400 font-semibold">Level {stats.levelNumber}</span>
+        <div className="lg:col-span-6 p-7 sm:p-10 space-y-5 bg-gradient-to-br from-white via-[#f8fafc] to-[#f1f5f9] dark:from-[#060913] dark:via-[#04070e] dark:to-black">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 tabular-nums uppercase tracking-wider">
+            <span className="text-sky-700 dark:text-sky-400 font-semibold">Level {stats.levelNumber}</span>
             <span aria-hidden="true">·</span>
-            <span>{stats.heroTitle}</span>
+            <span className="text-slate-700 dark:text-slate-300">{stats.heroTitle}</span>
             <span aria-hidden="true">·</span>
-            <span className="text-slate-300">{stats.xp.toLocaleString()} XP</span>
+            <span className="text-slate-900 dark:text-slate-200 font-semibold">{stats.xp.toLocaleString()} XP</span>
           </div>
 
           <div className="space-y-2.5">
-            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white [text-wrap:balance]">
+            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-950 dark:text-white [text-wrap:balance]">
               Systems Engineering Odyssey
             </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
-              Master computer science from Boolean logic and Linux shell internals to distributed systems, C memory models, and real-time optical hardware computation.
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl">
+              Master computer science from Boolean logic and Linux shell internals to distributed systems, C memory models, and real-time WebAssembly computation.
             </p>
           </div>
 
@@ -240,38 +283,49 @@ export function OverviewWorkspace({
               entranceBlur={10}
               entranceDistance={20}
               entranceScale={0.65}
-              onClick={() => onNavigate('curriculum', 'stages', currentStageId)}
+              onClick={() => onNavigate('curriculum', 'quest', currentStageId)}
             >
-              Get started
+              Start CS Adventure
             </ChromaticButton>
 
             <SoapBubbleButton
-              onClick={() => onNavigate('lab', 'studio')}
-              tint="rgb(148 163 184)"
-              opacity={0.78}
+              onClick={() => onNavigate('curriculum', 'quest', 'stage-0')}
+              tint="rgb(16 185 129)"
+              opacity={0.92}
               style={{ fontSize: 12.5 }}
-              className="!min-h-[38px] !px-4 text-xs font-medium text-slate-100"
+              className="!min-h-[38px] !px-4 text-xs font-semibold text-white whitespace-nowrap shrink-0"
             >
-              <Orbit className="h-3.5 w-3.5 text-sky-400" />
-              <span>Open Spatial Studio</span>
+              <Compass className="h-3.5 w-3.5 text-emerald-100" />
+              <span>Chapter 0 (Zero CS)</span>
+            </SoapBubbleButton>
+
+            <SoapBubbleButton
+              onClick={() => onNavigate('lab', 'studio')}
+              tint="rgb(59 130 246)"
+              opacity={0.88}
+              style={{ fontSize: 12.5 }}
+              className="!min-h-[38px] !px-4 text-xs font-semibold text-white whitespace-nowrap shrink-0"
+            >
+              <Orbit className="h-3.5 w-3.5 text-sky-100" />
+              <span>Open Optical Studio</span>
             </SoapBubbleButton>
 
             {onOpenGame && (
               <SoapBubbleButton
                 onClick={onOpenGame}
                 tint="rgb(245 158 11)"
-                opacity={0.86}
+                opacity={0.92}
                 style={{ fontSize: 12.5 }}
-                className="!min-h-[38px] !px-4 text-xs font-medium text-amber-100"
+                className="!min-h-[38px] !px-4 text-xs font-semibold text-white whitespace-nowrap shrink-0"
               >
-                <Gamepad2 className="h-3.5 w-3.5 text-amber-300" />
+                <Gamepad2 className="h-3.5 w-3.5 text-amber-100" />
                 <span>Play Kernel Defense</span>
               </SoapBubbleButton>
             )}
           </div>
         </div>
 
-        <div className="lg:col-span-6 bg-[#e2e2e5] border-t lg:border-t-0 lg:border-l border-white/10 overflow-hidden">
+        <div className="lg:col-span-6 bg-[#e2e2e5] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 overflow-hidden">
           <LiquidGlassLogo
             logo="/logo.svg"
             ending="logo"
@@ -283,28 +337,49 @@ export function OverviewWorkspace({
       </section>
 
       {/* 1. Engineering Workbench Command Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 border-b border-white/[0.08] pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 border-b border-slate-200 dark:border-white/[0.08] pb-5">
         <div className="space-y-1.5 max-w-2xl">
-          <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-400">
+          <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-sky-700 dark:text-sky-400 font-semibold">
             Active Focus
           </p>
-          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white [text-wrap:balance]">
+          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white [text-wrap:balance]">
             Systems Engineering Workbench
           </h2>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Stage {activeStage.number} — <span className="text-slate-200 font-medium">{activeStage.title.split(':')[0]}</span>. Inspect dependency prerequisites, simulate algorithms live, practice in shell/C/Python sandboxes, or explore the Spatial Optical Studio.
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Stage {activeStage.number} — <span className="text-slate-900 dark:text-slate-200 font-semibold">{activeStage.title.split(':')[0]}</span>. Inspect dependency prerequisites, simulate algorithms live, practice in shell/C/Python WASM sandboxes, or explore the Optical Studio.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {onToggleTheme && (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? (
+                <>
+                  <Sun className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="h-3.5 w-3.5 text-sky-300" />
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+          )}
+
           {onOpenCommandPalette && (
             <button
               onClick={onOpenCommandPalette}
-              className="optical-card inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 hover:text-white cursor-pointer"
+              className="optical-card inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Search className="h-3.5 w-3.5 text-sky-400" />
+              <Search className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
               <span>Quick Jump</span>
-              <span className="rounded border border-white/10 bg-[#04070e] px-1.5 py-0.5 text-[10px] text-slate-400">
+              <span className="rounded border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#04070e] px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-400">
                 Ctrl K
               </span>
             </button>
@@ -313,9 +388,9 @@ export function OverviewWorkspace({
           <SoapBubbleButton
             onClick={() => onNavigate('curriculum', 'stages', currentStageId)}
             tint="rgb(14 165 233)"
-            opacity={0.92}
+            opacity={0.94}
             style={{ fontSize: 12 }}
-            className="!min-h-[34px] !px-4 text-xs font-semibold text-white whitespace-nowrap"
+            className="!min-h-[34px] !px-4 text-xs font-semibold text-white whitespace-nowrap shrink-0"
           >
             <span>Resume Stage {activeStage.number}</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -323,25 +398,25 @@ export function OverviewWorkspace({
 
           <button
             onClick={() => setShowLogModal(true)}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 hover:text-white cursor-pointer"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Clock className="h-3.5 w-3.5 text-sky-400" />
+            <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             <span>Log Study</span>
           </button>
 
           <button
             onClick={onOpenQuickQuiz}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 hover:text-white cursor-pointer"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
           >
-            <HelpCircle className="h-3.5 w-3.5 text-amber-400" />
+            <HelpCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
             <span>Quiz</span>
           </button>
 
           <button
             onClick={onOpenCheatSheet}
-            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 hover:text-white cursor-pointer whitespace-nowrap"
+            className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
           >
-            <BookOpen className="h-3.5 w-3.5 text-slate-300" />
+            <BookOpen className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
             <span>Commands</span>
           </button>
 
@@ -349,9 +424,9 @@ export function OverviewWorkspace({
             <button
               type="button"
               onClick={onDownloadMasteryPdf}
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-300 hover:text-white cursor-pointer whitespace-nowrap"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
             >
-              <FileDown className="h-3.5 w-3.5 text-emerald-400" />
+              <FileDown className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Mastery PDF</span>
             </button>
           )}
@@ -360,9 +435,9 @@ export function OverviewWorkspace({
             <button
               type="button"
               onClick={onOpenGitHubSync}
-              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-sky-300 hover:text-white cursor-pointer whitespace-nowrap"
+              className="optical-card inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-sky-700 dark:text-sky-300 hover:text-slate-950 dark:hover:text-white cursor-pointer whitespace-nowrap shrink-0"
             >
-              <FolderGit2 className="h-3.5 w-3.5 text-sky-400" />
+              <FolderGit2 className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
               <span>Push to GitHub</span>
             </button>
           )}
@@ -370,29 +445,29 @@ export function OverviewWorkspace({
       </div>
 
       {/* 2. Unified Inline Engineering Telemetry Strip */}
-      <div className="optical-panel grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08] rounded-2xl overflow-hidden">
+      <div className="optical-panel grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-white/[0.08] rounded-2xl overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Curriculum</div>
-            <div className="font-mono text-lg font-bold text-white tabular-nums">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Curriculum</div>
+            <div className="font-mono text-lg font-bold text-slate-950 dark:text-white tabular-nums">
               {stats.completedTopicsCount}
               <span className="text-xs font-normal text-slate-500"> / {stats.totalTopicsCount} topics</span>
             </div>
           </div>
-          <span className="font-mono text-sm font-semibold text-sky-400 tabular-nums">{stats.topicPercent}%</span>
+          <span className="font-mono text-sm font-semibold text-sky-700 dark:text-sky-400 tabular-nums">{stats.topicPercent}%</span>
         </div>
 
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Daily Streak</div>
-            <div className="font-mono text-lg font-bold text-white tabular-nums">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Daily Streak</div>
+            <div className="font-mono text-lg font-bold text-slate-950 dark:text-white tabular-nums">
               {stats.currentStreak}
               <span className="text-xs font-normal text-slate-500"> {stats.currentStreak === 1 ? 'day' : 'days'}</span>
             </div>
           </div>
           <span
-            className={`font-mono text-xs tabular-nums ${
-              stats.dailyGoalPercent >= 100 ? 'text-emerald-400 font-semibold' : 'text-amber-400'
+            className={`font-mono text-xs tabular-nums font-semibold ${
+              stats.dailyGoalPercent >= 100 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
             }`}
           >
             {stats.todayMinutesLogged}/{stats.dailyGoalMinutes}m
@@ -401,30 +476,97 @@ export function OverviewWorkspace({
 
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Wargame Shell</div>
-            <div className="font-mono text-lg font-bold text-white tabular-nums">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Wargame Shell</div>
+            <div className="font-mono text-lg font-bold text-slate-950 dark:text-white tabular-nums">
               {stats.banditCount}
               <span className="text-xs font-normal text-slate-500"> / 16 cleared</span>
             </div>
           </div>
-          <span className="font-mono text-sm font-semibold text-emerald-400 tabular-nums">
+          <span className="font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
             {Math.round((stats.banditCount / 16) * 100)}%
           </span>
         </div>
 
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Practice &amp; Builds</div>
-            <div className="font-mono text-lg font-bold text-white tabular-nums">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Practice &amp; Builds</div>
+            <div className="font-mono text-lg font-bold text-slate-950 dark:text-white tabular-nums">
               {hoursLogged}
               <span className="text-xs font-normal text-slate-500"> hrs logged</span>
             </div>
           </div>
-          <span className="font-mono text-xs text-slate-300 tabular-nums">
+          <span className="font-mono text-xs text-slate-700 dark:text-slate-300 tabular-nums font-medium">
             {stats.completedProjectsCount}/{stats.totalProjectsCount} builds
           </span>
         </div>
       </div>
+
+      {/* 2b. Next Best Engineering Action Advisor & Workspace Time Investment */}
+      {nextBestAction && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 optical-panel rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1.5 min-w-0">
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-sky-700 dark:text-sky-400 font-semibold">
+                <Compass className="h-3.5 w-3.5" />
+                <span>Next Best Action · {nextBestAction.badge}</span>
+              </div>
+              <h3 className="font-display text-base font-bold text-slate-950 dark:text-white">
+                {nextBestAction.title}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
+                {nextBestAction.description}
+              </p>
+            </div>
+
+            <SoapBubbleButton
+              onClick={() =>
+                onNavigate(nextBestAction.workspace, nextBestAction.subTab, nextBestAction.stageId)
+              }
+              tint="rgb(14 165 233)"
+              opacity={0.94}
+              style={{ fontSize: 12 }}
+              className="!min-h-[36px] !px-4 font-semibold text-white whitespace-nowrap shrink-0"
+            >
+              <span>{nextBestAction.ctaLabel}</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </SoapBubbleButton>
+          </div>
+
+          <div className="lg:col-span-4 optical-panel rounded-2xl p-4 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-semibold">
+                <Clock3 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Workspace Time</span>
+              </span>
+              <span className="text-slate-500 tabular-nums">{totalTrackedWorkspaceMinutes}m logged</span>
+            </div>
+            <div className="space-y-1.5">
+              {workspaceSummary.slice(0, 3).map((item) => {
+                const pct =
+                  totalTrackedWorkspaceMinutes > 0
+                    ? Math.max(8, Math.round((item.minutes / totalTrackedWorkspaceMinutes) * 100))
+                    : 0;
+                return (
+                  <div key={item.workspace} className="space-y-0.5 text-[11px] font-mono">
+                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                      <span>{item.label}</span>
+                      <span className="text-slate-900 dark:text-slate-200 font-semibold tabular-nums">
+                        {item.minutes}m
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
+                        style={{ width: `${item.minutes > 0 ? pct : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Interactive 16-Stage Dependency Skill Graph */}
       <CurriculumSkillGraph
@@ -457,42 +599,42 @@ export function OverviewWorkspace({
             title: 'Spatial & Optical Studio',
             desc: 'Depth cloud, WebGL refraction, soap optics, terrain & rigid-body physics',
             icon: Orbit,
-            accent: 'text-fuchsia-400',
+            accent: 'text-fuchsia-600 dark:text-fuchsia-400',
             onClick: () => onNavigate('lab', 'studio'),
           },
           {
             title: 'Algorithms & Graphs Lab',
             desc: 'Live Merge, Quick, Dijkstra, BFS & DFS step visualizer',
             icon: Grid3X3,
-            accent: 'text-sky-400',
+            accent: 'text-sky-600 dark:text-sky-400',
             onClick: () => onNavigate('lab', 'visualizer'),
           },
           {
-            title: 'Python & C Sandbox',
-            desc: 'Isolated compiler & runtime with saved snippets',
+            title: 'Python & C WASM Sandbox',
+            desc: 'Client-side WASM compiler & assertion runner with saved snippets',
             icon: Code2,
-            accent: 'text-emerald-400',
+            accent: 'text-emerald-600 dark:text-emerald-400',
             onClick: () => onNavigate('lab', 'playground'),
           },
           {
             title: 'Interactive Shell Terminal',
             desc: 'Virtual Linux FS, split viewer & hardened wargame SSH',
             icon: Terminal,
-            accent: 'text-amber-400',
+            accent: 'text-amber-600 dark:text-amber-400',
             onClick: () => onNavigate('shell'),
           },
           {
             title: 'Diagram & Motion Studio',
             desc: 'Create CS blueprints, edit uploaded photos & export WebM animations',
             icon: Film,
-            accent: 'text-cyan-400',
+            accent: 'text-cyan-600 dark:text-cyan-400',
             onClick: () => onNavigate('lab', 'media'),
           },
           {
             title: 'Open-Source Syllabus Pack',
             desc: 'Custom pacing calculator, printable HTML & GitHub exports',
             icon: Download,
-            accent: 'text-sky-300',
+            accent: 'text-sky-700 dark:text-sky-300',
             onClick: () => onNavigate('curriculum', 'export'),
           },
         ].map((tool) => {
@@ -505,10 +647,10 @@ export function OverviewWorkspace({
             >
               <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${tool.accent}`} />
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-white group-hover:text-sky-300 transition-colors">
+                <div className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
                   {tool.title}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">{tool.desc}</div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">{tool.desc}</div>
               </div>
             </button>
           );
@@ -548,15 +690,29 @@ export function OverviewWorkspace({
         </div>
       </div>
 
-      {/* 6. Two-Column Consistency, Milestones & Study Log */}
+      {/* 6. Dynamic Engineering Badges & Visual Medals */}
+      <BadgesCollection
+        badges={badgesSummary.badges}
+        unlockedCount={badgesSummary.unlockedCount}
+        totalCount={badgesSummary.totalCount}
+        totalLinesOfCode={badgesSummary.totalLinesOfCode}
+        totalBadgeXp={badgesSummary.totalBadgeXp}
+        currentStreak={stats.currentStreak}
+        completedProjectsCount={stats.completedProjectsCount}
+        recentlyUnlockedIds={recentlyUnlockedBadgeIds}
+        onDismissCelebration={onDismissBadgeCelebration}
+        onNavigate={onNavigate}
+      />
+
+      {/* 7. Two-Column Consistency, Milestones & Study Log */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Weekly Cadence & Milestones (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           <div className="optical-panel rounded-2xl p-5 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-3.5">
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-sky-400" />
-                <h2 className="font-display text-sm font-semibold text-white">Weekly Cadence &amp; Daily Goal</h2>
+                <Target className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-white">Weekly Cadence &amp; Daily Goal</h2>
               </div>
 
               <div className="flex items-center gap-1 text-[11px] font-mono">
@@ -567,8 +723,8 @@ export function OverviewWorkspace({
                     onClick={() => onSetDailyGoal(mins)}
                     className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer tabular-nums ${
                       stats.dailyGoalMinutes === mins
-                        ? 'bg-sky-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(56,189,248,0.45)]'
-                        : 'bg-white/[0.04] border border-white/10 text-slate-400 hover:text-slate-200'
+                        ? 'bg-sky-600 text-white font-bold'
+                        : 'bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-200'
                     }`}
                   >
                     {mins}m
@@ -584,9 +740,9 @@ export function OverviewWorkspace({
                   <div
                     className={`h-9 w-full rounded-lg flex items-center justify-center font-mono text-xs border tabular-nums ${
                       d.minutes > 0
-                        ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300 font-semibold'
-                        : 'border-white/[0.07] bg-[#04070f]/80 text-slate-600'
-                    } ${d.isToday ? 'ring-1 ring-sky-400/70' : ''}`}
+                        ? 'border-emerald-500/40 bg-emerald-500/12 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 font-semibold'
+                        : 'border-slate-200 dark:border-white/[0.07] bg-slate-100 dark:bg-[#04070f]/80 text-slate-500 dark:text-slate-600'
+                    } ${d.isToday ? 'ring-1 ring-sky-500/70' : ''}`}
                     title={`${d.dateStr}: ${d.minutes}m logged`}
                   >
                     {d.minutes > 0 ? `${d.minutes}m` : '—'}
@@ -595,16 +751,16 @@ export function OverviewWorkspace({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.08] text-xs">
-              <span className="text-slate-400 font-mono tabular-nums">
-                Today: <strong className="text-slate-200">{stats.todayMinutesLogged}m</strong> / {stats.dailyGoalMinutes}m
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-white/[0.08] text-xs">
+              <span className="text-slate-600 dark:text-slate-400 font-mono tabular-nums">
+                Today: <strong className="text-slate-900 dark:text-slate-200">{stats.todayMinutesLogged}m</strong> / {stats.dailyGoalMinutes}m
               </span>
               <div className="flex items-center gap-1.5">
                 {[15, 30, 45].map((m) => (
                   <button
                     key={m}
                     onClick={() => onLogStudy(m, currentStageId, `Quick logged ${m}m study practice`)}
-                    className="optical-card px-2.5 py-1 rounded-lg text-xs font-mono text-slate-300 hover:text-white cursor-pointer tabular-nums"
+                    className="optical-card px-2.5 py-1 rounded-lg text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white cursor-pointer tabular-nums"
                   >
                     +{m}m
                   </button>
@@ -614,9 +770,9 @@ export function OverviewWorkspace({
           </div>
 
           <div className="optical-panel rounded-2xl p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-3.5">
               <div>
-                <h2 className="font-display text-sm font-semibold text-white">Engineering Milestones</h2>
+                <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-white">Engineering Milestones</h2>
                 <p className="text-xs text-slate-500 font-mono tabular-nums">
                   {stats.completedMilestonesCount} of {stats.totalMilestonesCount} complete
                 </p>
@@ -630,8 +786,8 @@ export function OverviewWorkspace({
                       onClick={() => setFilterMilestones(f)}
                       className={`px-2.5 py-1 rounded-md transition-colors capitalize cursor-pointer ${
                         filterMilestones === f
-                          ? 'bg-white/10 text-white'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-white dark:bg-white/10 text-slate-950 dark:text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       {f}
@@ -641,9 +797,9 @@ export function OverviewWorkspace({
 
                 <button
                   onClick={() => setShowMilestoneForm(!showMilestoneForm)}
-                  className="optical-card inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-200 cursor-pointer"
+                  className="optical-card inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer"
                 >
-                  <Plus className="h-3.5 w-3.5 text-sky-400" />
+                  <Plus className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                   <span>Add</span>
                 </button>
               </div>
@@ -661,13 +817,13 @@ export function OverviewWorkspace({
                     value={msTitle}
                     onChange={(e) => setMsTitle(e.target.value)}
                     placeholder="Milestone title..."
-                    className="sm:col-span-2 rounded-lg border border-white/10 bg-[#060913] px-3 py-1.5 text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+                    className="sm:col-span-2 rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#060913] px-3 py-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
                     autoFocus
                   />
                   <select
                     value={msCategory}
                     onChange={(e) => setMsCategory(e.target.value as UserMilestone['category'])}
-                    className="rounded-lg border border-white/10 bg-[#060913] px-2.5 py-1.5 text-slate-200 focus:border-sky-500 focus:outline-none"
+                    className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#060913] px-2.5 py-1.5 text-slate-900 dark:text-slate-200 focus:border-sky-500 focus:outline-none"
                   >
                     <option value="basics">Basics &amp; Math</option>
                     <option value="algorithms">Algorithms</option>
@@ -680,14 +836,14 @@ export function OverviewWorkspace({
                     type="date"
                     value={msTargetDate}
                     onChange={(e) => setMsTargetDate(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-[#060913] px-2.5 py-1.5 text-slate-200 font-mono focus:border-sky-500 focus:outline-none"
+                    className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#060913] px-2.5 py-1.5 text-slate-900 dark:text-slate-200 font-mono focus:border-sky-500 focus:outline-none"
                   />
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <select
                     value={msStageId}
                     onChange={(e) => setMsStageId(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-[#060913] px-2.5 py-1.5 text-slate-300 font-mono focus:border-sky-500 focus:outline-none"
+                    className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#060913] px-2.5 py-1.5 text-slate-800 dark:text-slate-300 font-mono focus:border-sky-500 focus:outline-none"
                   >
                     {STAGES_DATA.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -699,14 +855,14 @@ export function OverviewWorkspace({
                     <button
                       type="button"
                       onClick={() => setShowMilestoneForm(false)}
-                      className="px-2.5 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
                     >
                       Cancel
                     </button>
                     <SoapBubbleButton
                       type="submit"
                       tint="rgb(14 165 233)"
-                      opacity={0.9}
+                      opacity={0.94}
                       style={{ fontSize: 11.5 }}
                       className="!min-h-[28px] !px-3 font-semibold text-white"
                     >
@@ -717,7 +873,7 @@ export function OverviewWorkspace({
               </form>
             )}
 
-            <div className="optical-inset divide-y divide-white/[0.06] rounded-xl overflow-hidden">
+            <div className="optical-inset divide-y divide-slate-200 dark:divide-white/[0.06] rounded-xl overflow-hidden">
               {filteredMilestones.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-500">
                   No milestones in this view.
@@ -726,16 +882,16 @@ export function OverviewWorkspace({
                 filteredMilestones.map((m) => (
                   <div
                     key={m.id}
-                    className="px-3.5 py-3 flex items-center justify-between gap-3 hover:bg-white/[0.03] transition-colors"
+                    className="px-3.5 py-3 flex items-center justify-between gap-3 hover:bg-slate-200/40 dark:hover:bg-white/[0.03] transition-colors"
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       <button
                         onClick={() => onToggleMilestone(m.id)}
-                        className="mt-0.5 text-slate-500 hover:text-emerald-400 transition-colors cursor-pointer shrink-0"
+                        className="mt-0.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer shrink-0"
                         title={m.completed ? 'Mark active' : 'Mark completed'}
                       >
                         {m.completed ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                           <Circle className="h-4 w-4" />
                         )}
@@ -744,7 +900,7 @@ export function OverviewWorkspace({
                       <div className="min-w-0">
                         <div
                           className={`text-xs font-medium ${
-                            m.completed ? 'line-through text-slate-500' : 'text-slate-200'
+                            m.completed ? 'line-through text-slate-500' : 'text-slate-900 dark:text-slate-200'
                           }`}
                         >
                           {m.title}
@@ -756,7 +912,7 @@ export function OverviewWorkspace({
                               <span aria-hidden="true">·</span>
                               <button
                                 onClick={() => onNavigate('curriculum', 'stages', m.stageId)}
-                                className="text-sky-400 hover:underline cursor-pointer"
+                                className="text-sky-700 dark:text-sky-400 hover:underline cursor-pointer"
                               >
                                 Stage {m.stageId.replace('stage-', '')}
                               </button>
@@ -776,12 +932,12 @@ export function OverviewWorkspace({
                     </div>
 
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-[11px] font-mono text-amber-400 tabular-nums">
+                      <span className="text-[11px] font-mono text-amber-700 dark:text-amber-400 tabular-nums font-semibold">
                         +{m.xpReward} XP
                       </span>
                       <button
                         onClick={() => onDeleteMilestone(m.id)}
-                        className="p-1 text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                         title="Delete milestone"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -798,7 +954,7 @@ export function OverviewWorkspace({
                 <button
                   key={preset.title}
                   onClick={() => onAddMilestone(preset.title, preset.category, undefined, preset.stageId, 75)}
-                  className="optical-inset px-2.5 py-0.5 rounded-md text-slate-400 hover:text-slate-100 hover:border-white/20 transition-colors cursor-pointer truncate max-w-[220px]"
+                  className="optical-inset px-2.5 py-0.5 rounded-md text-slate-700 dark:text-slate-400 hover:text-slate-950 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-white/20 transition-colors cursor-pointer truncate max-w-[220px]"
                 >
                   + {preset.title}
                 </button>
@@ -810,11 +966,11 @@ export function OverviewWorkspace({
         {/* Right Column: Recent Study Log + Quick Directory Links (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           <div className="optical-panel rounded-2xl p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h2 className="font-display text-sm font-semibold text-white">Recent Study Log</h2>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
+              <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-white">Recent Study Log</h2>
               <button
                 onClick={() => setShowLogModal(true)}
-                className="text-xs font-mono text-sky-400 hover:underline cursor-pointer"
+                className="text-xs font-mono text-sky-700 dark:text-sky-400 hover:underline cursor-pointer font-semibold"
               >
                 + Log Session
               </button>
@@ -826,25 +982,25 @@ export function OverviewWorkspace({
                   key={entry.id}
                   className="optical-inset rounded-xl p-3 text-xs space-y-1"
                 >
-                  <div className="flex items-center justify-between font-mono text-[11px] text-slate-400 tabular-nums">
+                  <div className="flex items-center justify-between font-mono text-[11px] text-slate-600 dark:text-slate-400 tabular-nums">
                     <span>{entry.date} · {entry.stageId.toUpperCase()}</span>
-                    <span className="text-emerald-400 font-semibold">{entry.minutes}m</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{entry.minutes}m</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed line-clamp-2">{entry.notes}</p>
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">{entry.notes}</p>
                 </div>
               ))}
             </div>
 
-            <div className="pt-3 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+            <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
               <button
                 onClick={() => onNavigate('curriculum', 'atlas')}
-                className="text-sky-400 hover:underline cursor-pointer"
+                className="text-sky-700 dark:text-sky-400 hover:underline cursor-pointer"
               >
                 Open A–Z Atlas -&gt;
               </button>
               <button
                 onClick={() => onNavigate('curriculum', 'projects')}
-                className="text-emerald-400 hover:underline cursor-pointer"
+                className="text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 View 16 Capstone Builds -&gt;
               </button>
@@ -853,23 +1009,15 @@ export function OverviewWorkspace({
         </div>
       </div>
 
-      {/* 7. Engineering Badges Collection */}
-      <BadgesCollection
-        badges={badgesSummary.badges}
-        unlockedCount={badgesSummary.unlockedCount}
-        totalCount={badgesSummary.totalCount}
-        onNavigate={onNavigate}
-      />
-
       {/* Log Study Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020409]/92 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 dark:bg-[#020409]/92 backdrop-blur-sm p-4">
           <div className="optical-panel w-full max-w-md rounded-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="font-display text-base font-semibold text-white">Log Study Session</h3>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
+              <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">Log Study Session</h3>
               <button
                 onClick={() => setShowLogModal(false)}
-                className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -877,7 +1025,7 @@ export function OverviewWorkspace({
 
             <form onSubmit={handleSaveLog} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1.5">Duration (minutes)</label>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1.5">Duration (minutes)</label>
                 <div className="grid grid-cols-4 gap-2">
                   {[30, 60, 90, 120].map((m) => (
                     <button
@@ -886,8 +1034,8 @@ export function OverviewWorkspace({
                       onClick={() => setLogMinutes(m)}
                       className={`py-1.5 font-mono rounded-lg border transition-colors cursor-pointer tabular-nums ${
                         logMinutes === m
-                          ? 'border-sky-400 bg-sky-500/20 text-sky-200 font-semibold'
-                          : 'border-white/10 bg-[#04070e] text-slate-400 hover:text-slate-200'
+                          ? 'border-sky-500 bg-sky-500/15 text-sky-800 dark:text-sky-200 font-semibold'
+                          : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#04070e] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       {m}m
@@ -897,11 +1045,11 @@ export function OverviewWorkspace({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1.5">Stage</label>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1.5">Stage</label>
                 <select
                   value={logStage}
                   onChange={(e) => setLogStage(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#04070e] px-3 py-2 text-slate-200 focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] px-3 py-2 text-slate-900 dark:text-slate-200 focus:border-sky-500 focus:outline-none"
                 >
                   {STAGES_DATA.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -912,14 +1060,14 @@ export function OverviewWorkspace({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1.5">Notes</label>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1.5">Notes</label>
                 <textarea
                   required
                   rows={3}
                   value={logNotes}
                   onChange={(e) => setLogNotes(e.target.value)}
                   placeholder="Summarize what you practiced or solved..."
-                  className="w-full rounded-lg border border-white/10 bg-[#04070e] p-2.5 text-slate-200 focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#04070e] p-2.5 text-slate-900 dark:text-slate-200 focus:border-sky-500 focus:outline-none"
                 />
               </div>
 
@@ -927,14 +1075,14 @@ export function OverviewWorkspace({
                 <button
                   type="button"
                   onClick={() => setShowLogModal(false)}
-                  className="px-3 py-1.5 text-slate-400 hover:text-slate-200 cursor-pointer"
+                  className="px-3 py-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <SoapBubbleButton
                   type="submit"
                   tint="rgb(14 165 233)"
-                  opacity={0.92}
+                  opacity={0.94}
                   style={{ fontSize: 12 }}
                   className="!min-h-[34px] !px-4 font-semibold text-white"
                 >

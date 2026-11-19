@@ -27,25 +27,25 @@ export function GitHubSyncModal({ isOpen, onClose, data, stats }: GitHubSyncModa
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#03050b]/90"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-[#03050b]/90 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="optical-panel relative w-full max-w-2xl rounded-2xl border-white/[0.12] shadow-2xl overflow-hidden"
+        className="optical-panel relative w-full max-w-2xl rounded-2xl border-slate-200 dark:border-white/[0.12] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Push Progress to GitHub"
       >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-[#040710]/70">
-          <div className="flex items-center gap-2 font-display text-sm font-semibold text-white">
-            <FolderGit2 className="h-4 w-4 text-sky-400" />
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#040710]/70">
+          <div className="flex items-center gap-2 font-display text-sm font-semibold text-slate-900 dark:text-white">
+            <FolderGit2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             <span>GitHub Progress Cloud Sync</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/[0.06] cursor-pointer"
             aria-label="Close GitHub Sync Modal"
           >
             <X className="h-4 w-4" />

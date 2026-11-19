@@ -20,15 +20,19 @@ interface CodeRunPayload {
 }
 
 export async function POST(req: NextRequest) {
-  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
-
   const rateCheck = codeExecRateLimiter.tryConsume(clientIp);
+  const headers = apiSecurityHeaders({
+    'X-RateLimit-Remaining': String(rateCheck.remaining),
+    ...(rateCheck.allowed ? {} : { 'Retry-After': String(rateCheck.retryAfterSec) }),
+  });
+
   if (!rateCheck.allowed) {
     return NextResponse.json(
       {
         error: 'Too Many Requests: Code execution rate limit exceeded. Please wait a few seconds.',
         rateLimited: true,
+        retryAfterSec: rateCheck.retryAfterSec,
       },
       { status: 429, headers }
     );

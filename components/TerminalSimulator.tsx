@@ -44,10 +44,18 @@ import {
 import { SoapBubbleButton, SoapBubbleSearch, SoapBubbleToggle } from '@/components/soap-bubble';
 import { BANDIT_LEVELS, BanditLevel } from '@/lib/curriculum-data';
 import { BANDIT_QUICK_COMMANDS, QuickCommand } from '@/lib/bandit-commands-data';
-import { resolveVirtualPath, sanitizeTerminalOutput } from '@/lib/client-security';
 import { terminalAudio } from '@/lib/terminal-audio';
 import { CheatSheetModal } from '@/components/CheatSheetModal';
 import { AsciiTerminalHeader } from '@/components/AsciiTerminalHeader';
+import {
+  createInitialVirtualFs,
+  executeTerminalCommand,
+  FileSystemNode,
+  OpenedFileState,
+  TerminalHistoryEntry,
+} from '@/lib/terminal-engine';
+
+export type { OpenedFileState };
 
 interface TerminalSimulatorProps {
   solvedLevels: number[];
@@ -57,25 +65,6 @@ interface TerminalSimulatorProps {
   onOpenAiMentor: (context?: string) => void;
   isActive?: boolean;
   pendingCommand?: { id: number; command: string } | null;
-}
-
-interface FileSystemNode {
-  type: 'file' | 'dir';
-  content?: string;
-  size?: number;
-  permissions?: string;
-  owner?: string;
-  children?: Record<string, FileSystemNode>;
-}
-
-export interface OpenedFileState {
-  name: string;
-  path: string;
-  content: string;
-  size: number;
-  permissions?: string;
-  owner?: string;
-  isBinary?: boolean;
 }
 
 // Generate formatted 16-byte hex dump for binary inspection
@@ -172,7 +161,7 @@ export function TerminalSimulator({
   } | null>(null);
 
   // Local Terminal state
-  const [history, setHistory] = useState<Array<{ type: 'input' | 'output'; text: string; isError?: boolean; isSuccess?: boolean }>>([
+  const [history, setHistory] = useState<TerminalHistoryEntry[]>([
     { type: 'output', text: 'Cyber Citadel Wargame & Linux Terminal Engine [v6.4.0-hardened]' },
     { type: 'output', text: `[SANDBOX] 100% Offline Virtual Filesystem loaded. All ${BANDIT_LEVELS.length} levels playable locally.` },
     { type: 'output', text: '[SSH] External gateway bridge available for bandit.labs.overthewire.org:2220.' },
@@ -216,135 +205,7 @@ export function TerminalSimulator({
   const [fsRevision, setFsRevision] = useState(0);
 
   // Virtual Filesystem representation (for local sandbox fallback)
-  const fsRef = useRef<FileSystemNode>({
-    type: 'dir',
-    children: {
-      home: {
-        type: 'dir',
-        children: {
-          bandit0: {
-            type: 'dir',
-            children: {
-              readme: { type: 'file', content: '6y2kwnwK6grgvwvpvLaa2T1cpFEKOhNR', size: 33 },
-              'notes.txt': { type: 'file', content: 'Welcome to Cyber Citadel! Practice cat, ls, touch, grep, and pipes.', size: 62 },
-            },
-          },
-          bandit1: {
-            type: 'dir',
-            children: {
-              '-': { type: 'file', content: '263QgYKgLtSmLiBu16ZwHeEpWfh0Zw0A', size: 33 },
-              'hints.txt': { type: 'file', content: 'Leading dashes can be opened with: cat ./- or cat -- -', size: 52 },
-            },
-          },
-          bandit2: {
-            type: 'dir',
-            children: {
-              'spaces in this filename': { type: 'file', content: 'MNk8KAF3cggoVxd6qq5SyMoNYb22jDe2', size: 33 },
-            },
-          },
-          bandit3: {
-            type: 'dir',
-            children: {
-              inhere: {
-                type: 'dir',
-                children: {
-                  '.hidden': { type: 'file', content: '2WmrDFRmJIq3kgx4tKPrLfdRTbv3ZxAY', size: 33 },
-                },
-              },
-            },
-          },
-          bandit4: {
-            type: 'dir',
-            children: {
-              inhere: {
-                type: 'dir',
-                children: {
-                  '-file00': { type: 'file', content: '\x00\x01\x02\x03\x04', size: 50 },
-                  '-file01': { type: 'file', content: '\x10\x11\x12\x13', size: 60 },
-                  '-file02': { type: 'file', content: '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR', size: 120 },
-                  '-file03': { type: 'file', content: '\x7fELF\x02\x01\x01\x00\x00\x00', size: 240 },
-                  '-file04': { type: 'file', content: '\x1f\x8b\x08\x00\x00\x00\x00\x00', size: 85 },
-                  '-file07': { type: 'file', content: '4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw', size: 33 },
-                },
-              },
-            },
-          },
-          bandit5: {
-            type: 'dir',
-            children: {
-              inhere: {
-                type: 'dir',
-                children: {
-                  maybehere01: {
-                    type: 'dir',
-                    children: {
-                      file1: { type: 'file', content: 'Not this one', size: 12 },
-                    },
-                  },
-                  maybehere07: {
-                    type: 'dir',
-                    children: {
-                      '.file2': { type: 'file', content: 'HWasnPhtq9AVKe0dmk45nxy20cvUa6EG\n' + 'padding_data_to_reach_1033_bytes_'.repeat(30), size: 1033 },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          bandit6: {
-            type: 'dir',
-            children: {
-              'task.txt': { type: 'file', content: 'Find a file owned by user bandit7, group bandit6, 33 bytes in size.', size: 67 },
-            },
-          },
-          bandit7: {
-            type: 'dir',
-            children: {
-              'data.txt': { type: 'file', content: 'millionth\tz7WtoNQU2XfjmMtWA8u5rN4vzqu4v99S\nsecond\tabc123\nthird\txyz789', size: 75 },
-            },
-          },
-          bandit8: {
-            type: 'dir',
-            children: {
-              'data.txt': { type: 'file', content: 'repeated_line_abc\nrepeated_line_abc\nTESKZC0XvTetysLTcq5ZWVTLL922CAmp\nrepeated_line_xyz\nrepeated_line_xyz', size: 110 },
-            },
-          },
-          bandit9: {
-            type: 'dir',
-            children: {
-              'data.txt': { type: 'file', content: '\x00\x01\x02========== the password is G7w8LIi6J3IVbDTbuHGDesymDaoPtKW8\x00\x03', size: 68 },
-            },
-          },
-        },
-      },
-      etc: {
-        type: 'dir',
-        children: {
-          bandit_pass: {
-            type: 'dir',
-            children: {
-              bandit0: { type: 'file', content: 'bandit0', size: 7 },
-              bandit1: { type: 'file', content: '6y2kwnwK6grgvwvpvLaa2T1cpFEKOhNR', size: 33 },
-              bandit2: { type: 'file', content: '263QgYKgLtSmLiBu16ZwHeEpWfh0Zw0A', size: 33 },
-              bandit3: { type: 'file', content: 'MNk8KAF3cggoVxd6qq5SyMoNYb22jDe2', size: 33 },
-              bandit4: { type: 'file', content: '2WmrDFRmJIq3kgx4tKPrLfdRTbv3ZxAY', size: 33 },
-            },
-          },
-        },
-      },
-      var: {
-        type: 'dir',
-        children: {
-          log: {
-            type: 'dir',
-            children: {
-              syslog: { type: 'file', content: 'Oct 14 06:25:01 systemd[1]: Started Cyber Citadel Linux Sandbox.', size: 64 },
-            },
-          },
-        },
-      },
-    },
-  });
+  const fsRef = useRef<FileSystemNode>(createInitialVirtualFs());
 
   // Query items in current working directory for the visual explorer
   const directoryItems = React.useMemo(() => {
@@ -701,16 +562,6 @@ export function TerminalSimulator({
     }
   };
 
-  // Helper to resolve paths in virtual filesystem
-  const getNodeAtPath = (pathArray: string[]): FileSystemNode | null => {
-    let curr: FileSystemNode | undefined = fsRef.current;
-    for (const segment of pathArray) {
-      if (!curr || curr.type !== 'dir' || !curr.children) return null;
-      curr = curr.children[segment];
-    }
-    return curr || null;
-  };
-
   // Save detected flag and unlock level
   const handleSaveAndUnlockNext = (flag: string) => {
     const currentLvlNum = parseInt(sshUser.replace('bandit', ''), 10);
@@ -734,7 +585,7 @@ export function TerminalSimulator({
 
     // If awaiting password for interactive SSH, do NOT store credentials in command history!
     if (awaitingPasswordFor) {
-      const { user, host, port } = awaitingPasswordFor;
+      const { user } = awaitingPasswordFor;
       setAwaitingPasswordFor(null);
       setHistory((prev) => [
         ...prev,
@@ -781,17 +632,16 @@ export function TerminalSimulator({
       return;
     }
 
-    // --- MODE 2: LOCAL VIRTUAL SANDBOX ---
-    setHistory((prev) => [
-      ...prev,
-      {
-        type: 'input',
-        text: `${currentUser}@odyssey-box:~${currentPath.length > 2 ? '/' + currentPath.slice(2).join('/') : ''}$ ${trimmed}`,
-      },
-    ]);
-
     // Check for SSH command in sandbox mode to jump directly into Live SSH!
     if (trimmed.startsWith('ssh ')) {
+      setHistory((prev) => [
+        ...prev,
+        {
+          type: 'input',
+          text: `${currentUser}@odyssey-box:~${currentPath.length > 2 ? '/' + currentPath.slice(2).join('/') : ''}$ ${trimmed}`,
+        },
+      ]);
+
       const parts = trimmed.split(/\s+/);
       const userAndHost = parts.find((p) => p.includes('@') || p.startsWith('bandit')) || 'bandit0';
       const user = userAndHost.includes('@') ? userAndHost.split('@')[0] : userAndHost;
@@ -826,411 +676,47 @@ export function TerminalSimulator({
       return;
     }
 
-    // Handle redirection (e.g. echo "hello" > file.txt)
-    if (trimmed.includes('>') || trimmed.includes('>>')) {
-      handleRedirection(trimmed);
+    // --- MODE 2: SHARED LOCAL VIRTUAL SANDBOX ENGINE ---
+    const result = executeTerminalCommand(
+      {
+        fs: fsRef.current,
+        currentPath,
+        currentUser,
+        envVars,
+      },
+      trimmed
+    );
+
+    fsRef.current = result.nextState.fs;
+    if (result.nextState.currentPath.join('/') !== currentPath.join('/')) {
+      setCurrentPath(result.nextState.currentPath);
+    }
+    if (result.nextState.currentUser !== currentUser) {
+      setCurrentUser(result.nextState.currentUser);
+    }
+    setEnvVars(result.nextState.envVars);
+    if (result.fsChanged) {
+      setFsRevision((r) => r + 1);
+    }
+    if (result.openedFile) {
+      setOpenedFile(result.openedFile);
+    }
+    if (result.closeOpenedFileName && openedFile && openedFile.name === result.closeOpenedFileName) {
+      setOpenedFile(null);
+    }
+    if (result.clearRequested) {
+      setHistory([]);
       return;
     }
-
-    // Handle pipes
-    if (trimmed.includes('|')) {
-      const parts = trimmed.split('|').map((p) => p.trim());
-      handlePipedCommand(parts);
-      return;
+    if (result.exitCode !== 0 && result.stderr) {
+      terminalAudio.playErrorBeep();
     }
 
-    const tokens = trimmed.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-    const command = tokens[0]?.toLowerCase();
-    const args = tokens.slice(1).map((a) => a.replace(/^"|"$/g, ''));
-
-    switch (command) {
-      case 'clear':
-        setHistory([]);
-        break;
-
-      case 'help':
-        setHistory((prev) => [
-          ...prev,
-          {
-            type: 'output',
-            text: `CS Odyssey Linux & Bandit Wargame Shell:
-  OverTheWire Live SSH:
-    ssh bandit0           Connect to OverTheWire Bandit Level 0 (Live!)
-    ssh banditX           Connect to any Bandit level using saved password
-    exit                  Disconnect from Live SSH and return to sandbox
-    
-  File Operations:
-    ls [-la]              List directory files (use -la for hidden files)
-    cd <dir>              Change directory (e.g. cd inhere, cd ..)
-    pwd                   Print working directory path
-    cat <file>            Print file content (e.g. cat readme, cat ./-)
-    head / tail [-n X]    Print first or last X lines of a file
-    touch <file>          Create a new empty file
-    mkdir [-p] <dir>      Create directory
-    rm [-r] <file>        Remove file or directory
-    cp <src> <dst>        Copy file
-    mv <src> <dst>        Move/rename file
-    
-  Text & Filtering:
-    grep <pattern> <file> Search text in file
-    sort <file>           Sort lines alphabetically
-    uniq [-u]             Omit or filter repeated lines (use -u for unique)
-    strings <file>        Print printable strings in binary file
-    base64 [-d] <file>    Encode or decode Base64 strings
-    tr <set1> <set2>      Translate characters (ROT13 decoding)
-    find <dir> -type f    Search for files by type/size
-    file <file>           Determine file type and MIME
-    
-  System & Diagnostics:
-    whoami, uname, df, free, ps aux, tree, which, sudo, nmap, wget
-    env / export          View or set environment variables
-    man <cmd>             Show comprehensive manual page for command`,
-          },
-        ]);
-        break;
-
-      case 'pwd':
-        setHistory((prev) => [
-          ...prev,
-          { type: 'output', text: '/' + currentPath.join('/') },
-        ]);
-        break;
-
-      case 'whoami':
-        setHistory((prev) => [...prev, { type: 'output', text: currentUser }]);
-        break;
-
-      case 'ls': {
-        const currNode = getNodeAtPath(currentPath);
-        if (!currNode || currNode.type !== 'dir' || !currNode.children) {
-          setHistory((prev) => [...prev, { type: 'output', text: '' }]);
-          break;
-        }
-
-        const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
-        const showLong = args.includes('-l') || args.includes('-la') || args.includes('-al');
-
-        const entries = Object.keys(currNode.children).filter((name) =>
-          showAll ? true : !name.startsWith('.')
-        );
-
-        if (showLong) {
-          const lines = entries.map((name) => {
-            const child = currNode.children![name];
-            const isDir = child.type === 'dir';
-            const perm = isDir ? 'drwxr-xr-x' : '-rw-r--r--';
-            const size = child.size || (isDir ? 4096 : 33);
-            const owner = child.owner || currentUser;
-            return `${perm} 1 ${owner} ${owner} ${size.toString().padStart(5, ' ')} Oct 14 12:00 ${name}`;
-          });
-          setHistory((prev) => [
-            ...prev,
-            { type: 'output', text: `total ${entries.length * 4}\n` + lines.join('\n') },
-          ]);
-        } else {
-          setHistory((prev) => [
-            ...prev,
-            { type: 'output', text: entries.join('  ') },
-          ]);
-        }
-        break;
-      }
-
-      case 'cd': {
-        const target = args[0];
-        if (!target || target === '~') {
-          setCurrentPath(['home', currentUser]);
-          break;
-        }
-
-        try {
-          const newPath = resolveVirtualPath(currentPath, target);
-          const node = getNodeAtPath(newPath);
-          if (!node) {
-            setHistory((prev) => [
-              ...prev,
-              { type: 'output', text: `bash: cd: ${target}: No such file or directory` },
-            ]);
-          } else if (node.type !== 'dir') {
-            setHistory((prev) => [
-              ...prev,
-              { type: 'output', text: `bash: cd: ${target}: Not a directory` },
-            ]);
-          } else {
-            setCurrentPath(newPath);
-          }
-        } catch (pathErr: any) {
-          setHistory((prev) => [
-            ...prev,
-            { type: 'output', text: `bash: cd: ${pathErr.message}`, isError: true },
-          ]);
-        }
-        break;
-      }
-
-      case 'cat': {
-        if (args.length === 0) {
-          setHistory((prev) => [...prev, { type: 'output', text: 'cat: missing file operand' }]);
-          break;
-        }
-
-        const target = args.join(' ');
-        try {
-          const targetSegments = resolveVirtualPath(currentPath, target);
-          if (targetSegments.length === 0) {
-            setHistory((prev) => [...prev, { type: 'output', text: `cat: ${target}: Is a directory` }]);
-            break;
-          }
-          const parentSegments = targetSegments.slice(0, -1);
-          const fileName = targetSegments[targetSegments.length - 1];
-          const parentNode = getNodeAtPath(parentSegments);
-
-          if (parentNode && parentNode.type === 'dir' && parentNode.children && parentNode.children[fileName]) {
-            const file = parentNode.children[fileName];
-            if (file.type === 'dir') {
-              setHistory((prev) => [...prev, { type: 'output', text: `cat: ${target}: Is a directory` }]);
-            } else {
-              setHistory((prev) => [...prev, { type: 'output', text: sanitizeTerminalOutput(file.content || '') }]);
-              setOpenedFile({
-                name: fileName,
-                path: '/' + targetSegments.join('/'),
-                content: file.content || '',
-                size: file.size || (file.content || '').length,
-                permissions: file.permissions || '-rw-r--r--',
-                owner: file.owner || currentUser,
-                isBinary: file.content?.includes('\x00') || /[\x00-\x08\x0E-\x1F]/.test(file.content || ''),
-              });
-            }
-          } else {
-            setHistory((prev) => [
-              ...prev,
-              { type: 'output', text: `cat: ${target}: No such file or directory` },
-            ]);
-          }
-        } catch (pathErr: any) {
-          setHistory((prev) => [
-            ...prev,
-            { type: 'output', text: `cat: ${pathErr.message}`, isError: true },
-          ]);
-        }
-        break;
-      }
-
-      case 'touch': {
-        if (args.length === 0) {
-          setHistory((prev) => [...prev, { type: 'output', text: 'touch: missing file operand' }]);
-          break;
-        }
-        const target = args[0];
-        try {
-          const targetSegments = resolveVirtualPath(currentPath, target);
-          const parentSegments = targetSegments.slice(0, -1);
-          const fileName = targetSegments[targetSegments.length - 1];
-          const parentNode = getNodeAtPath(parentSegments);
-          if (parentNode && parentNode.type === 'dir') {
-            if (!parentNode.children) parentNode.children = {};
-            if (!parentNode.children[fileName]) {
-              parentNode.children[fileName] = {
-                type: 'file',
-                content: '',
-                size: 0,
-                permissions: '-rw-r--r--',
-                owner: currentUser,
-              };
-            }
-            setFsRevision((r) => r + 1);
-          } else {
-            setHistory((prev) => [...prev, { type: 'output', text: `touch: cannot touch '${target}': No such file or directory`, isError: true }]);
-          }
-        } catch (err: any) {
-          setHistory((prev) => [...prev, { type: 'output', text: `touch: ${err.message}`, isError: true }]);
-        }
-        break;
-      }
-
-      case 'mkdir': {
-        if (args.length === 0) {
-          setHistory((prev) => [...prev, { type: 'output', text: 'mkdir: missing operand' }]);
-          break;
-        }
-        const target = args[0];
-        try {
-          const targetSegments = resolveVirtualPath(currentPath, target);
-          const parentSegments = targetSegments.slice(0, -1);
-          const dirName = targetSegments[targetSegments.length - 1];
-          const parentNode = getNodeAtPath(parentSegments);
-          if (parentNode && parentNode.type === 'dir') {
-            if (!parentNode.children) parentNode.children = {};
-            if (parentNode.children[dirName]) {
-              setHistory((prev) => [...prev, { type: 'output', text: `mkdir: cannot create directory '${target}': File exists`, isError: true }]);
-            } else {
-              parentNode.children[dirName] = {
-                type: 'dir',
-                children: {},
-                permissions: 'drwxr-xr-x',
-                owner: currentUser,
-              };
-              setFsRevision((r) => r + 1);
-            }
-          } else {
-            setHistory((prev) => [...prev, { type: 'output', text: `mkdir: cannot create directory '${target}': No such file or directory`, isError: true }]);
-          }
-        } catch (err: any) {
-          setHistory((prev) => [...prev, { type: 'output', text: `mkdir: ${err.message}`, isError: true }]);
-        }
-        break;
-      }
-
-      case 'rm': {
-        if (args.length === 0) {
-          setHistory((prev) => [...prev, { type: 'output', text: 'rm: missing operand' }]);
-          break;
-        }
-        const isRecursive = args.includes('-r') || args.includes('-rf') || args.includes('-R');
-        const target = args.find((a) => !a.startsWith('-')) || '';
-        if (!target) {
-          setHistory((prev) => [...prev, { type: 'output', text: 'rm: missing operand' }]);
-          break;
-        }
-        try {
-          const targetSegments = resolveVirtualPath(currentPath, target);
-          const parentSegments = targetSegments.slice(0, -1);
-          const itemName = targetSegments[targetSegments.length - 1];
-          const parentNode = getNodeAtPath(parentSegments);
-          if (parentNode && parentNode.type === 'dir' && parentNode.children && parentNode.children[itemName]) {
-            const item = parentNode.children[itemName];
-            if (item.type === 'dir' && !isRecursive) {
-              setHistory((prev) => [...prev, { type: 'output', text: `rm: cannot remove '${target}': Is a directory`, isError: true }]);
-            } else {
-              delete parentNode.children[itemName];
-              if (openedFile && openedFile.name === itemName) {
-                setOpenedFile(null);
-              }
-              setFsRevision((r) => r + 1);
-            }
-          } else {
-            setHistory((prev) => [...prev, { type: 'output', text: `rm: cannot remove '${target}': No such file or directory`, isError: true }]);
-          }
-        } catch (err: any) {
-          setHistory((prev) => [...prev, { type: 'output', text: `rm: ${err.message}`, isError: true }]);
-        }
-        break;
-      }
-
-      case 'uname':
-        setHistory((prev) => [
-          ...prev,
-          {
-            type: 'output',
-            text: args.includes('-a')
-              ? 'Linux odyssey-box 6.2.0-39-generic #40-Ubuntu SMP PREEMPT_DYNAMIC x86_64 GNU/Linux'
-              : 'Linux',
-          },
-        ]);
-        break;
-
-      case 'free':
-        setHistory((prev) => [
-          ...prev,
-          {
-            type: 'output',
-            text: '               total        used        free      shared  buff/cache   available\nMem:        16384 MB     4210 MB    10820 MB      256 MB     1354 MB    11818 MB\nSwap:        4096 MB        0 MB     4096 MB',
-          },
-        ]);
-        break;
-
-      case 'df':
-        setHistory((prev) => [
-          ...prev,
-          {
-            type: 'output',
-            text: 'Filesystem     1K-blocks      Used Available Use% Mounted on\n/dev/root       98304000  24576000  68728000  27% /\ntmpfs            8192000         0   8192000   0% /dev/shm\n/dev/sda1         512000     64000    448000  13% /boot',
-          },
-        ]);
-        break;
-
-      case 'echo': {
-        let output = args.join(' ');
-        output = output.replace(/\$([A-Za-z_]+)/g, (_, varName) => envVars[varName] || '');
-        setHistory((prev) => [...prev, { type: 'output', text: output }]);
-        break;
-      }
-
-      default:
-        setHistory((prev) => [
-          ...prev,
-          {
-            type: 'output',
-            text: `bash: ${command}: command not found. Type "help" or connect to Live SSH to run native OverTheWire Linux commands.`,
-          },
-        ]);
-        break;
-    }
-  };
-
-  const handleRedirection = (line: string) => {
-    const isAppend = line.includes('>>');
-    const separator = isAppend ? '>>' : '>';
-    const [left, right] = line.split(separator).map((s) => s.trim());
-    const targetFile = right;
-
-    let contentToWrite = left;
-    if (left.startsWith('echo ')) {
-      contentToWrite = left.slice(5).replace(/^"|"$/g, '').replace(/^'|'$/g, '');
-    }
-
-    try {
-      const targetSegments = resolveVirtualPath(currentPath, targetFile);
-      if (targetSegments.length === 0) {
-        setHistory((prev) => [...prev, { type: 'output', text: `bash: ${targetFile}: Is a directory`, isError: true }]);
-        return;
-      }
-      const parentSegments = targetSegments.slice(0, -1);
-      const fileName = targetSegments[targetSegments.length - 1];
-      const parentNode = getNodeAtPath(parentSegments);
-
-      if (parentNode && parentNode.type === 'dir') {
-        if (!parentNode.children) parentNode.children = {};
-        const existing = parentNode.children[fileName];
-
-        if (isAppend && existing && existing.type === 'file') {
-          existing.content = (existing.content || '') + '\n' + contentToWrite;
-          existing.size = (existing.content || '').length;
-        } else {
-          parentNode.children[fileName] = {
-            type: 'file',
-            content: contentToWrite,
-            size: contentToWrite.length,
-          };
-        }
-        setFsRevision((r) => r + 1);
-        setHistory((prev) => [...prev, { type: 'output', text: '' }]);
-      } else {
-        setHistory((prev) => [...prev, { type: 'output', text: `bash: ${targetFile}: No such directory`, isError: true }]);
-      }
-    } catch (err: any) {
-      setHistory((prev) => [...prev, { type: 'output', text: `bash: ${err.message}`, isError: true }]);
-    }
-  };
-
-  const handlePipedCommand = (pipeline: string[]) => {
-    const full = pipeline.join(' | ');
-    if (full.includes('sort') && full.includes('uniq')) {
-      setHistory((prev) => [
-        ...prev,
-        { type: 'output', text: '4CKM11Rhssfk2019UNIQUEFLAG  (Unique line found!)' },
-      ]);
-    } else if (full.includes('grep')) {
-      setHistory((prev) => [
-        ...prev,
-        { type: 'output', text: 'millionth\tdf763n810dksl2019a83jdhf7823' },
-      ]);
-    } else {
-      setHistory((prev) => [
-        ...prev,
-        { type: 'output', text: `[Pipe executed]: Output filtered.` },
-      ]);
-    }
+    setHistory((prev) => [
+      ...prev,
+      { type: 'input', text: `${result.prompt} ${trimmed}` },
+      ...result.outputLines,
+    ]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1316,22 +802,22 @@ export function TerminalSimulator({
           <div
             className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border ${
               isLiveSshMode
-                ? 'bg-emerald-500/15 border-emerald-400/35 text-emerald-300'
-                : 'bg-cyan-500/12 border-cyan-400/30 text-cyan-300'
+                ? 'bg-emerald-500/15 border-emerald-500/35 dark:border-emerald-400/35 text-emerald-700 dark:text-emerald-300'
+                : 'bg-cyan-500/12 border-cyan-500/35 dark:border-cyan-400/30 text-cyan-700 dark:text-cyan-300'
             }`}
           >
             {isLiveSshMode ? <Wifi className="h-5 w-5" /> : <Terminal className="h-5 w-5" />}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-display text-sm font-semibold text-white tracking-tight">
+              <span className="font-display text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
                 {isLiveSshMode ? 'Live Wargame SSH Session' : 'Cyber Citadel Linux Shell'}
               </span>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 · {isLiveSshMode ? `Connected · ${sshHost}:${sshPort}` : 'Offline Citadel Sandbox'}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               {isLiveSshMode
                 ? `Logged in as ${sshUser}. Commands execute in real time over the hardened SSH bridge.`
                 : 'Practice in the self-contained virtual Citadel filesystem or connect live via the educational SSH bridge.'}
@@ -1342,15 +828,15 @@ export function TerminalSimulator({
         {/* Action Controls */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <div
-            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#040710]/70 px-2.5 py-1.5"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/[0.08] bg-slate-100 dark:bg-[#040710]/70 px-2.5 py-1.5"
             title={audioEnabled ? 'Retro Audio Feedback: Enabled' : 'Retro Audio Feedback: Muted'}
           >
             {audioEnabled ? (
-              <Volume2 className="h-3.5 w-3.5 text-amber-400" />
+              <Volume2 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
             ) : (
               <VolumeX className="h-3.5 w-3.5 text-slate-500" />
             )}
-            <span className="text-[11px] font-mono text-slate-300">Audio</span>
+            <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">Audio</span>
             <SoapBubbleToggle
               checked={audioEnabled}
               onCheckedChange={() => handleToggleAudio()}
@@ -1362,10 +848,10 @@ export function TerminalSimulator({
 
           <button
             onClick={() => setShowCheatSheet(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.08] hover:border-indigo-400/40 text-xs font-mono font-semibold text-indigo-300 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-white/[0.1] bg-white dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.08] hover:border-indigo-500/40 dark:hover:border-indigo-400/40 text-xs font-mono font-semibold text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             title="Open Interactive Master Cheat Sheet"
           >
-            <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+            <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Cheat Sheet</span>
           </button>
 
@@ -1375,7 +861,7 @@ export function TerminalSimulator({
               tint="rgb(244 63 94)"
               opacity={0.9}
               style={{ fontSize: 12 }}
-              className="!min-h-[34px] !px-4 font-mono font-semibold text-white"
+              className="!min-h-[34px] !px-4 font-mono font-semibold text-white whitespace-nowrap shrink-0"
             >
               Disconnect SSH
             </SoapBubbleButton>
@@ -1386,7 +872,7 @@ export function TerminalSimulator({
               tint="rgb(16 185 129)"
               opacity={0.92}
               style={{ fontSize: 12 }}
-              className="!min-h-[34px] !px-4 font-mono font-semibold text-white"
+              className="!min-h-[34px] !px-4 font-mono font-semibold text-white whitespace-nowrap shrink-0"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Wifi className="h-3.5 w-3.5" />
@@ -1397,22 +883,22 @@ export function TerminalSimulator({
 
           <button
             onClick={() => onOpenAiMentor(`ELI9: Explain the goal of Citadel Level ${level.level} and what command I should use on the remote server.`)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-xs font-mono font-semibold text-cyan-300 hover:bg-cyan-500/20 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-cyan-500/35 dark:border-cyan-400/30 bg-cyan-500/10 text-xs font-mono font-semibold text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
+            <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
             <span>AI Coach</span>
           </button>
 
           <button
             onClick={() => setShowQuickRef(!showQuickRef)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono font-semibold transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               showQuickRef
-                ? 'border-indigo-400/45 bg-indigo-500/15 text-indigo-200'
-                : 'border-white/[0.08] bg-[#040710]/70 text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
+                ? 'border-indigo-500/40 dark:border-indigo-400/45 bg-indigo-500/15 text-indigo-700 dark:text-indigo-200'
+                : 'border-slate-300 dark:border-white/[0.08] bg-white dark:bg-[#040710]/70 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-400 dark:hover:border-white/[0.15]'
             }`}
             title="Toggle Command Quick-Reference side panel"
           >
-            <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+            <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>{showQuickRef ? 'Hide Ref' : 'Quick Ref'}</span>
           </button>
         </div>
@@ -1420,14 +906,14 @@ export function TerminalSimulator({
 
       {/* Flag / Password Unlocked Banner */}
       {unlockedNotice && (
-        <div className="optical-panel rounded-2xl border-emerald-400/40 bg-emerald-500/10 p-4 text-xs font-mono text-emerald-200 flex items-center justify-between gap-3">
+        <div className="optical-panel rounded-2xl border-emerald-500/40 dark:border-emerald-400/40 bg-emerald-500/10 p-4 text-xs font-mono text-emerald-800 dark:text-emerald-200 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-            <span className="font-semibold text-white">{unlockedNotice}</span>
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="font-semibold text-slate-900 dark:text-white">{unlockedNotice}</span>
           </div>
           <button
             onClick={() => setUnlockedNotice(null)}
-            className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             Dismiss
           </button>
@@ -1440,13 +926,13 @@ export function TerminalSimulator({
         <div className="lg:w-80 shrink-0 space-y-4">
           <div className="optical-panel rounded-2xl p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider">OverTheWire Bandit</span>
-              <span className="text-xs font-mono text-emerald-400 font-semibold tabular-nums">
+              <span className="text-[11px] font-mono text-cyan-700 dark:text-cyan-400 uppercase tracking-wider">OverTheWire Bandit</span>
+              <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
                 {solvedLevels.length} / {BANDIT_LEVELS.length} Solved
               </span>
             </div>
-            <h3 className="font-display text-sm font-semibold text-white mb-1">Linux Wargame Levels</h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-white mb-1">Linux Wargame Levels</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
               Real servers hosted by OverTheWire. Connect to retrieve each level&apos;s password.
             </p>
 
@@ -1470,10 +956,10 @@ export function TerminalSimulator({
                     }}
                     className={`py-2 px-1 text-xs font-mono rounded-lg border transition-colors flex items-center justify-center gap-1 cursor-pointer tabular-nums ${
                       isSelected
-                        ? 'border-cyan-400/50 bg-cyan-500/18 text-cyan-200 font-semibold'
+                        ? 'border-cyan-500/50 dark:border-cyan-400/50 bg-cyan-500/15 dark:bg-cyan-500/18 text-cyan-700 dark:text-cyan-200 font-semibold'
                         : isSolved
-                        ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300 font-medium'
-                        : 'border-white/[0.07] bg-[#040710]/70 text-slate-400 hover:text-slate-200 hover:border-white/[0.15]'
+                        ? 'border-emerald-500/40 dark:border-emerald-500/35 bg-emerald-500/12 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium'
+                        : 'border-slate-200 dark:border-white/[0.07] bg-white dark:bg-[#040710]/70 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-white/[0.15]'
                     }`}
                   >
                     <span>L{lvl.level}</span>
@@ -1487,13 +973,13 @@ export function TerminalSimulator({
           {/* Level Details Card */}
           <div className="optical-panel rounded-2xl p-4 sm:p-5 space-y-3.5">
             <div className="flex items-center justify-between gap-2">
-              <h4 className="font-display text-sm font-semibold text-white">{level.title}</h4>
+              <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">{level.title}</h4>
               <button
                 onClick={() => onToggleLevel(level.level)}
                 className={`flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-lg border transition-colors cursor-pointer shrink-0 ${
                   isLevelSolved
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
-                    : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:bg-white/[0.08]'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/35 dark:border-emerald-400/35'
+                    : 'bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-300 dark:border-white/[0.08] hover:bg-slate-200 dark:hover:bg-white/[0.08]'
                 }`}
               >
                 {isLevelSolved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
@@ -1501,22 +987,22 @@ export function TerminalSimulator({
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">{level.goal}</p>
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{level.goal}</p>
 
             {/* Saved Password for this level */}
             <div className="optical-inset p-3 rounded-xl space-y-1.5 font-mono text-xs">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                 <span className="flex items-center gap-1">
-                  <Key className="h-3 w-3 text-amber-400" />
+                  <Key className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                   <span>Bandit Level {level.level} Password</span>
                 </span>
                 {savedPasswordForSelected && (
                   <button
                     onClick={() => copyToClipboard(savedPasswordForSelected)}
-                    className="text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                    className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 cursor-pointer"
                   >
                     {copiedFlag === savedPasswordForSelected ? (
-                      <Check className="h-3 w-3 text-emerald-400" />
+                      <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Copy className="h-3 w-3" />
                     )}
@@ -1534,16 +1020,16 @@ export function TerminalSimulator({
                   }
                 }}
                 placeholder={level.level === 0 ? 'bandit0' : 'Paste retrieved password...'}
-                className="w-full bg-[#040710]/90 border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono focus:outline-none focus:border-cyan-400/50"
+                className="w-full bg-white dark:bg-[#040710]/90 border border-slate-300 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-300 font-mono focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400/50"
               />
             </div>
 
             {/* Commands to research */}
             <div className="space-y-1.5 font-mono text-[11px]">
-              <div className="text-slate-400">Commands to research:</div>
+              <div className="text-slate-600 dark:text-slate-400">Commands to research:</div>
               <div className="flex flex-wrap gap-1.5">
                 {level.usefulCommands.map((cmd) => (
-                  <code key={cmd} className="bg-[#040710]/80 border border-white/[0.08] rounded-md px-2 py-0.5 text-cyan-300">
+                  <code key={cmd} className="bg-slate-900 dark:bg-[#040710]/80 border border-slate-800 dark:border-white/[0.08] rounded-md px-2 py-0.5 text-cyan-300">
                     {cmd}
                   </code>
                 ))}
@@ -1551,17 +1037,17 @@ export function TerminalSimulator({
             </div>
 
             {/* Hint Revealer */}
-            <div className="pt-2.5 border-t border-white/[0.08]">
+            <div className="pt-2.5 border-t border-slate-200 dark:border-white/[0.08]">
               <button
                 onClick={() => setShowHint(!showHint)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-xl border border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.07] transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-xl border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors cursor-pointer"
               >
-                {showHint ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-amber-400" />}
+                {showHint ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
                 <span>{showHint ? 'Hide Hint' : 'Reveal Helpful Hint'}</span>
               </button>
 
               {showHint && (
-                <div className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-400/25 p-3 text-xs text-amber-200 leading-relaxed font-sans">
+                <div className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 dark:border-amber-400/25 p-3 text-xs text-amber-900 dark:text-amber-200 leading-relaxed font-sans">
                   {level.hint}
                 </div>
               )}
@@ -1584,8 +1070,8 @@ export function TerminalSimulator({
           </div>
         </div>
 
-        {/* Right Pane: Interactive Terminal Window */}
-        <div className="flex-1 optical-panel rounded-2xl flex flex-col h-[650px] overflow-hidden font-mono">
+        {/* Right Pane: Interactive Terminal Window (intentionally dark obsidian terminal screen) */}
+        <div className="flex-1 rounded-2xl border border-slate-800 dark:border-white/[0.1] bg-[#040710] shadow-xl flex flex-col h-[650px] overflow-hidden font-mono">
           {/* Terminal Window Chrome / Header */}
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#040710]/85 px-4 py-2.5 gap-3">
             <div className="flex items-center gap-2 min-w-0">
@@ -2106,17 +1592,17 @@ export function TerminalSimulator({
         {showQuickRef && (
           <aside className="w-full lg:w-80 shrink-0 flex flex-col optical-panel rounded-2xl h-[650px] overflow-hidden font-mono">
             {/* Quick-Ref Panel Header */}
-            <div className="p-3.5 border-b border-white/[0.08] bg-[#040710]/70 space-y-2.5">
+            <div className="p-3.5 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#040710]/70 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-indigo-400" />
-                  <h3 className="font-display text-xs font-semibold text-white tracking-wide uppercase">
+                  <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="font-display text-xs font-semibold text-slate-900 dark:text-white tracking-wide uppercase">
                     Command Quick-Reference
                   </h3>
                 </div>
                 <button
                   onClick={() => setShowQuickRef(false)}
-                  className="text-slate-400 hover:text-white text-xs p-1 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs p-1 rounded-lg hover:bg-slate-200/70 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                   title="Close side panel"
                 >
                   ✕
@@ -2125,8 +1611,8 @@ export function TerminalSimulator({
 
               {/* Dynamic Level Status Indicator */}
               <div className="optical-inset flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl">
-                <span className="text-slate-400">Targeting:</span>
-                <span className="text-amber-300 font-semibold flex items-center gap-1 tabular-nums">
+                <span className="text-slate-600 dark:text-slate-400">Targeting:</span>
+                <span className="text-amber-700 dark:text-amber-300 font-semibold flex items-center gap-1 tabular-nums">
                   <span>Bandit Level {level.level}</span>
                   <span className="text-slate-500 font-normal">({level.usefulCommands.length} cmds)</span>
                 </span>
@@ -2138,8 +1624,8 @@ export function TerminalSimulator({
                   onClick={() => setQuickRefFilter('relevant')}
                   className={`py-1.5 rounded-lg font-semibold transition-colors text-center cursor-pointer ${
                     quickRefFilter === 'relevant'
-                      ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-400/35'
-                      : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      ? 'bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 border border-indigo-500/35 dark:border-indigo-400/35'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent'
                   }`}
                 >
                   Level {level.level} Only
@@ -2148,8 +1634,8 @@ export function TerminalSimulator({
                   onClick={() => setQuickRefFilter('all')}
                   className={`py-1.5 rounded-lg font-semibold transition-all text-center cursor-pointer tabular-nums ${
                     quickRefFilter === 'all'
-                      ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-400/35'
-                      : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      ? 'bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 border border-indigo-500/35 dark:border-indigo-400/35'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent'
                   }`}
                 >
                   All ({BANDIT_QUICK_COMMANDS.length})
@@ -2200,7 +1686,7 @@ export function TerminalSimulator({
                           setQuickRefFilter('all');
                           setQuickRefSearch('');
                         }}
-                        className="text-indigo-400 hover:underline text-[11px] cursor-pointer"
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline text-[11px] cursor-pointer"
                       >
                         Show All Commands
                       </button>
@@ -2218,16 +1704,16 @@ export function TerminalSimulator({
                     <div
                       key={cmd.name}
                       className={`optical-card rounded-xl p-2.5 transition-all text-xs ${
-                        isDirectlyRelevant ? 'border-indigo-400/35 bg-indigo-500/8' : ''
+                        isDirectlyRelevant ? 'border-indigo-500/35 dark:border-indigo-400/35 bg-indigo-500/8' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between gap-1.5 mb-1.5">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <code className="text-xs font-semibold text-white bg-[#040710]/80 px-2 py-0.5 rounded-md border border-white/[0.08] truncate">
+                          <code className="text-xs font-semibold text-white bg-slate-900 dark:bg-[#040710]/80 px-2 py-0.5 rounded-md border border-slate-800 dark:border-white/[0.08] truncate">
                             {cmd.name}
                           </code>
                           {isDirectlyRelevant && (
-                            <span className="text-[10px] font-mono text-amber-300 shrink-0">
+                            <span className="text-[10px] font-mono text-amber-700 dark:text-amber-300 shrink-0">
                               · L{level.level}
                             </span>
                           )}
@@ -2236,18 +1722,18 @@ export function TerminalSimulator({
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleCopyCommand(cmd.name, cmd.syntax)}
-                            className="p-1 rounded-md hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1 rounded-md hover:bg-slate-200/70 dark:hover:bg-white/[0.08] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                             title="Copy syntax"
                           >
                             {copiedCmd === cmd.name ? (
-                              <Check className="h-3 w-3 text-emerald-400" />
+                              <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                             ) : (
                               <Copy className="h-3 w-3" />
                             )}
                           </button>
                           <button
                             onClick={() => handleInsertCommand(cmd.usageExample || cmd.syntax)}
-                            className="px-2 py-0.5 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 text-[10px] font-semibold cursor-pointer transition-colors"
+                            className="px-2 py-0.5 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-400/30 text-[10px] font-semibold cursor-pointer transition-colors"
                             title="Insert command into terminal input"
                           >
                             Insert ↵
@@ -2256,12 +1742,12 @@ export function TerminalSimulator({
                       </div>
 
                       {/* Syntax Line */}
-                      <div className="optical-inset rounded-lg px-2 py-1 font-mono text-[11px] text-cyan-300 overflow-x-auto select-all mb-1.5">
+                      <div className="rounded-lg bg-slate-900 dark:bg-[#04070e] border border-slate-800 dark:border-white/[0.08] px-2 py-1 font-mono text-[11px] text-cyan-300 overflow-x-auto select-all mb-1.5">
                         {cmd.syntax}
                       </div>
 
                       {/* Summary */}
-                      <p className="text-[11px] text-slate-300 leading-relaxed font-sans mb-1.5">
+                      <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-sans mb-1.5">
                         {cmd.summary}
                       </p>
 
@@ -2269,23 +1755,23 @@ export function TerminalSimulator({
                       <div>
                         <button
                           onClick={() => setExpandedCmd(isExpanded ? null : cmd.name)}
-                          className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
+                          className="flex items-center gap-1 text-[10px] text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer font-medium"
                         >
                           {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                           <span>{isExpanded ? 'Hide Pro-Tip & Examples' : 'Show Pro-Tip & Examples'}</span>
                         </button>
 
                         {isExpanded && (
-                          <div className="mt-2 space-y-2 pt-2 border-t border-white/[0.08]">
+                          <div className="mt-2 space-y-2 pt-2 border-t border-slate-200 dark:border-white/[0.08]">
                             {cmd.proTip && (
-                              <div className="bg-amber-500/10 border border-amber-400/25 rounded-lg p-2 text-[11px] text-amber-200 font-sans">
-                                <span className="font-semibold text-amber-300">Pro-Tip:</span> {cmd.proTip}
+                              <div className="bg-amber-500/10 border border-amber-500/30 dark:border-amber-400/25 rounded-lg p-2 text-[11px] text-amber-900 dark:text-amber-200 font-sans">
+                                <span className="font-semibold text-amber-800 dark:text-amber-300">Pro-Tip:</span> {cmd.proTip}
                               </div>
                             )}
 
                             <div>
-                              <div className="text-[10px] text-slate-400 mb-1">Example Usage:</div>
-                              <pre className="optical-inset p-2 rounded-lg text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre">
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Example Usage:</div>
+                              <pre className="bg-slate-900 dark:bg-[#04070e] border border-slate-800 dark:border-white/[0.08] p-2 rounded-lg text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre">
                                 {cmd.usageExample}
                               </pre>
                             </div>
@@ -2299,24 +1785,24 @@ export function TerminalSimulator({
             </div>
 
             {/* Quick-Ref Footer */}
-            <div className="p-2.5 border-t border-white/[0.08] bg-[#040710]/70 text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="p-2.5 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#040710]/70 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
               <span>Click &quot;Insert ↵&quot; to test command</span>
-              <span className="font-semibold text-cyan-400">Cyber Citadel Shell</span>
+              <span className="font-semibold text-cyan-700 dark:text-cyan-400">Cyber Citadel Shell</span>
             </div>
           </aside>
         )}
       </div>
 
       {/* Educational Fair-Use & Attribution Card */}
-      <div className="optical-inset rounded-2xl p-4 text-xs font-mono text-slate-400 flex items-start gap-3">
-        <Shield className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+      <div className="optical-inset rounded-2xl p-4 text-xs font-mono text-slate-600 dark:text-slate-400 flex items-start gap-3">
+        <Shield className="h-4 w-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
         <div className="space-y-1 leading-relaxed">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-200">Educational Wargame &amp; Ethical Security Practice Notice</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-200">Educational Wargame &amp; Ethical Security Practice Notice</span>
             <span className="text-[10px] text-slate-500">· Open-Source Learning Platform</span>
           </div>
-          <p className="text-[11px] text-slate-400 font-sans">
-            CS Odyssey provides an original, 100% self-contained offline Linux wargame simulation (&quot;Cyber Citadel&quot;) designed for safe systems learning. The integrated optional SSH bridge enables authorized connections to public educational wargames such as OverTheWire Bandit (<code className="text-cyan-300">bandit.labs.overthewire.org:2220</code>). OverTheWire and Bandit are independent community projects hosted at <a href="https://overthewire.org" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline inline-flex items-center gap-0.5">overthewire.org <ExternalLink className="h-2.5 w-2.5" /></a>. CS Odyssey is an independent educational tool and is not affiliated with, endorsed by, or sponsored by OverTheWire.
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-sans">
+            CS Odyssey provides an original, 100% self-contained offline Linux wargame simulation (&quot;Cyber Citadel&quot;) designed for safe systems learning. The integrated optional SSH bridge enables authorized connections to public educational wargames such as OverTheWire Bandit (<code className="text-cyan-700 dark:text-cyan-300 font-mono">bandit.labs.overthewire.org:2220</code>). OverTheWire and Bandit are independent community projects hosted at <a href="https://overthewire.org" target="_blank" rel="noopener noreferrer" className="text-cyan-700 dark:text-cyan-400 hover:underline inline-flex items-center gap-0.5">overthewire.org <ExternalLink className="h-2.5 w-2.5" /></a>. CS Odyssey is an independent educational tool and is not affiliated with, endorsed by, or sponsored by OverTheWire.
           </p>
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
   tutorRateLimiter,
 } from '@/lib/security';
 import {
+  buildLocalCompanionResponse,
   buildLocalDebugResponse,
   buildLocalEli9Response,
   buildLocalLabReviewResponse,
@@ -22,6 +23,11 @@ import {
   sanitizeGroundingSources,
   validateQuizItems,
 } from '@/lib/local-mentor';
+import {
+  consumeMentorDailyQuotaServer,
+  getMentorQuotaSnapshotServer,
+} from '@/lib/mentor-quota-server';
+import type { MentorQuotaSnapshot } from '@/lib/mentor-quota';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,11 +36,14 @@ interface TutorRequestBody {
   action?: string;
   stageId?: string;
   stageTitle?: string;
+  workspace?: string;
   promptText?: string;
   codeOrError?: string;
   completedTopicsCount?: number;
   dailyGoalMinutes?: number;
+  requestedDailyLimit?: number;
   preferOffline?: boolean;
+  recentHistory?: Array<{ role?: string; text?: string }>;
 }
 
 const MAX_PROMPT_CHARS = 8000;
@@ -68,15 +77,23 @@ function extractJsonArrayCandidate(rawText: string): unknown {
 }
 
 export async function POST(req: NextRequest) {
-  const headers = apiSecurityHeaders();
   const clientIp = getClientIp(req);
-
   const rateCheck = tutorRateLimiter.tryConsume(clientIp);
+  const headers = apiSecurityHeaders({
+    'X-RateLimit-Remaining': String(rateCheck.remaining),
+    ...(rateCheck.allowed ? {} : { 'Retry-After': String(rateCheck.retryAfterSec) }),
+  });
+
   if (!rateCheck.allowed) {
+    const quota = await getMentorQuotaSnapshotServer(rateCheck.remaining, rateCheck.retryAfterSec).catch(
+      () => undefined
+    );
     return NextResponse.json(
       {
-        error: 'Too Many Requests: Tutor rate limit exceeded. Please wait a few seconds.',
+        error: `Burst rate limit reached. Cooldown: ${rateCheck.retryAfterSec}s before next request.`,
         rateLimited: true,
+        retryAfterSec: rateCheck.retryAfterSec,
+        ...(quota ? { quota } : {}),
       },
       { status: 429, headers }
     );
@@ -88,15 +105,108 @@ export async function POST(req: NextRequest) {
     const action = typeof body.action === 'string' ? body.action.trim() : '';
     const stageId = typeof body.stageId === 'string' ? body.stageId.trim().slice(0, 32) : 'stage-0';
     const stageTitle = typeof body.stageTitle === 'string' ? body.stageTitle.trim().slice(0, 160) : 'Computer Science';
+    const workspace = typeof body.workspace === 'string' ? body.workspace.trim().slice(0, 32) : 'overview';
     const promptText = typeof body.promptText === 'string' ? body.promptText.trim().slice(0, MAX_PROMPT_CHARS) : '';
     const codeOrError = typeof body.codeOrError === 'string' ? body.codeOrError.slice(0, MAX_CODE_CHARS) : '';
     const preferOffline = body.preferOffline === true;
+    const requestedDailyLimit =
+      typeof body.requestedDailyLimit === 'number' && Number.isFinite(body.requestedDailyLimit)
+        ? body.requestedDailyLimit
+        : undefined;
 
     if (!action) {
       return NextResponse.json({ error: 'Action is required.' }, { status: 400, headers });
     }
 
     const ai = preferOffline ? null : getGeminiClient();
+
+    let quotaSnapshot: MentorQuotaSnapshot;
+    if (!preferOffline) {
+      const quotaResult = await consumeMentorDailyQuotaServer({
+        requestedLimit: requestedDailyLimit,
+        burstRemaining: rateCheck.remaining,
+        retryAfterSec: 0,
+      });
+      quotaSnapshot = quotaResult.snapshot;
+
+      if (!quotaResult.allowed) {
+        return NextResponse.json(
+          {
+            error: `Daily request limit reached (${quotaSnapshot.usedToday}/${quotaSnapshot.dailyLimit}). Adjust your daily limit in Settings or switch to free Offline Engine.`,
+            dailyLimitReached: true,
+            quota: quotaSnapshot,
+          },
+          { status: 429, headers }
+        );
+      }
+    } else {
+      quotaSnapshot = await getMentorQuotaSnapshotServer(rateCheck.remaining, 0);
+    }
+
+    if (action === 'companion') {
+      if (!promptText) {
+        return NextResponse.json({ error: 'Please ask a question or pick a quick prompt.' }, { status: 400, headers });
+      }
+
+      const historyTurns = Array.isArray(body.recentHistory)
+        ? body.recentHistory
+            .slice(-4)
+            .filter(
+              (item): item is { role: string; text: string } =>
+                Boolean(item && typeof item.role === 'string' && typeof item.text === 'string')
+            )
+            .map((item) => `${item.role === 'assistant' ? 'Buddy' : 'Learner'}: ${item.text.slice(0, 600)}`)
+            .join('\n')
+        : '';
+
+      const systemInstruction = `You are "Odyssey Buddy", a warm, smart, energetic live Computer Science study partner accompanying the learner across their CS Odyssey.
+Keep replies punchy, friendly, accurate, and beginner-to-pro adaptable (under 180 words unless code needs more):
+- Reference their current workspace (${workspace}) and stage (${stageTitle}) naturally.
+- Use clear intuition first, then give one concrete next command, snippet, or mental check.`;
+
+      const userPrompt = historyTurns
+        ? `Recent context:\n${historyTurns}\n\nCurrent question in ${workspace} (${stageTitle}): "${promptText}"`
+        : `Current workspace: ${workspace} · ${stageTitle}\nQuestion: "${promptText}"`;
+
+      if (ai) {
+        try {
+          const response = await withTimeout(
+            ai.models.generateContent({
+              model: GEMINI_TEXT_MODEL,
+              contents: userPrompt,
+              config: { systemInstruction },
+            })
+          );
+          if (response.text?.trim()) {
+            return NextResponse.json(
+              { result: response.text.trim(), source: 'gemini', quota: quotaSnapshot },
+              { headers }
+            );
+          }
+        } catch (err) {
+          console.warn('Gemini companion local synthesis fallback:', err instanceof Error ? err.message : err);
+        }
+      }
+
+      if (!preferOffline) {
+        const customReply = await generateCustomLlmCompletion({ systemInstruction, prompt: userPrompt });
+        if (customReply) {
+          return NextResponse.json(
+            { result: customReply, source: 'custom-llm', quota: quotaSnapshot },
+            { headers }
+          );
+        }
+      }
+
+      return NextResponse.json(
+        {
+          result: buildLocalCompanionResponse(stageId, promptText, workspace),
+          source: 'local',
+          quota: quotaSnapshot,
+        },
+        { headers }
+      );
+    }
 
     if (action === 'eli9') {
       if (!promptText) {
@@ -122,7 +232,7 @@ Keep the explanation focused, well-structured, and free of fluff.`;
             })
           );
           if (response.text?.trim()) {
-            return NextResponse.json({ result: response.text.trim(), source: 'gemini' }, { headers });
+            return NextResponse.json({ result: response.text.trim(), source: 'gemini', quota: quotaSnapshot }, { headers });
           }
         } catch (err) {
           console.warn('Gemini ELI9 local synthesis fallback:', err instanceof Error ? err.message : err);
@@ -132,7 +242,7 @@ Keep the explanation focused, well-structured, and free of fluff.`;
       if (!preferOffline) {
         const customReply = await generateCustomLlmCompletion({ systemInstruction, prompt: userPrompt });
         if (customReply) {
-          return NextResponse.json({ result: customReply, source: 'custom-llm' }, { headers });
+          return NextResponse.json({ result: customReply, source: 'custom-llm', quota: quotaSnapshot }, { headers });
         }
       }
 
@@ -140,6 +250,7 @@ Keep the explanation focused, well-structured, and free of fluff.`;
         {
           result: buildLocalEli9Response(stageId, promptText),
           source: 'local',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -176,6 +287,7 @@ Format clearly in Markdown with concise bullet points and practical engineering 
                 result: response.text.trim(),
                 sources,
                 source: 'gemini-search',
+                quota: quotaSnapshot,
               },
               { headers }
             );
@@ -197,6 +309,7 @@ Format clearly in Markdown with concise bullet points and practical engineering 
               result: customReply,
               sources: catalog.sources,
               source: 'custom-llm',
+              quota: quotaSnapshot,
             },
             { headers }
           );
@@ -209,6 +322,7 @@ Format clearly in Markdown with concise bullet points and practical engineering 
           result: fallback.result,
           sources: fallback.sources,
           source: 'local-catalog',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -255,7 +369,7 @@ Return a strict JSON array where each element has:
             const parsed = JSON.parse(response.text);
             const validated = validateQuizItems(parsed);
             if (validated) {
-              return NextResponse.json({ quiz: validated, source: 'gemini' }, { headers });
+              return NextResponse.json({ quiz: validated, source: 'gemini', quota: quotaSnapshot }, { headers });
             }
           }
         } catch (err) {
@@ -274,7 +388,7 @@ Return a strict JSON array where each element has:
             const parsed = extractJsonArrayCandidate(customQuizText);
             const validated = validateQuizItems(parsed);
             if (validated) {
-              return NextResponse.json({ quiz: validated, source: 'custom-llm' }, { headers });
+              return NextResponse.json({ quiz: validated, source: 'custom-llm', quota: quotaSnapshot }, { headers });
             }
           } catch {
             // Fall through cleanly to verified quiz bank
@@ -286,6 +400,7 @@ Return a strict JSON array where each element has:
         {
           quiz: getFallbackQuizForStage(stageId),
           source: 'verified-bank',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -318,7 +433,7 @@ Analyze their code/error cleanly:
             })
           );
           if (response.text?.trim()) {
-            return NextResponse.json({ result: response.text.trim(), source: 'gemini' }, { headers });
+            return NextResponse.json({ result: response.text.trim(), source: 'gemini', quota: quotaSnapshot }, { headers });
           }
         } catch (err) {
           console.warn('Gemini debug fallback:', err instanceof Error ? err.message : err);
@@ -328,7 +443,7 @@ Analyze their code/error cleanly:
       if (!preferOffline) {
         const customReply = await generateCustomLlmCompletion({ systemInstruction, prompt: contents });
         if (customReply) {
-          return NextResponse.json({ result: customReply, source: 'custom-llm' }, { headers });
+          return NextResponse.json({ result: customReply, source: 'custom-llm', quota: quotaSnapshot }, { headers });
         }
       }
 
@@ -336,6 +451,7 @@ Analyze their code/error cleanly:
         {
           result: buildLocalDebugResponse(codeOrError, promptText),
           source: 'local',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -367,7 +483,7 @@ Provide structured feedback:
             })
           );
           if (response.text?.trim()) {
-            return NextResponse.json({ result: response.text.trim(), source: 'gemini' }, { headers });
+            return NextResponse.json({ result: response.text.trim(), source: 'gemini', quota: quotaSnapshot }, { headers });
           }
         } catch (err) {
           console.warn('Gemini lab review fallback:', err instanceof Error ? err.message : err);
@@ -377,7 +493,7 @@ Provide structured feedback:
       if (!preferOffline) {
         const customReply = await generateCustomLlmCompletion({ systemInstruction, prompt: userPrompt });
         if (customReply) {
-          return NextResponse.json({ result: customReply, source: 'custom-llm' }, { headers });
+          return NextResponse.json({ result: customReply, source: 'custom-llm', quota: quotaSnapshot }, { headers });
         }
       }
 
@@ -385,6 +501,7 @@ Provide structured feedback:
         {
           result: buildLocalLabReviewResponse(stageTitle, promptText),
           source: 'local',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -413,7 +530,7 @@ Provide structured feedback:
             })
           );
           if (response.text?.trim()) {
-            return NextResponse.json({ result: response.text.trim(), source: 'gemini' }, { headers });
+            return NextResponse.json({ result: response.text.trim(), source: 'gemini', quota: quotaSnapshot }, { headers });
           }
         } catch (err) {
           console.warn('Gemini study plan fallback:', err instanceof Error ? err.message : err);
@@ -426,7 +543,7 @@ Provide structured feedback:
           prompt: planPrompt,
         });
         if (customReply) {
-          return NextResponse.json({ result: customReply, source: 'custom-llm' }, { headers });
+          return NextResponse.json({ result: customReply, source: 'custom-llm', quota: quotaSnapshot }, { headers });
         }
       }
 
@@ -434,6 +551,7 @@ Provide structured feedback:
         {
           result: buildLocalStudyPlanResponse(stageId, completedTopicsCount, dailyGoalMinutes),
           source: 'local',
+          quota: quotaSnapshot,
         },
         { headers }
       );
@@ -446,7 +564,7 @@ Provide structured feedback:
     }
     console.error('AI Tutor API Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process tutor request.' },
+      { error: 'Unable to process tutor request right now. Please try again.' },
       { status: 500, headers }
     );
   }

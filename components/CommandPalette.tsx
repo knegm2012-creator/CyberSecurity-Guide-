@@ -32,6 +32,13 @@ interface CommandPaletteProps {
   onOpenGame?: () => void;
   onDownloadMasteryPdf?: () => void;
   onOpenGitHubSync?: () => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
+  onOpenManualSessionLog?: () => void;
+  onOpenSettings?: () => void;
+  onOpenLiveBuddy?: (tab?: 'chat' | 'train' | 'saved') => void;
 }
 
 interface PaletteEntry {
@@ -54,6 +61,13 @@ export function CommandPalette({
   onOpenGame,
   onDownloadMasteryPdf,
   onOpenGitHubSync,
+  focusMode,
+  onToggleFocusMode,
+  theme = 'light',
+  onToggleTheme,
+  onOpenManualSessionLog,
+  onOpenSettings,
+  onOpenLiveBuddy,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -68,6 +82,17 @@ export function CommandPalette({
 
   const entries = useMemo<PaletteEntry[]>(() => {
     const list: PaletteEntry[] = [
+      {
+        id: 'act-quest-campaign',
+        title: 'Open Zero-to-Mastery CS Adventure Quest',
+        subtitle: '16 interactive realms with binary switches, execution traces & boss trials',
+        category: 'Action',
+        keywords: 'adventure game quest campaign zero cs beginner binary boss learn',
+        action: () => {
+          onNavigate('curriculum', 'quest', 'stage-0');
+          onClose();
+        },
+      },
       {
         id: 'act-studio',
         title: 'Open Spatial & Optical Studio',
@@ -90,6 +115,66 @@ export function CommandPalette({
           onClose();
         },
       },
+      ...(onToggleFocusMode
+        ? [
+            {
+              id: 'act-focus-mode',
+              title: focusMode ? 'Exit Deep Focus Mode' : 'Enter Deep Focus Mode',
+              subtitle: 'Minimal distraction-free study HUD with Pomodoro & session countdown',
+              category: 'Action' as const,
+              keywords: 'focus mode zen pomodoro deep work timer distraction free',
+              action: () => {
+                onClose();
+                onToggleFocusMode();
+              },
+            },
+          ]
+        : []),
+      ...(onToggleTheme
+        ? [
+            {
+              id: 'act-theme-toggle',
+              title: theme === 'light' ? 'Switch to Obsidian Dark Mode' : 'Switch to Studio Light Mode',
+              subtitle: 'Toggle optical surface palette between Light & Dark workspaces',
+              category: 'Action' as const,
+              keywords: 'theme light dark mode appearance colors palette',
+              action: () => {
+                onToggleTheme();
+                onClose();
+              },
+            },
+          ]
+        : []),
+      ...(onOpenSettings
+        ? [
+            {
+              id: 'act-settings',
+              title: 'Open Settings & 48h Catch-Up Notifications',
+              subtitle: 'Toggle 5-minute catch-up study reminders, daily goals, audio & theme',
+              category: 'Action' as const,
+              keywords: 'settings preferences notification toggle reminder 48 hours catch up study',
+              action: () => {
+                onClose();
+                onOpenSettings();
+              },
+            },
+          ]
+        : []),
+      ...(onOpenManualSessionLog
+        ? [
+            {
+              id: 'act-log-session',
+              title: 'Log Active Study Session',
+              subtitle: 'Save accumulated workspace minutes and attach engineering notes',
+              category: 'Action' as const,
+              keywords: 'log study session timer minutes record xp',
+              action: () => {
+                onClose();
+                onOpenManualSessionLog();
+              },
+            },
+          ]
+        : []),
       ...(onOpenGame
         ? [
             {
@@ -278,6 +363,43 @@ export function CommandPalette({
           onOpenCheatSheet();
         },
       },
+      ...(onOpenLiveBuddy
+        ? [
+            {
+              id: 'act-live-buddy',
+              title: 'Ask Odyssey Buddy (Live Companion)',
+              subtitle: 'Open movable floating study partner with smart cached answers',
+              category: 'Action' as const,
+              keywords: 'odyssey buddy pet live companion chat mentor partner move',
+              action: () => {
+                onClose();
+                onOpenLiveBuddy('chat');
+              },
+            },
+            {
+              id: 'act-live-buddy-train',
+              title: 'Train with Odyssey Buddy (Interactive Drills & Help)',
+              subtitle: 'Practice rapid stage drills, starter code & intuition tips at zero quota',
+              category: 'Action' as const,
+              keywords: 'odyssey buddy train drill practice help move roam',
+              action: () => {
+                onClose();
+                onOpenLiveBuddy('train');
+              },
+            },
+            {
+              id: 'act-live-buddy-saved',
+              title: 'View Saved Mentor Requests & Daily Quota',
+              subtitle: 'Search pinned AI answers, replay cached replies, and inspect limits',
+              category: 'Action' as const,
+              keywords: 'saved requests quota limits history pinned mentor cache',
+              action: () => {
+                onClose();
+                onOpenLiveBuddy('saved');
+              },
+            },
+          ]
+        : []),
       {
         id: 'act-mentor',
         title: 'Ask Engineering Mentor',
@@ -397,6 +519,13 @@ export function CommandPalette({
     onOpenGame,
     onDownloadMasteryPdf,
     onOpenGitHubSync,
+    focusMode,
+    onToggleFocusMode,
+    theme,
+    onToggleTheme,
+    onOpenManualSessionLog,
+    onOpenSettings,
+    onOpenLiveBuddy,
   ]);
 
   const filtered = useMemo(() => {
@@ -457,19 +586,19 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-[#03050b]/92 px-4 pt-16 sm:pt-24"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/45 dark:bg-[#03050b]/92 backdrop-blur-sm px-4 pt-16 sm:pt-24"
       onClick={onClose}
       onKeyDown={handleKeyDown}
     >
       <div
-        className="optical-panel w-full max-w-2xl rounded-2xl border-white/[0.12] shadow-2xl overflow-hidden"
+        className="optical-panel w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Global Command Palette"
       >
-        <div className="flex items-center gap-3 border-b border-white/[0.08] bg-[#040710]/75 px-4 py-3.5">
-          <Search className="h-4 w-4 text-cyan-400 shrink-0" />
+        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#040710]/75 px-4 py-3.5">
+          <Search className="h-4 w-4 text-sky-600 dark:text-cyan-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -479,18 +608,18 @@ export function CommandPalette({
               setSelectedIndex(0);
             }}
             placeholder="Jump to stages, algorithms, CLI commands, sources, or labs..."
-            className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 focus:outline-none"
+            className="w-full bg-transparent text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
           />
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[10px] font-mono text-slate-400 hover:text-white cursor-pointer"
+            className="rounded-lg border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-2 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white cursor-pointer"
             aria-label="Close command palette"
           >
             ESC
           </button>
         </div>
 
-        <div className="max-h-[420px] overflow-y-auto divide-y divide-white/[0.06]">
+        <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-200/80 dark:divide-white/[0.06]">
           {filtered.length === 0 ? (
             <div className="py-12 px-4 text-center text-xs text-slate-500 font-mono">
               No matches found for &ldquo;{query}&rdquo;. Try &ldquo;dijkstra&rdquo;, &ldquo;stage 6&rdquo;, &ldquo;pointers&rdquo;, or &ldquo;export&rdquo;.
@@ -503,7 +632,7 @@ export function CommandPalette({
                   key={item.id}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center justify-between gap-3 px-4 py-2.5 transition-colors ${
-                    active ? 'bg-cyan-500/15' : 'hover:bg-white/[0.03]'
+                    active ? 'bg-sky-500/10 dark:bg-cyan-500/15' : 'hover:bg-slate-100/70 dark:hover:bg-white/[0.03]'
                   }`}
                 >
                   <button
@@ -512,13 +641,13 @@ export function CommandPalette({
                   >
                     {renderIcon(item.category)}
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold text-white truncate">{item.title}</div>
-                      <div className="text-[11px] text-slate-400 truncate">{item.subtitle}</div>
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{item.title}</div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">{item.subtitle}</div>
                     </div>
                   </button>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                       {item.category}
                     </span>
                     {item.externalUrl ? (
@@ -527,7 +656,7 @@ export function CommandPalette({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={onClose}
-                        className="rounded-lg border border-white/[0.1] bg-white/[0.04] p-1 text-cyan-400 hover:text-white"
+                        className="rounded-lg border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] p-1 text-sky-600 dark:text-cyan-400 hover:text-slate-950 dark:hover:text-white"
                         title="Open source URL directly"
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -535,7 +664,7 @@ export function CommandPalette({
                     ) : (
                       <button
                         onClick={item.action}
-                        className="p-1 text-slate-400 hover:text-cyan-300 cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-sky-600 dark:hover:text-cyan-300 cursor-pointer"
                         aria-label={`Go to ${item.title}`}
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -548,7 +677,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] bg-[#040710]/75 px-4 py-2.5 text-[10px] font-mono text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50/90 dark:bg-[#040710]/75 px-4 py-2.5 text-[10px] font-mono text-slate-500">
           <div className="flex items-center gap-3">
             <span>↑↓ Navigate</span>
             <span>↵ Open</span>

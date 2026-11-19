@@ -186,6 +186,28 @@ export function sanitizeOdysseyStoreState(rawState: unknown): Record<string, any
   const autoLogTopicPractice =
     typeof state.autoLogTopicPractice === 'boolean' ? state.autoLogTopicPractice : true;
 
+  const catchUpNotificationsEnabled =
+    typeof state.catchUpNotificationsEnabled === 'boolean'
+      ? state.catchUpNotificationsEnabled
+      : true;
+
+  const mentorCompanionEnabled =
+    typeof state.mentorCompanionEnabled === 'boolean'
+      ? state.mentorCompanionEnabled
+      : true;
+
+  const mentorDailyLimit =
+    typeof state.mentorDailyLimit === 'number' && Number.isFinite(state.mentorDailyLimit)
+      ? Math.max(5, Math.min(500, Math.floor(state.mentorDailyLimit)))
+      : 50;
+
+  const lastOpenedAt =
+    typeof state.lastOpenedAt === 'string' &&
+    state.lastOpenedAt.length <= 40 &&
+    !Number.isNaN(Date.parse(state.lastOpenedAt))
+      ? state.lastOpenedAt
+      : undefined;
+
   // Helper for boolean map sanitization
   const sanitizeBoolMap = (raw: unknown): Record<string, boolean> | undefined => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
@@ -201,6 +223,136 @@ export function sanitizeOdysseyStoreState(rawState: unknown): Record<string, any
   const completedTopics = sanitizeBoolMap(state.completedTopics);
   const completedExitChecks = sanitizeBoolMap(state.completedExitChecks);
   const completedDailyChallenges = sanitizeBoolMap(state.completedDailyChallenges);
+
+  // Helper for bounded non-negative integers
+  const sanitizeBoundedInt = (raw: unknown, max: number): number => {
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return 0;
+    return Math.min(max, Math.floor(raw));
+  };
+
+  const linesOfCodeExecuted = sanitizeBoundedInt(state.linesOfCodeExecuted, 10_000_000);
+  const codeRunsCount = sanitizeBoundedInt(state.codeRunsCount, 1_000_000);
+  const recursionRunsCount = sanitizeBoundedInt(state.recursionRunsCount, 1_000_000);
+  const cPointerRunsCount = sanitizeBoundedInt(state.cPointerRunsCount, 1_000_000);
+
+  // Sanitize workspaceMinutes map across valid primary workspaces
+  const validWorkspaces = new Set(['overview', 'curriculum', 'lab', 'shell', 'reference']);
+  const workspaceMinutes: Record<string, number> = {};
+  if (state.workspaceMinutes && typeof state.workspaceMinutes === 'object' && !Array.isArray(state.workspaceMinutes)) {
+    for (const [ws, mins] of Object.entries(state.workspaceMinutes)) {
+      if (validWorkspaces.has(ws)) {
+        workspaceMinutes[ws] = sanitizeBoundedInt(mins, 100_000);
+      }
+    }
+  }
+
+  // Sanitize projectStatuses: allowlisted status enum with bounded IDs
+  const projectStatuses: Record<string, 'not_started' | 'in_progress' | 'completed'> = {};
+  if (state.projectStatuses && typeof state.projectStatuses === 'object' && !Array.isArray(state.projectStatuses)) {
+    for (const [projId, status] of Object.entries(state.projectStatuses)) {
+      if (
+        /^[a-zA-Z0-9_-]{1,48}$/.test(projId) &&
+        (status === 'not_started' || status === 'in_progress' || status === 'completed')
+      ) {
+        projectStatuses[projId] = status;
+      }
+    }
+  }
+
+  // Helper for bounded string maps (notes)
+  const sanitizeStringMap = (
+    raw: unknown,
+    keyPattern: RegExp,
+    maxEntries = 100,
+    maxValLen = 20_000
+  ): Record<string, string> => {
+    const out: Record<string, string> = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    let count = 0;
+    for (const [k, v] of Object.entries(raw)) {
+      if (count >= maxEntries) break;
+      if (keyPattern.test(k) && typeof v === 'string') {
+        out[k] = v.slice(0, maxValLen);
+        count++;
+      }
+    }
+    return out;
+  };
+
+  const projectNotes = sanitizeStringMap(state.projectNotes, /^[a-zA-Z0-9_-]{1,48}$/);
+  const stageNotes = sanitizeStringMap(state.stageNotes, /^stage-([0-9]|1[0-5])$/);
+
+  // Sanitize userMilestones
+  const validMilestoneCats = new Set(['basics', 'algorithms', 'systems', 'bandit', 'projects', 'custom']);
+  const userMilestones = Array.isArray(state.userMilestones)
+    ? state.userMilestones
+        .filter((m) => m && typeof m === 'object' && !Array.isArray(m))
+        .slice(0, 100)
+        .map((m: Record<string, unknown>, idx: number) => ({
+          id: typeof m.id === 'string' && m.id.trim() ? m.id.slice(0, 64) : `ms-${idx}`,
+          title: typeof m.title === 'string' ? m.title.slice(0, 200) : 'Milestone',
+          category:
+            typeof m.category === 'string' && validMilestoneCats.has(m.category)
+              ? (m.category as 'basics' | 'algorithms' | 'systems' | 'bandit' | 'projects' | 'custom')
+              : 'custom',
+          ...(typeof m.targetDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.targetDate)
+            ? { targetDate: m.targetDate }
+            : {}),
+          completed: typeof m.completed === 'boolean' ? m.completed : false,
+          ...(typeof m.completedAt === 'string' ? { completedAt: m.completedAt.slice(0, 40) } : {}),
+          ...(typeof m.stageId === 'string' && /^stage-([0-9]|1[0-5])$/.test(m.stageId)
+            ? { stageId: m.stageId }
+            : {}),
+          xpReward: sanitizeBoundedInt(m.xpReward, 1000),
+        }))
+    : undefined;
+
+  // Sanitize weeklyReviews
+  const weeklyReviews = Array.isArray(state.weeklyReviews)
+    ? state.weeklyReviews
+        .filter((r) => r && typeof r === 'object' && !Array.isArray(r))
+        .slice(0, 104)
+        .map((r: Record<string, unknown>, idx: number) => ({
+          id: typeof r.id === 'string' && r.id.trim() ? r.id.slice(0, 64) : `rev-${idx}`,
+          weekNum: sanitizeBoundedInt(r.weekNum, 520),
+          date:
+            typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date)
+              ? r.date
+              : new Date().toISOString().split('T')[0],
+          built: typeof r.built === 'string' ? r.built.slice(0, 2000) : '',
+          explained: typeof r.explained === 'string' ? r.explained.slice(0, 2000) : '',
+          stuck: typeof r.stuck === 'string' ? r.stuck.slice(0, 2000) : '',
+          evidence: typeof r.evidence === 'string' ? r.evidence.slice(0, 2000) : '',
+          weakest: typeof r.weakest === 'string' ? r.weakest.slice(0, 1000) : '',
+          topTasks: typeof r.topTasks === 'string' ? r.topTasks.slice(0, 2000) : '',
+        }))
+    : undefined;
+
+  // Sanitize savedSnippets array if present
+  const savedSnippets = Array.isArray(state.savedSnippets)
+    ? state.savedSnippets
+        .filter((s) => s && typeof s === 'object' && !Array.isArray(s))
+        .slice(0, 200)
+        .map((s: Record<string, unknown>, idx: number) => ({
+          id: typeof s.id === 'string' && s.id.trim() ? s.id.slice(0, 64) : `snip-${idx}`,
+          title:
+            typeof s.title === 'string' && s.title.trim()
+              ? s.title.slice(0, 140)
+              : 'Saved Snippet',
+          language: s.language === 'c' ? 'c' : s.language === 'bash' ? 'bash' : 'python',
+          code: typeof s.code === 'string' ? s.code.slice(0, 65_536) : '',
+          createdAt:
+            typeof s.createdAt === 'string' ? s.createdAt.slice(0, 40) : new Date().toISOString(),
+          updatedAt:
+            typeof s.updatedAt === 'string' ? s.updatedAt.slice(0, 40) : new Date().toISOString(),
+          tags: Array.isArray(s.tags)
+            ? s.tags
+                .filter((t): t is string => typeof t === 'string')
+                .slice(0, 8)
+                .map((t) => t.slice(0, 32))
+            : [],
+        }))
+    : undefined;
 
   // Sanitize studyLogs array if provided
   const studyLogs = Array.isArray(state.studyLogs)
@@ -225,18 +377,86 @@ export function sanitizeOdysseyStoreState(rawState: unknown): Record<string, any
         }))
     : undefined;
 
+  const mentorHistory = Array.isArray(state.mentorHistory)
+    ? state.mentorHistory
+        .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+        .slice(0, 100)
+        .map((item: Record<string, unknown>, idx: number) => ({
+          id: typeof item.id === 'string' && item.id.trim() ? item.id.slice(0, 64) : `mr-${idx}`,
+          mode:
+            typeof item.mode === 'string' && /^[a-z0-9_]{1,24}$/.test(item.mode)
+              ? item.mode
+              : 'companion',
+          stageId:
+            typeof item.stageId === 'string' && /^stage-([0-9]|1[0-5])$/.test(item.stageId)
+              ? item.stageId
+              : 'stage-0',
+          ...(typeof item.workspace === 'string' && validWorkspaces.has(item.workspace)
+            ? { workspace: item.workspace }
+            : {}),
+          prompt: typeof item.prompt === 'string' ? item.prompt.slice(0, 2000) : '',
+          response: typeof item.response === 'string' ? item.response.slice(0, 12000) : '',
+          source: typeof item.source === 'string' ? item.source.slice(0, 32) : 'local',
+          ...(Array.isArray(item.sources)
+            ? {
+                sources: item.sources
+                  .filter(
+                    (s): s is { title: string; uri: string } =>
+                      Boolean(
+                        s &&
+                          typeof s === 'object' &&
+                          typeof (s as { uri?: unknown }).uri === 'string' &&
+                          /^https?:\/\//i.test((s as { uri: string }).uri)
+                      )
+                  )
+                  .slice(0, 6)
+                  .map((s) => ({
+                    title: typeof s.title === 'string' ? s.title.slice(0, 120) : 'Reference',
+                    uri: s.uri.slice(0, 500),
+                  })),
+              }
+            : {}),
+          createdAt:
+            typeof item.createdAt === 'string'
+              ? item.createdAt.slice(0, 40)
+              : new Date().toISOString(),
+          pinned: item.pinned === true,
+        }))
+        .filter((item) => item.prompt.length > 0 || item.response.length > 0)
+    : undefined;
+
+  const startDate =
+    typeof state.startDate === 'string' && state.startDate.length <= 40
+      ? state.startDate
+      : new Date().toISOString();
+
   return {
-    ...state,
     solvedBanditLevels,
     dailyGoalMinutes,
     banditPasswords,
     earnedBadges,
     stageTargetDates,
     autoLogTopicPractice,
+    catchUpNotificationsEnabled,
+    mentorCompanionEnabled,
+    mentorDailyLimit,
+    ...(lastOpenedAt ? { lastOpenedAt } : {}),
+    linesOfCodeExecuted,
+    codeRunsCount,
+    recursionRunsCount,
+    cPointerRunsCount,
+    projectStatuses,
+    projectNotes,
+    stageNotes,
+    startDate,
+    ...(Object.keys(workspaceMinutes).length > 0 ? { workspaceMinutes } : {}),
+    ...(userMilestones ? { userMilestones } : {}),
+    ...(weeklyReviews ? { weeklyReviews } : {}),
+    ...(savedSnippets ? { savedSnippets } : {}),
+    ...(mentorHistory ? { mentorHistory } : {}),
     ...(completedTopics ? { completedTopics } : {}),
     ...(completedExitChecks ? { completedExitChecks } : {}),
     ...(completedDailyChallenges ? { completedDailyChallenges } : {}),
     ...(studyLogs ? { studyLogs } : {}),
   };
 }
-

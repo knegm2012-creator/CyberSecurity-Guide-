@@ -3,7 +3,20 @@
 import { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from 'react';
 import { STAGES_DATA, PORTFOLIO_PROJECTS } from '@/lib/curriculum-data';
 import { sanitizeOdysseyStoreState } from '@/lib/client-security';
-import { evaluateBadges, type EvaluatedBadge } from '@/lib/badges-data';
+import { LAST_OPENED_STORAGE_KEY } from '@/lib/session-timer';
+import {
+  DEFAULT_MENTOR_DAILY_LIMIT,
+  MAX_MENTOR_HISTORY_ITEMS,
+  clampMentorDailyLimit,
+  type MentorSavedRequestEntry,
+} from '@/lib/mentor-quota';
+import {
+  evaluateBadges,
+  countNonEmptyLines,
+  detectRecursiveCode,
+  detectPointerUsage,
+  type EvaluatedBadge,
+} from '@/lib/badges-data';
 
 export interface StudyLogEntry {
   id: string;
@@ -39,7 +52,7 @@ export interface UserMilestone {
 export interface SavedCodeSnippet {
   id: string;
   title: string;
-  language: 'python' | 'c';
+  language: 'python' | 'c' | 'bash';
   code: string;
   createdAt: string;
   updatedAt: string;
@@ -89,6 +102,27 @@ export interface OdysseyStoreData {
   earnedBadges?: Record<string, string>;
   stageTargetDates?: Record<string, string>;
   autoLogTopicPractice?: boolean;
+  catchUpNotificationsEnabled?: boolean;
+  mentorCompanionEnabled?: boolean;
+  mentorDailyLimit?: number;
+  mentorHistory?: MentorSavedRequestEntry[];
+  lastOpenedAt?: string;
+  linesOfCodeExecuted?: number;
+  codeRunsCount?: number;
+  recursionRunsCount?: number;
+  cPointerRunsCount?: number;
+  workspaceMinutes?: Record<string, number>;
+}
+
+export interface NextBestAction {
+  id: string;
+  badge: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  workspace: 'overview' | 'curriculum' | 'lab' | 'shell' | 'reference';
+  subTab?: string;
+  stageId?: string;
 }
 
 const STORAGE_KEY = 'cs_odyssey_state_v1';
@@ -183,6 +217,15 @@ const DEFAULT_STATE: OdysseyStoreData = {
   },
   stageTargetDates: {},
   autoLogTopicPractice: true,
+  catchUpNotificationsEnabled: true,
+  mentorCompanionEnabled: true,
+  mentorDailyLimit: DEFAULT_MENTOR_DAILY_LIMIT,
+  mentorHistory: [],
+  linesOfCodeExecuted: 0,
+  codeRunsCount: 0,
+  recursionRunsCount: 0,
+  cPointerRunsCount: 0,
+  workspaceMinutes: {},
   stageNotes: {
     'stage-0': `# Stage 0 Engineering Notes
 - Configured local Python 3 and GCC toolchain.
@@ -232,6 +275,29 @@ export function useOdysseyStore() {
   });
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [recentlyUnlockedBadgeIds, setRecentlyUnlockedBadgeIds] = useState<string[]>([]);
+  const [previousLastOpenedAt, setPreviousLastOpenedAt] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const explicitPrev = localStorage.getItem(LAST_OPENED_STORAGE_KEY);
+      if (explicitPrev && !Number.isNaN(Date.parse(explicitPrev))) {
+        return explicitPrev;
+      }
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { lastOpenedAt?: string };
+        if (
+          typeof parsed?.lastOpenedAt === 'string' &&
+          !Number.isNaN(Date.parse(parsed.lastOpenedAt))
+        ) {
+          return parsed.lastOpenedAt;
+        }
+      }
+    } catch {
+      // Ignore storage inspection issues
+    }
+    return null;
+  });
   const diskSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pushToDisk = useCallback((payload: OdysseyStoreData) => {
@@ -249,11 +315,16 @@ export function useOdysseyStore() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const controller = new AbortController();
+    const visitIso = new Date().toISOString();
 
     let localHasSaved = false;
     let localUpdatedAtMs = 0;
+    let hadPreviousOpen = false;
     try {
       localHasSaved = Boolean(localStorage.getItem(STORAGE_KEY));
+      const existingPrev = localStorage.getItem(LAST_OPENED_STORAGE_KEY);
+      hadPreviousOpen = Boolean(existingPrev && !Number.isNaN(Date.parse(existingPrev)));
+      localStorage.setItem(LAST_OPENED_STORAGE_KEY, visitIso);
       const metaRaw = localStorage.getItem(STORAGE_META_KEY);
       if (metaRaw) {
         const meta = JSON.parse(metaRaw) as { updatedAt?: string };
@@ -269,19 +340,25 @@ export function useOdysseyStore() {
       .then((res) => (res.ok ? res.json() : null))
       .then((payload) => {
         if (!payload || !payload.exists || !payload.state) return;
+        if (!hadPreviousOpen && typeof payload.state.lastOpenedAt === 'string') {
+          if (!Number.isNaN(Date.parse(payload.state.lastOpenedAt))) {
+            setPreviousLastOpenedAt(payload.state.lastOpenedAt);
+          }
+        }
         const diskUpdatedAtMs = payload.updatedAt ? Date.parse(payload.updatedAt) || 0 : 0;
         if (!localHasSaved || diskUpdatedAtMs > localUpdatedAtMs) {
           const sanitized = sanitizeOdysseyStoreState(payload.state);
           const merged: OdysseyStoreData = {
             ...DEFAULT_STATE,
             ...sanitized,
+            lastOpenedAt: visitIso,
           };
           setData(merged);
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
             localStorage.setItem(
               STORAGE_META_KEY,
-              JSON.stringify({ updatedAt: payload.updatedAt || new Date().toISOString() })
+              JSON.stringify({ updatedAt: payload.updatedAt || visitIso })
             );
           } catch {
             // Ignore localStorage quota issues
@@ -311,23 +388,38 @@ export function useOdysseyStore() {
         studyLogs: newData.studyLogs || [],
         earnedBadges: newData.earnedBadges,
         currentStreak: streak,
+        linesOfCodeExecuted: newData.linesOfCodeExecuted ?? 0,
+        codeRunsCount: newData.codeRunsCount ?? 0,
+        recursionRunsCount: newData.recursionRunsCount ?? 0,
+        cPointerRunsCount: newData.cPointerRunsCount ?? 0,
       });
 
+      const withTimestampData: OdysseyStoreData = {
+        ...newData,
+        lastOpenedAt: nowIso,
+      };
       const finalData: OdysseyStoreData =
         evaluation.newlyUnlockedIds.length > 0
           ? {
-              ...newData,
+              ...withTimestampData,
               earnedBadges: {
-                ...(newData.earnedBadges || {}),
+                ...(withTimestampData.earnedBadges || {}),
                 ...Object.fromEntries(evaluation.newlyUnlockedIds.map((id) => [id, nowIso])),
               },
             }
-          : newData;
+          : withTimestampData;
+
+      if (evaluation.newlyUnlockedIds.length > 0) {
+        setRecentlyUnlockedBadgeIds((prev) =>
+          Array.from(new Set([...evaluation.newlyUnlockedIds, ...prev]))
+        );
+      }
 
       setData(finalData);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
         localStorage.setItem(STORAGE_META_KEY, JSON.stringify({ updatedAt: nowIso }));
+        localStorage.setItem(LAST_OPENED_STORAGE_KEY, nowIso);
         setLastSaved(now);
       } catch (e) {
         console.error('Failed to save state to localStorage', e);
@@ -336,6 +428,14 @@ export function useOdysseyStore() {
     },
     [pushToDisk]
   );
+
+  const dismissBadgeCelebration = useCallback((badgeId?: string) => {
+    if (!badgeId) {
+      setRecentlyUnlockedBadgeIds([]);
+      return;
+    }
+    setRecentlyUnlockedBadgeIds((prev) => prev.filter((id) => id !== badgeId));
+  }, []);
 
   const toggleTopic = useCallback(
     (topicId: string) => {
@@ -440,6 +540,117 @@ export function useOdysseyStore() {
     },
     [data, saveState]
   );
+
+  const setCatchUpNotificationsEnabled = useCallback(
+    (enabled: boolean) => {
+      saveState({
+        ...data,
+        catchUpNotificationsEnabled: Boolean(enabled),
+      });
+    },
+    [data, saveState]
+  );
+
+  const setMentorCompanionEnabled = useCallback(
+    (enabled: boolean) => {
+      saveState({
+        ...data,
+        mentorCompanionEnabled: Boolean(enabled),
+      });
+    },
+    [data, saveState]
+  );
+
+  const setMentorDailyLimit = useCallback(
+    (limit: number) => {
+      const clamped = clampMentorDailyLimit(limit);
+      saveState({
+        ...data,
+        mentorDailyLimit: clamped,
+      });
+      if (typeof window !== 'undefined') {
+        fetch('/api/tutor/quota', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dailyLimit: clamped }),
+        }).catch(() => {});
+      }
+    },
+    [data, saveState]
+  );
+
+  const saveMentorRequest = useCallback(
+    (entry: Omit<MentorSavedRequestEntry, 'id' | 'createdAt'> & { id?: string }) => {
+      const existing = data.mentorHistory || [];
+      const nowIso = new Date().toISOString();
+      const cleanPrompt = entry.prompt.trim().slice(0, 2000);
+      const cleanResponse = entry.response.slice(0, 12000);
+      if (!cleanPrompt && !cleanResponse) return;
+
+      const normalizedKey = `${entry.mode}|${entry.stageId}|${cleanPrompt.toLowerCase().replace(/\s+/g, ' ')}`;
+      const matchingExisting = existing.find(
+        (item) =>
+          `${item.mode}|${item.stageId}|${item.prompt.trim().toLowerCase().replace(/\s+/g, ' ')}` ===
+          normalizedKey
+      );
+
+      const newRecord: MentorSavedRequestEntry = {
+        id: matchingExisting?.id || entry.id || `mr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        mode: entry.mode,
+        stageId: entry.stageId,
+        workspace: entry.workspace,
+        prompt: cleanPrompt,
+        response: cleanResponse,
+        source: entry.source,
+        sources: entry.sources,
+        createdAt: nowIso,
+        pinned: entry.pinned ?? matchingExisting?.pinned ?? false,
+      };
+
+      const filtered = existing.filter((item) => item.id !== newRecord.id);
+      const pinned = [newRecord, ...filtered].filter((item) => item.pinned);
+      const unpinned = [newRecord, ...filtered].filter((item) => !item.pinned);
+      const merged = [...pinned, ...unpinned].slice(0, MAX_MENTOR_HISTORY_ITEMS);
+
+      saveState({
+        ...data,
+        mentorHistory: merged,
+      });
+    },
+    [data, saveState]
+  );
+
+  const togglePinMentorRequest = useCallback(
+    (id: string) => {
+      const updated = (data.mentorHistory || []).map((item) =>
+        item.id === id ? { ...item, pinned: !item.pinned } : item
+      );
+      saveState({
+        ...data,
+        mentorHistory: updated,
+      });
+    },
+    [data, saveState]
+  );
+
+  const deleteMentorRequest = useCallback(
+    (id: string) => {
+      const updated = (data.mentorHistory || []).filter((item) => item.id !== id);
+      saveState({
+        ...data,
+        mentorHistory: updated,
+      });
+    },
+    [data, saveState]
+  );
+
+  const clearUnpinnedMentorHistory = useCallback(() => {
+    const kept = (data.mentorHistory || []).filter((item) => item.pinned);
+    saveState({
+      ...data,
+      mentorHistory: kept,
+    });
+  }, [data, saveState]);
 
   const generatePersonalizedPlan = useCallback(
     (horizonWeeks: 12 | 24 | 36 = 24) => {
@@ -799,6 +1010,48 @@ export function useOdysseyStore() {
     [data, saveState]
   );
 
+  const recordCodeExecution = useCallback(
+    (payload: { language: 'python' | 'c'; code: string; success: boolean }) => {
+      if (!payload.success) return;
+      const linesCount = countNonEmptyLines(payload.code);
+      const isRecursive = detectRecursiveCode(payload.code, payload.language);
+      const usesPointers = detectPointerUsage(payload.code, payload.language);
+
+      saveState({
+        ...data,
+        linesOfCodeExecuted: Math.min(
+          10_000_000,
+          (data.linesOfCodeExecuted ?? 0) + linesCount
+        ),
+        codeRunsCount: Math.min(1_000_000, (data.codeRunsCount ?? 0) + 1),
+        recursionRunsCount: Math.min(
+          1_000_000,
+          (data.recursionRunsCount ?? 0) + (isRecursive ? 1 : 0)
+        ),
+        cPointerRunsCount: Math.min(
+          1_000_000,
+          (data.cPointerRunsCount ?? 0) + (usesPointers ? 1 : 0)
+        ),
+      });
+    },
+    [data, saveState]
+  );
+
+  const recordWorkspaceMinutes = useCallback(
+    (workspace: 'overview' | 'curriculum' | 'lab' | 'shell' | 'reference', minutes: number) => {
+      const validMins = Math.max(1, Math.min(1440, Math.floor(Number(minutes) || 0)));
+      const current = data.workspaceMinutes || {};
+      saveState({
+        ...data,
+        workspaceMinutes: {
+          ...current,
+          [workspace]: Math.min(100_000, (current[workspace] || 0) + validMins),
+        },
+      });
+    },
+    [data, saveState]
+  );
+
   const stats = useMemo(() => {
     let totalTopicsCount = 0;
     let completedTopicsCount = 0;
@@ -834,13 +1087,30 @@ export function useOdysseyStore() {
     const completedMilestonesCount = userMilestones.filter((m) => m.completed).length;
     const totalMilestonesCount = userMilestones.length;
 
+    const currentStreak = computeStudyStreak(data.studyLogs);
     const totalMinutesLogged = data.studyLogs.reduce((acc, curr) => acc + (curr.minutes || 0), 0);
+    const badgeEval = evaluateBadges({
+      completedTopics: data.completedTopics || {},
+      solvedBanditLevels: data.solvedBanditLevels || [],
+      projectStatuses: data.projectStatuses || {},
+      userMilestones: data.userMilestones || [],
+      savedSnippets: data.savedSnippets || [],
+      completedDailyChallenges: data.completedDailyChallenges,
+      studyLogs: data.studyLogs || [],
+      earnedBadges: data.earnedBadges,
+      currentStreak,
+      linesOfCodeExecuted: data.linesOfCodeExecuted ?? 0,
+      codeRunsCount: data.codeRunsCount ?? 0,
+      recursionRunsCount: data.recursionRunsCount ?? 0,
+      cPointerRunsCount: data.cPointerRunsCount ?? 0,
+    });
     const xp =
       completedTopicsCount * 50 +
       banditCount * 100 +
       completedProjectsCount * 300 +
       completedMilestonesCount * 75 +
-      Math.floor(totalMinutesLogged / 30) * 25;
+      Math.floor(totalMinutesLogged / 30) * 25 +
+      badgeEval.totalBadgeXp;
 
     const levelNumber = Math.min(20, Math.max(1, Math.floor(xp / 300) + 1));
 
@@ -867,9 +1137,6 @@ export function useOdysseyStore() {
       'Principal Systems Engineer',
     ];
     const heroTitle = levelTitles[levelNumber - 1] || 'Principal Systems Engineer';
-
-    // Accurate streak: only active if latest study log is today or yesterday
-    const currentStreak = computeStudyStreak(data.studyLogs);
 
     return {
       totalTopicsCount,
@@ -984,6 +1251,8 @@ export function useOdysseyStore() {
     badges: EvaluatedBadge[];
     unlockedCount: number;
     totalCount: number;
+    totalLinesOfCode: number;
+    totalBadgeXp: number;
   }>(() => {
     const evaluated = evaluateBadges({
       completedTopics: data.completedTopics || {},
@@ -995,13 +1264,75 @@ export function useOdysseyStore() {
       studyLogs: data.studyLogs || [],
       earnedBadges: data.earnedBadges,
       currentStreak: stats.currentStreak,
+      linesOfCodeExecuted: data.linesOfCodeExecuted ?? 0,
+      codeRunsCount: data.codeRunsCount ?? 0,
+      recursionRunsCount: data.recursionRunsCount ?? 0,
+      cPointerRunsCount: data.cPointerRunsCount ?? 0,
     });
     return {
       badges: evaluated.badges,
       unlockedCount: evaluated.unlockedCount,
       totalCount: evaluated.totalCount,
+      totalLinesOfCode: evaluated.totalLinesOfCode,
+      totalBadgeXp: evaluated.totalBadgeXp,
     };
   }, [data, stats.currentStreak]);
+
+  const nextBestAction = useMemo<NextBestAction>(() => {
+    const activeStageSummary =
+      stageProgressList.find((s) => !s.isComplete) || stageProgressList[stageProgressList.length - 1];
+    const activeStageFull =
+      STAGES_DATA.find((s) => s.id === activeStageSummary?.stageId) || STAGES_DATA[0];
+
+    if (activeStageSummary && activeStageSummary.topicPercent === 100 && activeStageSummary.exitPercent < 100) {
+      return {
+        id: 'verify-exit',
+        badge: `Stage ${activeStageSummary.stageNumber} Exit Gate`,
+        title: `Verify Stage ${activeStageSummary.stageNumber} Exit Checklist`,
+        description: `All topics are done (${activeStageSummary.topicsDone}/${activeStageSummary.topicsTotal}). Complete the remaining exit checks to certify mastery.`,
+        ctaLabel: 'Verify Exit Check',
+        workspace: 'curriculum',
+        subTab: 'stages',
+        stageId: activeStageSummary.stageId,
+      };
+    }
+
+    if ((data.codeRunsCount ?? 0) < 3) {
+      return {
+        id: 'wasm-lab',
+        badge: 'WASM Runtime Drill',
+        title: 'Compile & Assert C/Python in Browser WASM',
+        description: 'Run starter code and execute custom assertions inside the WebAssembly sandbox to unlock coding milestones.',
+        ctaLabel: 'Launch Code Playground',
+        workspace: 'lab',
+        subTab: 'playground',
+      };
+    }
+
+    if (stats.banditCount < 5 && activeStageFull.number >= 3) {
+      return {
+        id: 'wargame-push',
+        badge: 'Linux Security',
+        title: `Clear Bandit Wargame Level ${Math.max(1, stats.banditCount)}`,
+        description: 'Practice file permissions, pipes, and hidden dotfile forensics in the interactive Unix shell.',
+        ctaLabel: 'Open Wargame Shell',
+        workspace: 'shell',
+      };
+    }
+
+    return {
+      id: 'next-topic',
+      badge: `Stage ${activeStageFull.number} · ${activeStageFull.sprintMonth}`,
+      title: activeStageSummary?.nextTopicTitle
+        ? `Master "${activeStageSummary.nextTopicTitle}"`
+        : `Advance Stage ${activeStageFull.number}: ${activeStageFull.title.split(':')[0]}`,
+      description: `${activeStageSummary?.topicsDone ?? 0} of ${activeStageSummary?.topicsTotal ?? 0} topics mastered in your current sprint. Dive straight into the interactive drill.`,
+      ctaLabel: `Continue Stage ${activeStageFull.number}`,
+      workspace: 'curriculum',
+      subTab: 'stages',
+      stageId: activeStageFull.id,
+    };
+  }, [stageProgressList, data.codeRunsCount, stats.banditCount]);
 
   const exportBackup = useCallback(() => {
     const jsonStr = JSON.stringify(data, null, 2);
@@ -1049,6 +1380,8 @@ export function useOdysseyStore() {
     stageProgressList,
     cadenceMetrics,
     badgesSummary,
+    recentlyUnlockedBadgeIds,
+    dismissBadgeCelebration,
     toggleTopic,
     completeTopicWithHabit,
     markStageTopicsComplete,
@@ -1067,9 +1400,20 @@ export function useOdysseyStore() {
     setDailyGoalMinutes,
     setStageTargetDate,
     setAutoLogTopicPractice,
+    setCatchUpNotificationsEnabled,
+    setMentorCompanionEnabled,
+    setMentorDailyLimit,
+    saveMentorRequest,
+    togglePinMentorRequest,
+    deleteMentorRequest,
+    clearUnpinnedMentorHistory,
+    previousLastOpenedAt,
     generatePersonalizedPlan,
     saveCodeSnippet,
     deleteCodeSnippet,
+    recordCodeExecution,
+    recordWorkspaceMinutes,
+    nextBestAction,
     exportBackup,
     importBackup,
     resetAll,
